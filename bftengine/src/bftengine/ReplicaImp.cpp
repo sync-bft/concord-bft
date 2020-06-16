@@ -714,8 +714,8 @@ void ReplicaImp::onMessage<StartSlowCommitMsg>(StartSlowCommitMsg *msg) {
 
 void ReplicaImp::sendPartialProof(SeqNumInfo &seqNumInfo) { // fast path
   // the method contains the implementation of sending its (replica's) partial signature to the collector
-  PartialProofsSet &partialProofs = seqNumInfo.partialProofs(); // can the replica get access to others' proofs in this stage -> security concern? (can it also be accessed at mainLog?)
-
+  PartialProofsSet &partialProofs = seqNumInfo.partialProofs(); 
+  
   if (!seqNumInfo.hasPrePrepareMsg()) return; // only sent if the seqNum has its preprep msg
 
   PrePrepareMsg *pp = seqNumInfo.getPrePrepareMsg();
