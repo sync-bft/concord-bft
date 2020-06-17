@@ -27,7 +27,7 @@ endif()
 
 # Default USE_LOG4CPP to FALSE
 if (NOT DEFINED USE_LOG4CPP)
-  option(USE_LOG4CPP "Enable LOG4CPP" TRUE)
+  option(USE_LOG4CPP "Enable LOG4CPP" FALSE)
 endif()
 
 # Default BUILD_COMM_TCP_PLAIN to FALSE
