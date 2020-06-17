@@ -256,7 +256,7 @@ void ReplicaImp::tryToSendPrePrepareMsg(bool batchingLogic) {
     return;  // TODO(GG): should also be checked by the non-primary replicas
   }
 
-  // if (requestsQueueOfPrimary.empty()) return;
+  if (requestsQueueOfPrimary.empty()) return;
 
   // remove irrelevant requests from the head of the requestsQueueOfPrimary (and update requestsInQueue)
   ClientRequestMsg *first = requestsQueueOfPrimary.front();
