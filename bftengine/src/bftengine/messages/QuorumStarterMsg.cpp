@@ -51,7 +51,7 @@ bool QuorumVoteCollection::isVoteValid(QuorumVoteMsg *newVoteMsg) const{
             std::cout<<"Primary "<<ownerId<<" received a repetitive quorum vote msg from sender replica "<<newVoteMsg->senderId()<<endl;  //TODO(QF): is (NodeIdType) senderId printable?
             break;
         }
-        if (newVoteMsg->senderId()->equals(*it->senderId())){  // TODO(QF): or ==?
+        if (newVoteMsg->senderId() == *it->senderId()){  // TODO(QF): or equals
             identicalSenderFlag = true;
             std::cout<<"Primary "<<ownerId<<" received a quorum vote msg from the same sender replica but different content "<<newVoteMsg->senderId()<<endl;  //TODO(QF): is (NodeIdType) senderId printable?
             break;
