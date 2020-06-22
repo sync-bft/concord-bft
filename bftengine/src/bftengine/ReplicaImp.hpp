@@ -304,6 +304,8 @@ class ReplicaImp : public InternalReplicaApi, public ReplicaForStateTransfer {
 
   void sendPartialProof(SeqNumInfo&);
 
+  void sendQuorumStarter(SeqNum seqNum);
+
   void tryToStartSlowPaths();
 
   void tryToAskForMissingInfo();

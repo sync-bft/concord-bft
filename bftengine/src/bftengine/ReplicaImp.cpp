@@ -3328,13 +3328,11 @@ void ReplicaImp::onMessage<QuorumStarterMsg>(QuorumStarterMsg *msg){
   const SeqNum msgView = msg->viewNumber();
   const NodeIdType msgSender = msg->senderId();
   
-  Assert(currentPrimary() == msgSender);
-
-  if (relevantMsgForActiveView(msg)){
+  if (relevantMsgForActiveView(msg) && currentPrimary() == msgSender){
     sendAckIfNeeded(msg, msgSender, msgSeqNum);
     if (msgSeqNum > lastExecutedSeqNum){
       QuorumVoteMsg *repMsg = new QuorumVoteMsg(msgSeqNum, msgView, config_.replicaId);
-      send(repMsg, msgSender);
+      send(repMsg, msgSender); // could also be retranmissible msg
     }
   }
 
@@ -3349,13 +3347,13 @@ void replicaImp::onMessage<QuorumVoteMsg>(QuorumVoteMsg *msg){
   const NodeIdType msgSender = msg->senderId();
 
   Assert(repsInfo->isIdOfPeerReplica(msgSender));
+  Assert(isCurrentPrimary());
 
   bool msgAdded = false;
 
   if (relevantMsgForActiveView(msg) && ){
     sendAckIfNeeded(msg, msgSender, msgSeqNum);
 
-    // TODO(QF): sync up the msg in mainlog (write code in mainlog & send func)
     SeqNumInfo &seqNumInfo = mainLog->get(msgSeqNum);
     QuorumStarterMsg *quorumStarter = seqNumInfo.getQuorumStarterMsg();
 
@@ -3364,7 +3362,7 @@ void replicaImp::onMessage<QuorumVoteMsg>(QuorumVoteMsg *msg){
       if (quorumStarter->isReady(repsInfo)){
         //TODO(QF): initiate next state
         quorumStarter->setCollected(true);
-        quorumStarter->freeCollection();
+        quorumStarter->freeCollection();  // TODO: could also be freed with seqNumInfo.free()
       }
     }
     else {
@@ -3379,6 +3377,22 @@ void replicaImp::onMessage<QuorumVoteMsg>(QuorumVoteMsg *msg){
               "Node " << config_.replicaId << "ignored the quorum vote message from node "<< msgSender << " (seqNumber "
                       << msgSeqNum << ")");
     delete msg;
+  }
+}
+
+void ReplicaImp::sendQuorumStarter(SeqNum seqNum){
+
+  Assert(isCurrentPrimary());
+  Assert(currentViewIsActive());
+
+  QuorumStarterMsg *msg = new QuorumStarterMsg(seqNum, curView, config_.replicaId);
+
+  SeqNumInfo &seqNumInfo = mainLog->get(primaryLastUsedSeqNum);
+  if (seqNumInfo.getQuorumStarterMsg() == nullptr){
+    seqNumInfo.addSelfMsg(msg);
+
+    for (ReplicaId x : repsInfo->idsOfPeerReplicas()) 
+      sendRetransmittableMsgToReplica(msg, x, seqNum);
   }
 }
 
