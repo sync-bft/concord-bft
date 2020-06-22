@@ -910,6 +910,7 @@ void ReplicaImp::onMessage<PreparePartialMsg>(PreparePartialMsg *msg) {
       send(commitFull, msgSender);
     } else if (preFull != nullptr) {
       send(preFull, msgSender);
+      //sendQuorumStarter(msgSeqNum);
     } else {
       msgAdded = seqNumInfo.addMsg(msg);
     }
@@ -1084,8 +1085,24 @@ void ReplicaImp::onPrepareCombinedSigSucceeded(
 
   seqNumInfo.onCompletionOfPrepareSignaturesProcessing(seqNumber, view, combinedSig, combinedSigLen, span_context);
 
-  FullCommitProofMsg *fcp = seqNumInfo.partialProofs().getFullProof();
+  sendQuorumStarter(seqNumber);
 
+  sendQuorumVote(seqNumber); // auto send to current primary
+
+  // FullCommitProofMsg *fcp = seqNumInfo.partialProofs().getFullProof();
+  
+  // sendPrepareFull(seqNumber);
+
+  // Assert(seqNumInfo.isPrepared());
+
+  // sendCommitPartial(seqNumber);
+}
+
+void ReplicaImp:sendPrepareFull(SeqNum seqNumber){
+  SeqNumInfo &seqNumInfo = mainLog->get(seqNumber);
+
+  FullCommitProofMsg *fcp = seqNumInfo.partialProofs().getFullProof();
+  
   PrepareFullMsg *preFull = seqNumInfo.getValidPrepareFullMsg();
 
   AssertNE(preFull, nullptr);
@@ -1100,9 +1117,6 @@ void ReplicaImp::onPrepareCombinedSigSucceeded(
 
   for (ReplicaId x : repsInfo->idsOfPeerReplicas()) sendRetransmittableMsgToReplica(preFull, x, seqNumber);
 
-  Assert(seqNumInfo.isPrepared());
-
-  sendCommitPartial(seqNumber);
 }
 
 void ReplicaImp::onPrepareVerifyCombinedSigResult(SeqNum seqNumber, ViewNum view, bool isValid) {
@@ -3331,8 +3345,7 @@ void ReplicaImp::onMessage<QuorumStarterMsg>(QuorumStarterMsg *msg){
   if (relevantMsgForActiveView(msg) && currentPrimary() == msgSender){
     sendAckIfNeeded(msg, msgSender, msgSeqNum);
     if (msgSeqNum > lastExecutedSeqNum){
-      QuorumVoteMsg *repMsg = new QuorumVoteMsg(msgSeqNum, msgView, config_.replicaId);
-      send(repMsg, msgSender); // could also be retranmissible msg
+      sendQuorumVote(msgSeqNum);
     }
   }
 
@@ -3360,7 +3373,12 @@ void replicaImp::onMessage<QuorumVoteMsg>(QuorumVoteMsg *msg){
     if (quorumStarter != nullptr && !quorumStarter->isCollected(repsInfo)){
       msgAdded = quorumStarter->addVoteMsg(msg);
       if (quorumStarter->isReady(repsInfo)){
-        //TODO(QF): initiate next state
+        
+        // initiates t3 phase
+        sendPrepareFull(seqNumber);
+        Assert(seqNumInfo.isPrepared());
+        sendCommitPartial(seqNumber);
+        
         quorumStarter->setCollected(true);
         quorumStarter->freeCollection();  // TODO: could also be freed with seqNumInfo.free()
       }
@@ -3394,6 +3412,11 @@ void ReplicaImp::sendQuorumStarter(SeqNum seqNum){
     for (ReplicaId x : repsInfo->idsOfPeerReplicas()) 
       sendRetransmittableMsgToReplica(msg, x, seqNum);
   }
+}
+
+void ReplicaImp::sendQuorumVote(SeqNum seqNum){
+  QuorumVoteMsg *repMsg = new QuorumVoteMsg(seqNum, curView, config_.replicaId);
+  send(repMsg, currentPrimary()); // could also be retranmissible msg
 }
 
 ///////////////////////////////////////////////////////////////////////////////

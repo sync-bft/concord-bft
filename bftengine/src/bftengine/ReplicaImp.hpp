@@ -306,6 +306,10 @@ class ReplicaImp : public InternalReplicaApi, public ReplicaForStateTransfer {
 
   void sendQuorumStarter(SeqNum seqNum);
 
+  void sendQuorumVote(seqNum seqNum);
+
+  void sendPrepareFull(SeqNum seqNumber);
+
   void tryToStartSlowPaths();
 
   void tryToAskForMissingInfo();
