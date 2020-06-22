@@ -34,11 +34,23 @@ bool QuorumVoteCollection::addVoteMsg(QuorumVoteMsg *voteMsg){
 }
 
 bool QuorumVoteCollection::isReady(const ReplicasInfo *repsInfo) const{
-    return voteCnt>=calcMajorityNum(repsInfo);
+    return !isCollected && voteCnt>=calcMajorityNum(repsInfo);
 }
 
 int16_t QuorumVoteCollection::calcMajorityNum(const ReplicasInfo *repsInfo) const{
     return repsInfo->numberOfReplicas()/2;
+}
+
+bool QuorumVoteCollection::isCollected() const{
+    return isCollected;
+}
+
+void QuorumVoteCollection::setCollected(bool status){
+    isCollected = status;
+}
+
+void QuorumVoteCollection::free(){
+    while(!votes.empty()){votes.pop();}
 }
 
 bool QuorumVoteCollection::isVoteValid(QuorumVoteMsg *newVoteMsg) const{
@@ -74,11 +86,23 @@ QuorumStarterMsg::QuorumStarterMsg(SeqNum s, ViewNum v, ReplicaId senderId) // T
 }
 
 bool QuorumStarterMsg::addVoteMsg(QuorumVoteMsg *voteMsg){
-    return voteCollection->addVoteMsg(voteMsg);
+    return voteCollection.addVoteMsg(voteMsg);
 }
 
 bool QuorumStarterMsg::isReady(const ReplicasInfo *repsInfo) const{
-    return voteCollection->isReady(repsInfo);
+    return voteCollection.isReady(repsInfo);
+}
+
+bool QuorumStarterMsg::isCollected() const{
+    return voteCollection.isCollected();
+}
+
+void QuorumStarterMsg::setCollected(bool status){
+    voteCollection.setCollected(status);
+}
+
+void QuorumStarterMsg::freeCollection(){
+    voteCollection.free();
 }
 
 }  // namespace impl

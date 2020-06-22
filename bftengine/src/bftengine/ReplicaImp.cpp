@@ -3357,12 +3357,14 @@ void replicaImp::onMessage<QuorumVoteMsg>(QuorumVoteMsg *msg){
 
     // TODO(QF): sync up the msg in mainlog (write code in mainlog & send func)
     SeqNumInfo &seqNumInfo = mainLog->get(msgSeqNum);
-    QuorumStarterMsg *quorumStarter = seqNumInfo.getQuorumStarter();
+    QuorumStarterMsg *quorumStarter = seqNumInfo.getQuorumStarterMsg();
 
-    if (quorumStarter != nullptr && !quorumStarter->isReady(repsInfo)){
+    if (quorumStarter != nullptr && !quorumStarter->isCollected(repsInfo)){
       msgAdded = quorumStarter->addVoteMsg(msg);
       if (quorumStarter->isReady(repsInfo)){
         //TODO(QF): initiate next state
+        quorumStarter->setCollected(true);
+        quorumStarter->freeCollection();
       }
     }
     else {
