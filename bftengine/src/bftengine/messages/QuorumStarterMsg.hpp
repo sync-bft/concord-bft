@@ -8,24 +8,27 @@ class QuorumVoteCollection{
     public:
         QuorumVoteCollection(ReplicaId owner, int16_t size);
         bool addVoteMsg(QuorumVoteMsg *voteMsg);
-        bool isReady();
+        bool isReady() const;
 
     protected:
-        int16_t size;
+        ReplicaId ownerId;
+        int16_t replicaSize;
         int16_t voteCnt = 0;  
         
         std::queue<QuorumVoteMsg *> votes;
-        static int16_t calcMajorityNum();
+        int16_t calcMajorityNum() const;
+        bool isVoteValid(QuorumVoteMsg *) const;
 };
 
 class QuorumStarterMsg : public MessageBase{
     public:
         bool QuorumStarterMsg(SeqNum s, ViewNum v, ReplicaId senderId,  int16_t replicaNum);
         bool addVoteMsg(QuorumVoteMsg *voteMsg);
-        bool isReady();
+        bool isReady() const;
 
     protected:
         QuorumVoteCollection *voteCollection;
+        friend class QuorumVoteCollection;  // TODO(QY): is the friendship needed
 };
 
 }  // namespace bftEngine
