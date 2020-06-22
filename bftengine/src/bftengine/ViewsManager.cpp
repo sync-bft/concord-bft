@@ -617,28 +617,26 @@ bool ViewsManager::tryToEnterView(ViewNum v,
     stat = Stat::PENDING_WITH_RESTRICTIONS;
 
     // BEGIN DEBUG CODE
-    LOG_DEBUG(GL,
-              "Restrictions for pending view=" << this->myLatestPendingView
-                                               << ", minSeq=" << minRestrictionOfPendingView
-                                               << ", maxSeq=" << maxRestrictionOfPendingView << ".");
+    LOG_INFO(GL,
+             "Restrictions for pending view=" << this->myLatestPendingView << ", minSeq=" << minRestrictionOfPendingView
+                                              << ", maxSeq=" << maxRestrictionOfPendingView << ".");
 
     if (minRestrictionOfPendingView == 0) {
-      LOG_DEBUG(GL, "No Restrictions of pending view\n");
+      LOG_INFO(GL, "No Restrictions of pending view\n");
     } else {
       for (SeqNum i = minRestrictionOfPendingView; i <= maxRestrictionOfPendingView; i++) {
         uint64_t idx = i - minRestrictionOfPendingView;
         bool bHasPP = (prePrepareMsgsOfRestrictions[idx] != nullptr);
-        LOG_DEBUG(
+        LOG_INFO(
             GL,
             "Seqnum=" << i << ", isNull=" << static_cast<int>(restrictionsOfPendingView[idx].isNull)
                       << ", digestPrefix=" << *reinterpret_cast<int*>(restrictionsOfPendingView[idx].digest.content())
                       << (bHasPP ? " ." : ", PP=null ."));
         if (bHasPP) {
-          LOG_DEBUG(
-              GL,
-              "PP seq=" << prePrepareMsgsOfRestrictions[idx]->seqNumber() << ", digestPrefix="
-                        << *reinterpret_cast<int*>(prePrepareMsgsOfRestrictions[idx]->digestOfRequests().content())
-                        << " .");
+          LOG_INFO(GL,
+                   "PP seq=" << prePrepareMsgsOfRestrictions[idx]->seqNumber() << ", digestPrefix="
+                             << *reinterpret_cast<int*>(prePrepareMsgsOfRestrictions[idx]->digestOfRequests().content())
+                             << " .");
         }
       }
     }
@@ -688,16 +686,21 @@ bool ViewsManager::tryToEnterView(ViewNum v,
         delete pp;
     }
 
+    auto nbNoopPPs = 0u;
+    auto nbActualRequestPPs = 0u;
+
     for (SeqNum i = firstRelevant; i <= maxRestrictionOfPendingView; i++) {
       const int64_t idx = i - minRestrictionOfPendingView;
       if (restrictionsOfPendingView[idx].isNull) {
         Assert(prePrepareMsgsOfRestrictions[idx] == nullptr);
+        nbNoopPPs++;
         // TODO(GG): do we want to start from the slow path in these cases?
         PrePrepareMsg* pp = new PrePrepareMsg(myId, myLatestActiveView, i, CommitPath::SLOW, 0);
         outPrePrepareMsgsOfView->push_back(pp);
       } else {
         PrePrepareMsg* pp = prePrepareMsgsOfRestrictions[idx];
         Assert(pp != nullptr && pp->seqNumber() == i);
+        nbActualRequestPPs++;
         // TODO(GG): do we want to start from the slow path in these cases?
         pp->updateView(myLatestActiveView);
         outPrePrepareMsgsOfView->push_back(pp);
@@ -711,6 +714,8 @@ bool ViewsManager::tryToEnterView(ViewNum v,
           collectionOfPrePrepareMsgs.erase(pos);
       }
     }
+
+    LOG_INFO(GL, "The new view's active window contains: " << KVLOG(nbNoopPPs, nbActualRequestPPs));
   }
 
   for (auto it : collectionOfPrePrepareMsgs) delete it.second;

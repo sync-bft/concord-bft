@@ -75,6 +75,12 @@ class Registrar {
     return output;
   }
 
+  // DO NOT USE THIS IN PRODUCTION. THIS IS ONLY FOR TESTING, SO THAT WE CAN CLEAR THE SINGLETON AND REREGISTER.
+  void clearStatusHandlers() {
+    std::lock_guard<std::mutex> guard(mutex_);
+    status_handlers_.clear();
+  }
+
  private:
   std::map<std::string, StatusHandler> status_handlers_;
   mutable std::mutex mutex_;
@@ -90,6 +96,8 @@ class RegistrarSingleton {
 
   RegistrarSingleton(const RegistrarSingleton&) = delete;
   RegistrarSingleton& operator=(const RegistrarSingleton&) = delete;
+  RegistrarSingleton(RegistrarSingleton&&) = delete;
+  RegistrarSingleton& operator=(RegistrarSingleton&&) = delete;
 
  private:
   RegistrarSingleton() = default;

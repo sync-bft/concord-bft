@@ -18,7 +18,7 @@ import trio
 
 from util import blinking_replica
 from util import skvbc as kvbc
-from util.bft import with_trio, with_bft_network, with_constant_load, KEY_FILE_PREFIX
+from util.bft import with_trio, with_bft_network, KEY_FILE_PREFIX
 
 
 def start_replica_cmd(builddir, replica_id):
@@ -45,28 +45,6 @@ def start_replica_cmd(builddir, replica_id):
 class SkvbcTest(unittest.TestCase):
 
     __test__ = False  # so that PyTest ignores this test scenario
-
-    @with_trio
-    @with_bft_network(start_replica_cmd)
-    async def test_checkpoint_creation(self, bft_network):
-        """
-        Test the creation of checkpoints (independently of state transfer or view change)
-
-        Start all replicas, then send a sufficient number of client requests to trigger the
-        checkpoint protocol. Then make sure a checkpoint is created and agreed upon by all replicas.
-        """
-        bft_network.start_all_replicas()
-        skvbc = kvbc.SimpleKVBCProtocol(bft_network)
-
-        checkpoint_before = await bft_network.wait_for_checkpoint(replica_id=0)
-        await skvbc.fill_and_wait_for_checkpoint(
-            initial_nodes=bft_network.all_replicas(),
-            checkpoint_num=1,
-            verify_checkpoint_persistency=False
-        )
-        checkpoint_after = await bft_network.wait_for_checkpoint(replica_id=0)
-
-        self.assertEqual(checkpoint_after, 1 + checkpoint_before)
 
     @with_trio
     @with_bft_network(start_replica_cmd)
@@ -213,90 +191,6 @@ class SkvbcTest(unittest.TestCase):
         successful_write = write_result.success
 
         self.assertTrue(not successful_write)
-
-    @with_trio
-    @with_bft_network(start_replica_cmd, selected_configs=lambda n, f, c: n == 7)
-    @with_constant_load
-    async def test_delayed_replicas_start_up(self, bft_network, skvbc, nursery):
-        """
-        The goal is to make sure that if replicas are started in a random
-        order, with delays in-between, and with constant load (request sent every 1s),
-        the BFT network eventually stabilizes its view and correctly processes requests
-        from this point onwards.
-        1) Start sending constant requests, even before the BFT network is started
-        2) Create a random replica start order
-        3) Use the order defined above to start all replicas with delays in-between
-        4) Make sure at least one view change was agreed (because not enough replicas for quorum initially)
-        5) Make sure the agreed view is stable after all replicas are started
-        6) Make sure the system correctly processes requests in the new view
-        """
-
-        replicas_starting_order = bft_network.all_replicas()
-        random.shuffle(replicas_starting_order)
-
-        initial_view = 0
-        try:
-            # Delayed replica start-up...
-            for r in replicas_starting_order:
-                bft_network.start_replica(r)
-                await trio.sleep(seconds=10)
-
-            current_view = await bft_network.wait_for_view(
-                replica_id=0,
-                expected=lambda v: v > initial_view,
-                err_msg="Make sure view change has occurred during the delayed replica start-up."
-            )
-
-            client = bft_network.random_client()
-            current_block = skvbc.parse_reply(
-                await client.read(skvbc.get_last_block_req()))
-
-            with trio.move_on_after(seconds=60):
-                while True:
-                    # Make sure the current view is stable
-                    await bft_network.wait_for_view(
-                        replica_id=0,
-                        expected=lambda v: v == current_view,
-                        err_msg="Make sure view is stable after all replicas are started."
-                    )
-                    await trio.sleep(seconds=5)
-
-                    # Make sure the system is processing requests
-                    last_block = skvbc.parse_reply(
-                        await client.read(skvbc.get_last_block_req()))
-                    self.assertTrue(last_block > current_block)
-                    current_block = last_block
-
-            current_primary = current_view % bft_network.config.n
-            non_primaries = bft_network.all_replicas(without={current_primary})
-            restarted_replica = random.choice(non_primaries)
-            print(f"Restart replica #{restarted_replica} to make sure its view is persistent...")
-
-            bft_network.stop_replica(restarted_replica)
-            await trio.sleep(seconds=5)
-            bft_network.start_replica(restarted_replica)
-
-            await trio.sleep(seconds=20)
-
-            # Stop sending requests, and make sure the restarted replica
-            # is up-and-running and participates in consensus
-            nursery.cancel_scope.cancel()
-
-            key = ['replica', 'Gauges', 'lastExecutedSeqNum']
-            last_executed_seq_num = await bft_network.metrics.get(current_primary, *key)
-
-            with trio.fail_after(seconds=30):
-                while True:
-                    last_executed_seq_num_restarted = await bft_network.metrics.get(restarted_replica, *key)
-                    if last_executed_seq_num_restarted >= last_executed_seq_num:
-                        break
-
-        except Exception as e:
-            print(f"Delayed replicas start-up failed for start-up order: {replicas_starting_order}")
-            raise e
-        else:
-            print(f"Delayed replicas start-up succeeded for start-up order: {replicas_starting_order}. "
-                  f"The BFT network eventually stabilized in view #{current_view}.")
 
 if __name__ == '__main__':
     unittest.main()

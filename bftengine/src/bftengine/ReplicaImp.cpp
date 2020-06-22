@@ -22,13 +22,13 @@
 #include "ReplicaLoader.hpp"
 #include "PersistentStorage.hpp"
 #include "OpenTracing.hpp"
+#include "diagnostics.h"
+#include "TimeUtils.hpp"
 
 #include "messages/ClientRequestMsg.hpp"
 #include "messages/PrePrepareMsg.hpp"
 #include "messages/CheckpointMsg.hpp"
 #include "messages/ClientReplyMsg.hpp"
-#include "messages/PartialExecProofMsg.hpp"
-#include "messages/FullExecProofMsg.hpp"
 #include "messages/StartSlowCommitMsg.hpp"
 #include "messages/ReqMissingDataMsg.hpp"
 #include "messages/SimpleAckMsg.hpp"
@@ -51,6 +51,27 @@ using namespace std::placeholders;
 
 namespace bftEngine::impl {
 
+void ReplicaImp::registerStatusHandlers() {
+  auto &registrar = concord::diagnostics::RegistrarSingleton::getInstance();
+  auto &msgQueue = getIncomingMsgsStorage();
+
+  auto make_handler_callback = [&msgQueue](const string &name, const string &description) {
+    return concord::diagnostics::StatusHandler(name, description, [&msgQueue, name]() {
+      GetStatus get_status{name, std::promise<std::string>()};
+      auto result = get_status.output.get_future();
+      // Send a GetStatus InternalMessage to ReplicaImp, then wait for the result to be published.
+      msgQueue.pushInternalMsg(std::move(get_status));
+      return result.get();
+    });
+  };
+
+  auto replica_handler = make_handler_callback("replica", "Internal state of the concord-bft replica");
+  auto state_transfer_handler = make_handler_callback("state-transfer", "Status of blockchain state transfer");
+
+  registrar.registerStatusHandler(replica_handler);
+  registrar.registerStatusHandler(state_transfer_handler);
+}
+
 void ReplicaImp::registerMsgHandlers() {
   msgHandlers_->registerMsgHandler(MsgCode::Checkpoint, bind(&ReplicaImp::messageHandler<CheckpointMsg>, this, _1));
 
@@ -68,9 +89,6 @@ void ReplicaImp::registerMsgHandlers() {
 
   msgHandlers_->registerMsgHandler(MsgCode::PartialCommitProof,
                                    bind(&ReplicaImp::messageHandler<PartialCommitProofMsg>, this, _1));
-
-  msgHandlers_->registerMsgHandler(MsgCode::PartialExecProof,
-                                   bind(&ReplicaImp::messageHandler<PartialExecProofMsg>, this, _1));
 
   msgHandlers_->registerMsgHandler(MsgCode::PreparePartial,
                                    bind(&ReplicaImp::messageHandler<PreparePartialMsg>, this, _1));
@@ -95,6 +113,8 @@ void ReplicaImp::registerMsgHandlers() {
 
   msgHandlers_->registerMsgHandler(MsgCode::AskForCheckpoint,
                                    bind(&ReplicaImp::messageHandler<AskForCheckpointMsg>, this, _1));
+
+  msgHandlers_->registerInternalMsgHandler([this](InternalMessage &&msg) { onInternalMsg(std::move(msg)); });
 }
 
 template <typename T>
@@ -854,13 +874,116 @@ void ReplicaImp::onMessage<FullCommitProofMsg>(FullCommitProofMsg *msg) {
       auto execution_span = concordUtils::startChildSpan("bft_execute_committed_reqs", span);
       executeNextCommittedRequests(execution_span, askForMissingInfoAboutCommittedItems);
       return;
-    } else {
-      LOG_INFO(GL, "Failed to satisfy full proof requirements");
+    } else if (pps.hasFullProof()) {
+      const auto fullProofCollectorId = pps.getFullProof()->senderId();
+      LOG_INFO(GL,
+               "FullCommitProof for seq num " << msgSeqNum << " was already received from replica "
+                                              << fullProofCollectorId << " and has been processed."
+                                              << " Ignoring the FullCommitProof from replica " << msg->senderId());
     }
   }
 
   delete msg;
   return;
+}
+
+void ReplicaImp::onInternalMsg(InternalMessage &&msg) {
+  metric_received_internal_msgs_.Get().Inc();
+
+  // Handle a full commit proof sent by self
+  if (auto *fcp = std::get_if<FullCommitProofMsg *>(&msg)) {
+    return onInternalMsg(*fcp);
+  }
+
+  // Handle prepare related internal messages
+  if (auto *csf = std::get_if<CombinedSigFailedInternalMsg>(&msg)) {
+    return onPrepareCombinedSigFailed(csf->seqNumber, csf->view, csf->replicasWithBadSigs);
+  }
+  if (auto *css = std::get_if<CombinedSigSucceededInternalMsg>(&msg)) {
+    return onPrepareCombinedSigSucceeded(
+        css->seqNumber, css->view, css->combinedSig.data(), css->combinedSig.size(), css->span_context_);
+  }
+  if (auto *vcs = std::get_if<VerifyCombinedSigResultInternalMsg>(&msg)) {
+    return onPrepareVerifyCombinedSigResult(vcs->seqNumber, vcs->view, vcs->isValid);
+  }
+
+  // Handle Commit related internal messages
+  if (auto *ccss = std::get_if<CombinedCommitSigSucceededInternalMsg>(&msg)) {
+    return onCommitCombinedSigSucceeded(
+        ccss->seqNumber, ccss->view, ccss->combinedSig.data(), ccss->combinedSig.size(), ccss->span_context_);
+  }
+  if (auto *ccsf = std::get_if<CombinedCommitSigFailedInternalMsg>(&msg)) {
+    return onCommitCombinedSigFailed(ccsf->seqNumber, ccsf->view, ccsf->replicasWithBadSigs);
+  }
+  if (auto *vccs = std::get_if<VerifyCombinedCommitSigResultInternalMsg>(&msg)) {
+    return onCommitVerifyCombinedSigResult(vccs->seqNumber, vccs->view, vccs->isValid);
+  }
+
+  // Handle a response from a RetransmissionManagerJob
+  if (auto *rpr = std::get_if<RetranProcResultInternalMsg>(&msg)) {
+    onRetransmissionsProcessingResults(rpr->lastStableSeqNum, rpr->view, rpr->suggestedRetransmissions);
+    return retransmissionsManager->OnProcessingComplete();
+  }
+
+  // Handle a status request for the diagnostics subsystem
+  if (auto *get_status = std::get_if<GetStatus>(&msg)) {
+    return onInternalMsg(*get_status);
+  }
+
+  assert(false);
+}
+
+std::string ReplicaImp::getReplicaState() const {
+  auto primary = getReplicasInfo().primaryOfView(curView);
+  std::ostringstream oss;
+  oss << "Replica ID: " << getReplicasInfo().myId() << std::endl;
+  oss << "Primary: " << primary << std::endl;
+  oss << "View Change: "
+      << KVLOG(viewChangeProtocolEnabled,
+               autoPrimaryRotationEnabled,
+               curView,
+               utcstr(timeOfLastViewEntrance),
+               lastAgreedView,
+               utcstr(timeOfLastAgreedView),
+               viewChangeTimerMilli,
+               autoPrimaryRotationTimerMilli)
+      << std::endl
+      << std::endl;
+  oss << "Sequence Numbers: "
+      << KVLOG(primaryLastUsedSeqNum,
+               lastStableSeqNum,
+               strictLowerBoundOfSeqNums,
+               maxSeqNumTransferredFromPrevViews,
+               mainLog->currentActiveWindow().first,
+               mainLog->currentActiveWindow().second,
+               lastViewThatTransferredSeqNumbersFullyExecuted)
+      << std::endl
+      << std::endl;
+  oss << "Other: "
+      << KVLOG(restarted_,
+               requestsQueueOfPrimary.size(),
+               maxNumberOfPendingRequestsInRecentHistory,
+               batchingFactor,
+               utcstr(lastTimeThisReplicaSentStatusReportMsgToAllPeerReplicas),
+               utcstr(timeOfLastStateSynch),
+               recoveringFromExecutionOfRequests,
+               checkpointsLog->currentActiveWindow().first,
+               checkpointsLog->currentActiveWindow().second,
+               clientsManager->numberOfRequiredReservedPages())
+      << std::endl;
+  return oss.str();
+}
+
+void ReplicaImp::onInternalMsg(GetStatus &status) const {
+  if (status.key == "replica") {
+    return status.output.set_value(getReplicaState());
+  }
+
+  if (status.key == "state-transfer") {
+    return status.output.set_value(stateTransfer->getStatus());
+  }
+  // We must always return something to unblock the future.
+  return status.output.set_value("** - Invalid Key - **");
 }
 
 void ReplicaImp::onInternalMsg(FullCommitProofMsg *msg) {
@@ -1417,10 +1540,9 @@ void ReplicaImp::onRetransmissionsTimer(Timers::Handle timer) {
   retransmissionsManager->tryToStartProcessing();
 }
 
-void ReplicaImp::onRetransmissionsProcessingResults(
-    SeqNum relatedLastStableSeqNum,
-    const ViewNum relatedViewNumber,
-    const std::forward_list<RetSuggestion> *const suggestedRetransmissions) {
+void ReplicaImp::onRetransmissionsProcessingResults(SeqNum relatedLastStableSeqNum,
+                                                    const ViewNum relatedViewNumber,
+                                                    const std::forward_list<RetSuggestion> &suggestedRetransmissions) {
   Assert(retransmissionsLogicEnabled);
 
   if (isCollectingState() || (relatedViewNumber != curView) || (!currentViewIsActive())) return;
@@ -1429,7 +1551,7 @@ void ReplicaImp::onRetransmissionsProcessingResults(
   const uint16_t myId = config_.replicaId;
   const uint16_t primaryId = currentPrimary();
 
-  for (const RetSuggestion &s : *suggestedRetransmissions) {
+  for (const RetSuggestion &s : suggestedRetransmissions) {
     if ((s.msgSeqNum <= lastStableSeqNum) || (s.msgSeqNum > lastStableSeqNum + kWorkWindowSize)) continue;
 
     AssertNE(s.replicaId, myId);
@@ -1757,9 +1879,9 @@ void ReplicaImp::onMessage<ViewChangeMsg>(ViewChangeMsg *msg) {
 
   bool msgAdded = viewsManager->add(msg);
 
-  LOG_INFO(GL, KVLOG(generatedReplicaId, msg->newView(), msg->lastStable(), msg->numberOfElements(), msgAdded));
-
   if (!msgAdded) return;
+
+  LOG_INFO(GL, KVLOG(generatedReplicaId, msg->newView(), msg->lastStable(), msg->numberOfElements(), msgAdded));
 
   // if the current primary wants to leave view
   if (generatedReplicaId == currentPrimary() && msg->newView() > curView) {
@@ -1813,9 +1935,9 @@ void ReplicaImp::onMessage<NewViewMsg>(NewViewMsg *msg) {
 
   bool msgAdded = viewsManager->add(msg);
 
-  LOG_INFO(GL, KVLOG(senderId, msg->newView(), msgAdded, curView, viewsManager->viewIsActive(curView)));
-
   if (!msgAdded) return;
+
+  LOG_INFO(GL, KVLOG(senderId, msg->newView(), msgAdded, curView, viewsManager->viewIsActive(curView)));
 
   if (viewsManager->viewIsActive(curView)) return;  // return, if we are still in the previous view
 
@@ -1958,10 +2080,19 @@ void ReplicaImp::onNewView(const std::vector<PrePrepareMsg *> &prePreparesForNew
     primaryLastUsedSeqNum = lastStableSeqNum;
     strictLowerBoundOfSeqNums = lastStableSeqNum;
     maxSeqNumTransferredFromPrevViews = lastStableSeqNum;
+    LOG_INFO(GL,
+             "**************** No PrePrepare-s for the new view: " << KVLOG(
+                 primaryLastUsedSeqNum, strictLowerBoundOfSeqNums, maxSeqNumTransferredFromPrevViews));
   } else {
     primaryLastUsedSeqNum = lastPPSeq;
     strictLowerBoundOfSeqNums = firstPPSeq - 1;
     maxSeqNumTransferredFromPrevViews = lastPPSeq;
+    LOG_INFO(GL,
+             "**************** There are PrePrepare-s for the new view: " << KVLOG(firstPPSeq,
+                                                                                   lastPPSeq,
+                                                                                   primaryLastUsedSeqNum,
+                                                                                   strictLowerBoundOfSeqNums,
+                                                                                   maxSeqNumTransferredFromPrevViews));
   }
 
   if (ps_) {
@@ -2047,7 +2178,7 @@ void ReplicaImp::onNewView(const std::vector<PrePrepareMsg *> &prePreparesForNew
     sendPreparePartial(seqNumInfo);
   }
 
-  LOG_INFO(GL, "**************** Start working in new view as primary. " << KVLOG(curView));
+  LOG_INFO(GL, "**************** Start working in new view: " << KVLOG(curView));
 
   controller->onNewView(curView, primaryLastUsedSeqNum);
   metric_current_active_view_.Get().Set(curView);
@@ -2482,7 +2613,7 @@ void ReplicaImp::onViewsChangeTimer(Timers::Handle timer)  // TODO(GG): review/u
     if ((diffMilli1 > viewChangeTimeout) && (diffMilli2 > viewChangeTimeout) && (diffMilli3 > viewChangeTimeout)) {
       LOG_INFO(GL,
                "**************** Ask to leave view=" << curView << " (" << diffMilli3
-                                                     << " milli seconds after receiving a client request)");
+                                                     << " ms after the earliest pending client request).");
 
       GotoNextView();
       return;
@@ -2493,13 +2624,15 @@ void ReplicaImp::onViewsChangeTimer(Timers::Handle timer)  // TODO(GG): review/u
     if (repsInfo->primaryOfView(lastAgreedView) == config_.replicaId) return;
 
     currTime = getMonotonicTime();
-    const uint64_t diffMilli1 = duration_cast<milliseconds>(currTime - timeOfLastStateSynch).count();
-    const uint64_t diffMilli2 = duration_cast<milliseconds>(currTime - timeOfLastAgreedView).count();
+    const uint64_t timeSinceLastStateTransferMilli =
+        duration_cast<milliseconds>(currTime - timeOfLastStateSynch).count();
+    const uint64_t timeSinceLastAgreedViewMilli = duration_cast<milliseconds>(currTime - timeOfLastAgreedView).count();
 
-    if ((diffMilli1 > viewChangeTimeout) && (diffMilli2 > viewChangeTimeout)) {
+    if ((timeSinceLastStateTransferMilli > viewChangeTimeout) && (timeSinceLastAgreedViewMilli > viewChangeTimeout)) {
       LOG_INFO(GL,
-               "**************** Ask to jump to view=" << curView << " (" << diffMilli2
-                                                       << " milliseconds after receiving 2f+2c+1 view change msgs)");
+               "**************** Unable to activate the last agreed view (despite receiving 2f+2c+1 view change msgs). "
+               "State transfer hasn't kicked-in for a while either. Asking to leave the current view: "
+                   << KVLOG(curView, timeSinceLastAgreedViewMilli, timeSinceLastStateTransferMilli));
       GotoNextView();
       return;
     }
@@ -2541,17 +2674,6 @@ void ReplicaImp::onMessage<SimpleAckMsg>(SimpleAckMsg *msg) {
   }
 
   delete msg;
-}
-
-void ReplicaImp::onMerkleExecSignature(ViewNum v, SeqNum s, uint16_t signatureLength, const char *signature) {
-  Assert(false);
-  // TODO(GG): use code from previous drafts
-}
-
-template <>
-void ReplicaImp::onMessage<PartialExecProofMsg>(PartialExecProofMsg *m) {
-  Assert(false);
-  // TODO(GG): use code from previous drafts
 }
 
 void ReplicaImp::onReportAboutAdvancedReplica(ReplicaId reportedReplica, SeqNum seqNum, ViewNum viewNum) {
@@ -2887,12 +3009,14 @@ ReplicaImp::ReplicaImp(bool firstTime,
   Assert(firstTime || ((sigMgr != nullptr) && (replicasInfo != nullptr) && (viewsMgr != nullptr)));
 
   registerMsgHandlers();
+  registerStatusHandlers();
+
   // Register metrics component with the default aggregator.
   metrics_.Register();
 
   if (firstTime) {
     sigManager = new SigManager(config_.replicaId,
-                                config_.numReplicas + config_.numOfClientProxies,
+                                config_.numReplicas + config_.numOfClientProxies + config_.numOfExternalClients,
                                 config_.replicaPrivateKey,
                                 config_.publicKeysOfReplicas);
     repsInfo = new ReplicasInfo(config_, dynamicCollectorForPartialProofs, dynamicCollectorForExecutionProofs);
@@ -2906,8 +3030,8 @@ ReplicaImp::ReplicaImp(bool firstTime,
   }
 
   std::set<NodeIdType> clientsSet;
-  for (uint16_t i = config_.numReplicas; i < config_.numReplicas + config_.numOfClientProxies; i++)
-    clientsSet.insert(i);
+  const auto numOfEntities = config_.numReplicas + config_.numOfClientProxies + config_.numOfExternalClients;
+  for (uint16_t i = config_.numReplicas; i < numOfEntities; i++) clientsSet.insert(i);
 
   clientsManager =
       new ClientsManager(config_.replicaId, clientsSet, ReplicaConfigSingleton::GetInstance().GetSizeOfReservedPage());
@@ -2947,7 +3071,7 @@ ReplicaImp::ReplicaImp(bool firstTime,
 
   if (retransmissionsLogicEnabled)
     retransmissionsManager =
-        new RetransmissionsManager(this, &internalThreadPool, &getIncomingMsgsStorage(), kWorkWindowSize, 0);
+        new RetransmissionsManager(&internalThreadPool, &getIncomingMsgsStorage(), kWorkWindowSize, 0);
   else
     retransmissionsManager = nullptr;
 
@@ -2956,8 +3080,9 @@ ReplicaImp::ReplicaImp(bool firstTime,
                << config_.isReadOnly << ", numReplicas=" << config_.numReplicas
                << ", numRoReplicas=" << config_.numRoReplicas << ", fVal=" << config_.fVal << ", cVal=" << config_.cVal
                << ", replicaId=" << config_.replicaId << ", numOfClientProxies=" << config_.numOfClientProxies
-               << ", statusReportTimerMillisec=" << config_.statusReportTimerMillisec << ", concurrencyLevel="
-               << config_.concurrencyLevel << ", viewChangeProtocolEnabled=" << config_.viewChangeProtocolEnabled
+               << ", numOfExternalClients=" << config_.numOfExternalClients << ", statusReportTimerMillisec="
+               << config_.statusReportTimerMillisec << ", concurrencyLevel=" << config_.concurrencyLevel
+               << ", viewChangeProtocolEnabled=" << config_.viewChangeProtocolEnabled
                << ", viewChangeTimerMillisec=" << config_.viewChangeTimerMillisec
                << ", autoPrimaryRotationEnabled=" << config_.autoPrimaryRotationEnabled
                << ", autoPrimaryRotationTimerMillisec=" << config_.autoPrimaryRotationTimerMillisec
@@ -3302,21 +3427,22 @@ void ReplicaImp::executeNextCommittedRequests(concordUtils::SpanWrapper &parent_
   auto span = concordUtils::startChildSpan("bft_execute_next_committed_requests", parent_span);
 
   while (lastExecutedSeqNum < lastStableSeqNum + kWorkWindowSize) {
-    SeqNumInfo &seqNumInfo = mainLog->get(lastExecutedSeqNum + 1);
+    SeqNum nextExecutedSeqNum = lastExecutedSeqNum + 1;
+    SeqNumInfo &seqNumInfo = mainLog->get(nextExecutedSeqNum);
 
     PrePrepareMsg *prePrepareMsg = seqNumInfo.getPrePrepareMsg();
 
     const bool ready = (prePrepareMsg != nullptr) && (seqNumInfo.isCommitted__gg());
 
     if (requestMissingInfo && !ready) {
-      LOG_INFO(GL, "Asking for missing information. " << KVLOG(lastExecutedSeqNum + 1, curView, lastStableSeqNum));
+      LOG_INFO(GL, "Asking for missing information: " << KVLOG(nextExecutedSeqNum, curView, lastStableSeqNum));
 
-      tryToSendReqMissingDataMsg(lastExecutedSeqNum + 1);
+      tryToSendReqMissingDataMsg(nextExecutedSeqNum);
     }
 
     if (!ready) break;
 
-    AssertEQ(prePrepareMsg->seqNumber(), lastExecutedSeqNum + 1);
+    AssertEQ(prePrepareMsg->seqNumber(), nextExecutedSeqNum);
     AssertEQ(prePrepareMsg->viewNumber(), curView);  // TODO(GG): TBD
 
     executeRequestsInPrePrepareMsg(span, prePrepareMsg);

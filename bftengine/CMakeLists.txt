@@ -44,11 +44,8 @@ set(corebft_source_files
     src/bftengine/messages/PrePrepareMsg.cpp
     src/bftengine/messages/CheckpointMsg.cpp
     src/bftengine/messages/FullCommitProofMsg.cpp
-    src/bftengine/messages/FullExecProofMsg.cpp
     src/bftengine/messages/MessageBase.cpp
     src/bftengine/messages/PartialCommitProofMsg.cpp
-    src/bftengine/messages/PartialExecProofMsg.cpp
-    src/bftengine/messages/PartialExecProofsSet.cpp
     src/bftengine/messages/PartialProofsSet.cpp
     src/bftengine/messages/ClientReplyMsg.cpp
     src/bftengine/messages/ReqMissingDataMsg.cpp
@@ -60,7 +57,6 @@ set(corebft_source_files
     src/bftengine/messages/ViewChangeMsg.cpp
     src/bftengine/messages/ReplicaStatusMsg.cpp
     src/bftengine/messages/StateTransferMsg.cpp
-    src/bftengine/messages/InternalMessage.cpp
 )
 
 #
@@ -74,6 +70,7 @@ find_package(Threads REQUIRED)
 #
 add_library(corebft STATIC ${corebft_source_files})
 add_library(bftclient STATIC src/bftengine/SimpleClientImp)
+add_library(bftclient_shared SHARED src/bftengine/SimpleClientImp)
 
 find_package(cryptopp REQUIRED)
 
@@ -94,6 +91,7 @@ target_link_libraries(corebft PUBLIC
   concordbft_storage
   preprocessor
   bftcommunication
+  diagnostics
 )
 
 target_include_directories(bftclient PUBLIC include/bftengine)
@@ -101,3 +99,11 @@ target_include_directories(bftclient PUBLIC src/bftengine)
 target_include_directories(bftclient PUBLIC src/preprocessor)
 target_link_libraries(bftclient PUBLIC bftcommunication)
 
+target_include_directories(bftclient_shared PUBLIC include/bftengine)
+target_include_directories(bftclient_shared PUBLIC src/bftengine)
+target_include_directories(bftclient_shared PUBLIC src/preprocessor)
+target_include_directories(bftclient_shared PUBLIC ${CRYPTOPP_INCLUDE_DIRS})
+target_link_libraries(bftclient_shared PUBLIC bftcommunication_shared ${CRYPTOPP_SHARED_LIBRARY})
+install (TARGETS bftclient_shared DESTINATION lib${LIB_SUFFIX})
+
+install(DIRECTORY include/bftengine DESTINATION include)
