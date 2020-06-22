@@ -51,6 +51,8 @@ class SeqNumInfo {
 
   bool addMsg(CommitFullMsg* m, bool directAdd = false);
 
+  bool addSelfMsg(QuorumStarterMsg* m);
+  
   void forceComplete();
 
   PrePrepareMsg* getPrePrepareMsg() const;
@@ -61,6 +63,8 @@ class SeqNumInfo {
 
   CommitPartialMsg* getSelfCommitPartialMsg() const;
   CommitFullMsg* getValidCommitFullMsg() const;
+
+  QuorumStarterMsg* getQuorumStarterMsg() const;
 
   bool hasPrePrepareMsg() const;
 
@@ -186,6 +190,8 @@ class SeqNumInfo {
 
   PartialProofsSet* partialProofsSet;          // TODO(GG): replace with an instance of CollectorOfThresholdSignatures
   PartialExecProofsSet* partialExecProofsSet;  // TODO(GG): replace with an instance of CollectorOfThresholdSignatures
+
+  QuorumStarterMsg* quorumStarterMsg;
 
   bool primary;  // true iff PrePrepareMsg was added with addSelfMsg
 

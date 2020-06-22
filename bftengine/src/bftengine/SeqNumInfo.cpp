@@ -554,5 +554,27 @@ void SeqNumInfo::init(SeqNumInfo& i, void* d) {
   i.partialExecProofsSet = new PartialExecProofsSet((InternalReplicaApi*)r);
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// 3 round protocol
+///////////////////////////////////////////////////////////////////////////////
+bool SeqNumInfo::addSelfMsg(QuorumStarterMsg *m){ 
+  Assert(replica->getReplicasInfo().myId() != m->senderId());
+
+  if (quorumStarterMsg == nullptr){
+    quorumStarterMsg = m; // its collection of votes needs to be free manually
+    return true;
+  }
+  return false;
+}
+
+QuorumStarterMsg* SeqNumInfo::getQuorumStarterMsg(){
+  return quorumStarterMsg;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// where it ends
+///////////////////////////////////////////////////////////////////////////////
+
 }  // namespace impl
 }  // namespace bftEngine
