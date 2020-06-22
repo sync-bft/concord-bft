@@ -61,7 +61,7 @@ bool QuorumVoteCollection::isVoteValid(QuorumVoteMsg *newVoteMsg) const{
         if (newVoteMsg->equals(*it)){
             identicalMsgFlag = true;
             std::cout<<"Primary "<<ownerId<<" received a repetitive quorum vote msg from sender replica "<<newVoteMsg->senderId()<<endl;  //TODO(QF): is (NodeIdType) senderId printable?
-            break;
+            break;  // TODO(QF): change cout to LOG_DEBUG
         }
         if (newVoteMsg->senderId() == *it->senderId()){  // TODO(QF): or equals
             identicalSenderFlag = true;
