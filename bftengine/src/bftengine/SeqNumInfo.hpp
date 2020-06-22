@@ -191,7 +191,7 @@ class SeqNumInfo {
   PartialProofsSet* partialProofsSet;          // TODO(GG): replace with an instance of CollectorOfThresholdSignatures
   PartialExecProofsSet* partialExecProofsSet;  // TODO(GG): replace with an instance of CollectorOfThresholdSignatures
 
-  QuorumStarterMsg* quorumStarterMsg;
+  QuorumStarterMsg* quorumStarterMsg = nullptr;
 
   bool primary;  // true iff PrePrepareMsg was added with addSelfMsg
 
