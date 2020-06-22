@@ -14,6 +14,10 @@
 namespace bftEngine {
 namespace impl {
 
+///////////////////////////////////////////////////////////////////////////////
+// QuorumVoteCollection
+///////////////////////////////////////////////////////////////////////////////
+
 
 QuorumVoteCollection::QuorumVoteCollection(ReplicaId owner){
     ownerId = owner;
@@ -55,6 +59,10 @@ bool QuorumVoteCollection::isVoteValid(QuorumVoteMsg *newVoteMsg) const{
     }
     return !(identialMsgFlag||identicalSenderFlag);
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// QuorumStarterMsg
+///////////////////////////////////////////////////////////////////////////////
 
 QuorumStarterMsg::QuorumStarterMsg(SeqNum s, ViewNum v, ReplicaId senderId) // TODO(QF): do we need spanContext and msgSize as param
         : MessageBase(senderId,
