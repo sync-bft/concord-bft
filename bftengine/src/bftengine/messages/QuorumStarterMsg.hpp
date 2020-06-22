@@ -1,5 +1,6 @@
 #include <queue>
 #include "QuorumVoteMsg.hpp"
+#include "MessageBase.hpp"
 
 namespace bftEngine{
 namespace impl{
@@ -21,7 +22,7 @@ class QuorumVoteCollection{
 
 class QuorumStarterMsg : public MessageBase{
     public:
-        bool QuorumStarterMsg(SeqNum s, ViewNum v, ReplicaId senderId);
+        QuorumStarterMsg(SeqNum s, ViewNum v, ReplicaId senderId);
         bool addVoteMsg(QuorumVoteMsg *voteMsg);
         bool isReady(const ReplicasInfo *repsInfo) const;
 
