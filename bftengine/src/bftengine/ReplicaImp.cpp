@@ -38,6 +38,8 @@
 #include "messages/FullCommitProofMsg.hpp"
 #include "messages/ReplicaStatusMsg.hpp"
 #include "messages/AskForCheckpointMsg.hpp"
+#include "messages/QuorumVoteMsg.hpp"
+#include "messages/QuorumStarterMsg.hpp"
 
 #include <string>
 #include <type_traits>
@@ -3315,6 +3317,73 @@ void ReplicaImp::executeNextCommittedRequests(concordUtils::SpanWrapper &parent_
 
   if (isCurrentPrimary() && requestsQueueOfPrimary.size() > 0) tryToSendPrePrepareMsg(true);
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// 3 round protocol
+///////////////////////////////////////////////////////////////////////////////
+
+template<>
+void ReplicaImp::onMessage<QuorumStarterMsg>(QuorumStarterMsg *msg){
+  const SeqNum msgSeqNum = msg->seqNumber();
+  const SeqNum msgView = msg->viewNumber();
+  const NodeIdType msgSender = msg->senderId();
+  
+  Assert(currentPrimary() == msgSender);
+
+  if (relevantMsgForActiveView(msg)){
+    sendAckIfNeeded(msg, msgSender, msgSeqNum);
+    if (msgSeqNum > lastExecutedSeqNum){
+      QuorumVoteMsg *repMsg = new QuorumVoteMsg(msgSeqNum, msgView, config_.replicaId);
+      send(repMsg, msgSender);
+    }
+  }
+
+  delete msg;
+  return;
+}
+
+template<>
+void replicaImp::onMessage<QuorumVoteMsg>(QuorumVoteMsg *msg){
+  const SeqNum msgSeqNum = msg->seqNumber();
+  const SeqNum msgView = msg->viewNumber();
+  const NodeIdType msgSender = msg->senderId();
+
+  Assert(repsInfo->isIdOfPeerReplica(msgSender));
+
+  bool msgAdded = false;
+
+  if (relevantMsgForActiveView(msg) && ){
+    sendAckIfNeeded(msg, msgSender, msgSeqNum);
+
+    // TODO(QF): sync up the msg in mainlog (write code in mainlog & send func)
+    SeqNumInfo &seqNumInfo = mainLog->get(msgSeqNum);
+    QuorumStarterMsg *quorumStarter = seqNumInfo.getQuorumStarter();
+
+    if (quorumStarter != nullptr && !quorumStarter->isReady(repsInfo)){
+      msgAdded = quorumStarter->addVoteMsg(msg);
+      if (quorumStarter->isReady(repsInfo)){
+        //TODO(QF): initiate next state
+      }
+    }
+    else {
+      LOG_DEBUG(GL,
+                "Node " << config_.replicaId << "received an improper quorum vote message from node "<< msgSender << " (seqNumber "
+                        << msgSeqNum << ")");
+    } 
+  }
+
+  if (!msgAdded){
+    LOG_DEBUG(GL,
+              "Node " << config_.replicaId << "ignored the quorum vote message from node "<< msgSender << " (seqNumber "
+                      << msgSeqNum << ")");
+    delete msg;
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// where it ends
+///////////////////////////////////////////////////////////////////////////////
+
 
 IncomingMsgsStorage &ReplicaImp::getIncomingMsgsStorage() { return *msgsCommunicator_->getIncomingMsgsStorage(); }
 
