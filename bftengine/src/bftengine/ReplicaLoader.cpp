@@ -58,7 +58,7 @@ ReplicaLoader::ErrorCode checkReplicaConfig(const LoadedReplicaData &ld) {
   Verify(c.fVal >= 1, InconsistentErr);
   Verify(c.cVal >= 0, InconsistentErr);
 
-  uint16_t numOfReplicas = 3 * c.fVal + 2 * c.cVal + 1;
+  uint16_t numOfReplicas = 2 * c.fVal + 2 * c.cVal + 1;
 
   Verify(numOfReplicas <= MaxNumberOfReplicas, InconsistentErr);
 
@@ -140,7 +140,7 @@ ReplicaLoader::ErrorCode loadConfig(shared_ptr<PersistentStorage> &p, LoadedRepl
     replicasSigPublicKeys.insert(keyDesc);
   }
 
-  uint16_t numOfReplicas = (uint16_t)(3 * ld.repConfig.fVal + 2 * ld.repConfig.cVal + 1);
+  uint16_t numOfReplicas = (uint16_t)(2 * ld.repConfig.fVal + 2 * ld.repConfig.cVal + 1);
 
   ld.sigManager = new SigManager(ld.repConfig.replicaId,
                                  numOfReplicas + ld.repConfig.numOfClientProxies,
