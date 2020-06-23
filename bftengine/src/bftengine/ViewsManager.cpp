@@ -194,7 +194,7 @@ ViewsManager* ViewsManager::createInsideView(const ReplicasInfo* const r,
   Assert(stableLowerBound >= 0);
   Assert(newViewMsg != nullptr);
   Assert(newViewMsg->newView() == view);
-  Assert(viewChangeMsgs.size() == (size_t)(2 * r->fVal() + 2 * r->cVal() + 1));
+  Assert(viewChangeMsgs.size() == (size_t)(1 * r->fVal() + 2 * r->cVal() + 1));
   std::set<ReplicaId> replicasWithVCMsg;
   for (size_t i = 0; i < viewChangeMsgs.size(); i++) {
     Assert(viewChangeMsgs[i] != nullptr);
