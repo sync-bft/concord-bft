@@ -312,7 +312,7 @@ class ReplicaImp : public InternalReplicaApi, public ReplicaForStateTransfer {
 
   void sendQuorumStarter(SeqNum seqNum);
 
-  void sendQuorumVote(seqNum seqNum);
+  void sendQuorumVote(SeqNum seqNum);
 
   void sendPrepareFull(SeqNum seqNumber);
 
