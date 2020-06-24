@@ -22,7 +22,7 @@ namespace impl {
 QuorumVoteCollection::QuorumVoteCollection(ReplicaId owner){
     ownerId = owner;
     votes = new std::queue<QuorumVoteMsg *>;
-    isCollected = false;
+    collected = false;
     voteCnt = 0;
 }
 
@@ -36,7 +36,7 @@ bool QuorumVoteCollection::addVoteMsg(QuorumVoteMsg *voteMsg){
 }
 
 bool QuorumVoteCollection::isReady(const ReplicasInfo *repsInfo) const{
-    return !isCollected && voteCnt>=calcMajorityNum(repsInfo);
+    return !collected && voteCnt>=calcMajorityNum(repsInfo);
 }
 
 int16_t QuorumVoteCollection::calcMajorityNum(const ReplicasInfo *repsInfo) const{
@@ -44,11 +44,11 @@ int16_t QuorumVoteCollection::calcMajorityNum(const ReplicasInfo *repsInfo) cons
 }
 
 bool QuorumVoteCollection::isCollected() const{
-    return isCollected;
+    return collected;
 }
 
 void QuorumVoteCollection::setCollected(bool status){
-    isCollected = status;
+    collected = status;
 }
 
 void QuorumVoteCollection::free(){
