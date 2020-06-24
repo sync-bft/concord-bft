@@ -38,6 +38,9 @@ class MsgCode {
     ReplicaStatus,
     ReqMissingData,
     StateTransfer,
+    
+    QuorumStarterMsg,
+    QuorumVoteMsg,
 
     ClientPreProcessRequest,
     PreProcessRequest,
