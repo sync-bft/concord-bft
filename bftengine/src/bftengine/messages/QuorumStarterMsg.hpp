@@ -1,3 +1,5 @@
+#pragma once
+
 #include <queue>
 #include "QuorumVoteMsg.hpp"
 #include "MessageBase.hpp"

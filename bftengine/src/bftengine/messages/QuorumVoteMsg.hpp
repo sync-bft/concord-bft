@@ -1,3 +1,5 @@
+#pragma once
+
 #include "MessageBase.hpp"
 
 namespace bftEngine{
