@@ -38,6 +38,8 @@ class ClientReplyMsg;
 class PrePrepareMsg;
 class CheckpointMsg;
 class ViewChangeMsg;
+class QuorumStarterMsg;
+class QuorumVoterMsg;
 class NewViewMsg;
 class ClientReplyMsg;
 class StartSlowCommitMsg;
