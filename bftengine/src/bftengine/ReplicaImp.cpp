@@ -1221,7 +1221,7 @@ void ReplicaImp::onPrepareCombinedSigSucceeded(
   // sendCommitPartial(seqNumber);
 }
 
-void ReplicaImp::sendPrepareFull(SeqNum seqNumber){
+void ReplicaImp::sendPrepareFull(SeqNum seqNumber, SeqNum view){
   SeqNumInfo &seqNumInfo = mainLog->get(seqNumber);
 
   FullCommitProofMsg *fcp = seqNumInfo.partialProofs().getFullProof();
@@ -3501,7 +3501,7 @@ void replicaImp::onMessage<QuorumVoteMsg>(QuorumVoteMsg *msg){
       if (quorumStarter->isReady(repsInfo)){
         
         // initiates t3 phase
-        sendPrepareFull(seqNumber);
+        sendPrepareFull(seqNumber, msgView);
         Assert(seqNumInfo.isPrepared());
         sendCommitPartial(seqNumber);
         
