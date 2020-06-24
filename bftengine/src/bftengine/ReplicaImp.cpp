@@ -3490,20 +3490,20 @@ void ReplicaImp::onMessage<QuorumVoteMsg>(QuorumVoteMsg *msg){
 
   bool msgAdded = false;
 
-  if (relevantMsgForActiveView(msg) && ){
+  if (relevantMsgForActiveView(msg)){
     sendAckIfNeeded(msg, msgSender, msgSeqNum);
 
     SeqNumInfo &seqNumInfo = mainLog->get(msgSeqNum);
     QuorumStarterMsg *quorumStarter = seqNumInfo.getQuorumStarterMsg();
 
-    if (quorumStarter != nullptr && !quorumStarter->isCollected(repsInfo)){
+    if (quorumStarter != nullptr && !quorumStarter->isCollected()){
       msgAdded = quorumStarter->addVoteMsg(msg);
       if (quorumStarter->isReady(repsInfo)){
         
         // initiates t3 phase
-        sendPrepareFull(seqNumber, msgView);
+        sendPrepareFull(msgSeqNum, msgView);
         Assert(seqNumInfo.isPrepared());
-        sendCommitPartial(seqNumber);
+        sendCommitPartial(msgSeqNum);
         
         quorumStarter->setCollected(true);
         quorumStarter->freeCollection();  // TODO: could also be freed with seqNumInfo.free()
