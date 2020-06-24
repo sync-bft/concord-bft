@@ -10,6 +10,10 @@ class QuorumVoteMsg : public MessageBase{
         ViewNum viewNumber() const { return b()->viewNum; }
 
         SeqNum seqNumber() const { return b()->seqNum; }
+
+    protected:
+        template <typename MessageT>
+        friend size_t sizeOfHeader();
     
     #pragma pack(push, 1)
         struct Header {
