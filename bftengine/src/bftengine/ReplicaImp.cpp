@@ -3465,7 +3465,7 @@ void ReplicaImp::executeNextCommittedRequests(concordUtils::SpanWrapper &parent_
 template<>
 void ReplicaImp::onMessage<QuorumStarterMsg>(QuorumStarterMsg *msg){
   const SeqNum msgSeqNum = msg->seqNumber();
-  const ViewNum msgView = msg->viewNumber();
+  // const ViewNum msgView = msg->viewNumber();
   const NodeIdType msgSender = msg->senderId();
   
   if (relevantMsgForActiveView(msg) && currentPrimary() == msgSender){
@@ -3480,7 +3480,7 @@ void ReplicaImp::onMessage<QuorumStarterMsg>(QuorumStarterMsg *msg){
 }
 
 template<>
-void replicaImp::onMessage<QuorumVoteMsg>(QuorumVoteMsg *msg){
+void ReplicaImp::onMessage<QuorumVoteMsg>(QuorumVoteMsg *msg){
   const SeqNum msgSeqNum = msg->seqNumber();
   const ViewNum msgView = msg->viewNumber();
   const NodeIdType msgSender = msg->senderId();
