@@ -4,7 +4,7 @@
 // Only sent by the primary and used in the context of a 3 round protocol.
 // TODO(QF): implements a waiting timeout mechanism
 
-#include <bftengine/ReplicaInfo.hpp>
+#include <bftengine/ReplicasInfo.hpp>
 #include "QuorumStarterMsg.hpp"
 #include <queue>
 #include <iostream>
