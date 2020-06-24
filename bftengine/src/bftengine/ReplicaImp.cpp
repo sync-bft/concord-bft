@@ -38,7 +38,6 @@
 #include "messages/FullCommitProofMsg.hpp"
 #include "messages/ReplicaStatusMsg.hpp"
 #include "messages/AskForCheckpointMsg.hpp"
-#include "messages/QuorumVoteMsg.hpp"
 #include "messages/QuorumStarterMsg.hpp"
 
 #include <string>
