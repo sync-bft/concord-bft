@@ -39,7 +39,7 @@
 #include "messages/ReplicaStatusMsg.hpp"
 #include "messages/AskForCheckpointMsg.hpp"
 // #include "messages/QuorumStarterMsg.hpp"
-#include "messages/QuorumVoteMsg.hpp"
+//#include "messages/QuorumVoteMsg.hpp"
 
 #include <string>
 #include <type_traits>
@@ -1221,7 +1221,7 @@ void ReplicaImp::onPrepareCombinedSigSucceeded(
   // sendCommitPartial(seqNumber);
 }
 
-void ReplicaImp:sendPrepareFull(SeqNum seqNumber){
+void ReplicaImp::sendPrepareFull(SeqNum seqNumber){
   SeqNumInfo &seqNumInfo = mainLog->get(seqNumber);
 
   FullCommitProofMsg *fcp = seqNumInfo.partialProofs().getFullProof();
