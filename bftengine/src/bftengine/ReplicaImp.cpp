@@ -3502,7 +3502,7 @@ void ReplicaImp::onMessage<QuorumVoteMsg>(QuorumVoteMsg *msg){
     SeqNumInfo &seqNumInfo = mainLog->get(msgSeqNum);
     QuorumStarterMsg *quorumStarter = seqNumInfo.getQuorumStarterMsg();
 
-    if (quorumStarter != nullptr && !quorumStarter->isCollected()){
+    if (quorumStarter != nullptr && !quorumStarter.isCollected()){
       msgAdded = quorumStarter->addVoteMsg(msg);
       if (quorumStarter->isReady(repsInfo)){
         
