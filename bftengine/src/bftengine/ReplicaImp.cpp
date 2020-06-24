@@ -38,8 +38,8 @@
 #include "messages/FullCommitProofMsg.hpp"
 #include "messages/ReplicaStatusMsg.hpp"
 #include "messages/AskForCheckpointMsg.hpp"
-// #include "messages/QuorumStarterMsg.hpp"
-// #include "messages/QuorumVoteMsg.hpp"
+#include "messages/QuorumStarterMsg.hpp"
+#include "messages/QuorumVoteMsg.hpp"
 
 #include <string>
 #include <type_traits>
@@ -113,6 +113,12 @@ void ReplicaImp::registerMsgHandlers() {
 
   msgHandlers_->registerMsgHandler(MsgCode::AskForCheckpoint,
                                    bind(&ReplicaImp::messageHandler<AskForCheckpointMsg>, this, _1));
+
+  msgHandlers_->registerMsgHandler(MsgCode::QuorumStarter,
+                                   bind(&ReplicaImp::messageHandler<QuorumStarterMsg>, this, _1));
+  
+  msgHandlers_->registerMsgHandler(MsgCode::QuorumVote,
+                                   bind(&ReplicaImp::messageHandler<QuorumVoteMsg>, this, _1));
 
   msgHandlers_->registerInternalMsgHandler([this](InternalMessage &&msg) { onInternalMsg(std::move(msg)); });
 }
