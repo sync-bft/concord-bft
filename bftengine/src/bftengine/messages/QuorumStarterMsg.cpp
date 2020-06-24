@@ -6,7 +6,6 @@
 
 #include <bftengine/ReplicaInfo.hpp>
 #include "QuorumStarterMsg.hpp"
-#include "QuorumVoteMsg.hpp"
 #include <queue>
 #include <iostream>
 
