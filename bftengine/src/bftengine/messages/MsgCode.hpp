@@ -39,8 +39,8 @@ class MsgCode {
     ReqMissingData,
     StateTransfer,
     
-    QuorumStarterMsg,
-    QuorumVoteMsg,
+    QuorumStarter,
+    QuorumVote,
 
     ClientPreProcessRequest,
     PreProcessRequest,

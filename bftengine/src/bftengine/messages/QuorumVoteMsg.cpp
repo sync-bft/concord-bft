@@ -10,7 +10,7 @@ namespace impl{
 
 QuorumVoteMsg::QuorumVoteMsg(SeqNum s, ViewNum v, ReplicaId senderId) // TODO(QF): do we need spanContext and msgSize as param
         : MessageBase(senderId,
-                      MsgCode:QuorumVote, //TODO(QF): needs to implement msgCode?
+                      MsgCode::QuorumVote, //TODO(QF): needs to implement msgCode?
                       sizeof(Header)){ // do we need to send any content in the msg?
     b()->viewNum = v;
     b()->seqNum = s;

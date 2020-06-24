@@ -79,7 +79,7 @@ bool QuorumVoteCollection::isVoteValid(QuorumVoteMsg *newVoteMsg) const{
 
 QuorumStarterMsg::QuorumStarterMsg(SeqNum s, ViewNum v, ReplicaId senderId) // TODO(QF): do we need spanContext and msgSize as param
         : MessageBase(senderId,
-                      MsgCode:QuorumStarter,
+                      MsgCode::QuorumStarter,
                       sizeof(Header)){ // do we need to send any content in the msg?
     b()->viewNum = v;
     b()->seqNum = s;
