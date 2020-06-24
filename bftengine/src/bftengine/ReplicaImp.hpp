@@ -314,7 +314,7 @@ class ReplicaImp : public InternalReplicaApi, public ReplicaForStateTransfer {
 
   void sendQuorumVote(SeqNum seqNum);
 
-  void sendPrepareFull(SeqNum seqNumber);
+  void sendPrepareFull(SeqNum seqNumber, SeqNum view);
 
   void tryToStartSlowPaths();
 
