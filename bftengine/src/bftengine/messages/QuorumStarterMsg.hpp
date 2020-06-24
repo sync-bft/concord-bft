@@ -57,7 +57,6 @@ class QuorumStarterMsg : public MessageBase{
 
         Header* b() const { return (Header*)msgBody_; }
 };
-};
 
 }  // namespace bftEngine
 }  // namespace impl
