@@ -2,7 +2,7 @@
 //
 // This implements the message that responds to a received quorum starter method
 // The message could be sent by any replica (except the primary) and used in the context of a 3 round protocol
-
+#pragma once
 #include "QuorumVoteMsg.hpp"
 
 namespace bftEngine{
