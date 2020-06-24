@@ -19,7 +19,7 @@
 #include "messages/PrePrepareMsg.hpp"
 #include "messages/SignedShareMsgs.hpp"
 #include "messages/PartialProofsSet.hpp"
-#include "messages/QuorumStarterMsg.hpp"
+//#include "messages/QuorumStarterMsg.hpp"
 #include "Logger.hpp"
 #include "CollectorOfThresholdSignatures.hpp"
 #include "SequenceWithActiveWindow.hpp"
