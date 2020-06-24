@@ -70,7 +70,7 @@ bool QuorumVoteCollection::isVoteValid(QuorumVoteMsg *newVoteMsg) const{
             break;
         }
     }
-    return !(identialMsgFlag||identicalSenderFlag);
+    return !(identicalMsgFlag||identicalSenderFlag);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
