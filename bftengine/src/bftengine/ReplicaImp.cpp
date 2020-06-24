@@ -806,7 +806,7 @@ template <>
 void ReplicaImp::onMessage<PartialCommitProofMsg>(PartialCommitProofMsg *msg) {
   metric_received_partial_commit_proofs_.Get().Inc();
   const SeqNum msgSeqNum = msg->seqNumber();
-  const SeqNum msgView = msg->viewNumber();
+  const ViewNum msgView = msg->viewNumber(); // Originally SeqNum
   const NodeIdType msgSender = msg->senderId();
   SCOPED_MDC_PRIMARY(std::to_string(currentPrimary()));
   SCOPED_MDC_SEQ_NUM(std::to_string(msgSeqNum));
@@ -1221,7 +1221,7 @@ void ReplicaImp::onPrepareCombinedSigSucceeded(
   // sendCommitPartial(seqNumber);
 }
 
-void ReplicaImp::sendPrepareFull(SeqNum seqNumber, SeqNum view){
+void ReplicaImp::sendPrepareFull(SeqNum seqNumber, ViewNum view){
   SeqNumInfo &seqNumInfo = mainLog->get(seqNumber);
 
   FullCommitProofMsg *fcp = seqNumInfo.partialProofs().getFullProof();
@@ -3465,7 +3465,7 @@ void ReplicaImp::executeNextCommittedRequests(concordUtils::SpanWrapper &parent_
 template<>
 void ReplicaImp::onMessage<QuorumStarterMsg>(QuorumStarterMsg *msg){
   const SeqNum msgSeqNum = msg->seqNumber();
-  const SeqNum msgView = msg->viewNumber();
+  const ViewNum msgView = msg->viewNumber();
   const NodeIdType msgSender = msg->senderId();
   
   if (relevantMsgForActiveView(msg) && currentPrimary() == msgSender){
@@ -3482,7 +3482,7 @@ void ReplicaImp::onMessage<QuorumStarterMsg>(QuorumStarterMsg *msg){
 template<>
 void replicaImp::onMessage<QuorumVoteMsg>(QuorumVoteMsg *msg){
   const SeqNum msgSeqNum = msg->seqNumber();
-  const SeqNum msgView = msg->viewNumber();
+  const ViewNum msgView = msg->viewNumber();
   const NodeIdType msgSender = msg->senderId();
 
   Assert(repsInfo->isIdOfPeerReplica(msgSender));
