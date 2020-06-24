@@ -426,7 +426,7 @@ bool SeqNumInfo::addSelfMsg(QuorumStarterMsg *m){
   return false;
 }
 
-QuorumStarterMsg* SeqNumInfo::getQuorumStarterMsg(){
+QuorumStarterMsg* SeqNumInfo::getQuorumStarterMsg() const{
   return quorumStarterMsg;
 }
 
