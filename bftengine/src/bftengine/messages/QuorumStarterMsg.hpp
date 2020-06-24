@@ -16,8 +16,8 @@ class QuorumVoteCollection{
 
     protected:
         ReplicaId ownerId;
-        int16_t voteCnt = 0;
-        bool isCollected = false;
+        int16_t voteCnt;
+        bool isCollected;
         
         std::queue<QuorumVoteMsg *> votes;
         int16_t calcMajorityNum(const ReplicasInfo *repsInfo) const;

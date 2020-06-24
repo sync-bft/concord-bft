@@ -22,6 +22,8 @@ namespace impl {
 QuorumVoteCollection::QuorumVoteCollection(ReplicaId owner){
     ownerId = owner;
     votes = new std::queue<QuorumVoteMsg *>;
+    isCollected = false;
+    voteCnt = 0;
 }
 
 bool QuorumVoteCollection::addVoteMsg(QuorumVoteMsg *voteMsg){
