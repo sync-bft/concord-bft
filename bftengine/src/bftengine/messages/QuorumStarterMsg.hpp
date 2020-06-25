@@ -21,8 +21,8 @@ class QuorumStarterMsg : public MessageBase{
         SeqNum seqNumber() const { return b()->seqNum; }
 
     protected:
-        QuorumVoteCollection voteCollection;
-        friend class QuorumVoteCollection;  // TODO(QY): is the friendship needed
+        QuorumVoteCollection voteCollection = QuorumVoteCollection();
+        // friend class QuorumVoteCollection;  // TODO(QY): is the friendship needed
 
         template <typename MessageT>
         friend size_t sizeOfHeader();

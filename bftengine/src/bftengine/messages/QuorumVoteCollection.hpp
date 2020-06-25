@@ -8,6 +8,7 @@ namespace bftEngine {
 namespace impl {
 class QuorumVoteCollection{
     public:
+        QuorumVoteCollection();
         QuorumVoteCollection(ReplicaId owner);
         bool addVoteMsg(QuorumVoteMsg *voteMsg);
         bool isReady(const ReplicasInfo *repsInfo) const;
