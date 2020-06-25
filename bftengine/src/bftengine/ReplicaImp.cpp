@@ -332,9 +332,9 @@ void ReplicaImp::tryToSendPrePrepareMsg(bool batchingLogic) {
   // because maxConcurrentAgreementsByPrimary <  MaxConcurrentFastPaths
   AssertLE((primaryLastUsedSeqNum + 1), lastExecutedSeqNum + MaxConcurrentFastPaths);
 
-  CommitPath firstPath = controller->getCurrentFirstPath();
+  CommitPath firstPath = controller->getCurrentFirstPath();// force slow by setting it to 2
 
-  AssertOR((config_.cVal != 0), (firstPath != CommitPath::FAST_WITH_THRESHOLD));
+  AssertOR((config_.cVal != 0), (firstPath != CommitPath::FAST_WITH_THRESHOLD));// this is true since first path is slow
 
   controller->onSendingPrePrepare((primaryLastUsedSeqNum + 1), firstPath);
 

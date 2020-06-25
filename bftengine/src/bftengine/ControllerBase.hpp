@@ -31,7 +31,7 @@ class ControllerBase {
 
   // getter methods
 
-  virtual CommitPath getCurrentFirstPath() = 0;
+  virtual CommitPath getCurrentFirstPath() = 2;
   virtual uint32_t timeToStartSlowPathMilli() = 0;
   virtual uint32_t slowPathsTimerMilli() = 0;
 
