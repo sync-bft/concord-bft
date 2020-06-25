@@ -1,6 +1,6 @@
 #pragma once
 
-#include <queue>
+#include <vector>
 #include "QuorumVoteMsg.hpp"
 #include "MessageBase.hpp"
 
@@ -9,7 +9,7 @@ namespace impl{
 
 class QuorumVoteCollection{
     public:
-        QuorumVoteCollection(ReplicaId owner, int16_t size);
+        QuorumVoteCollection(ReplicaId owner);
         bool addVoteMsg(QuorumVoteMsg *voteMsg);
         bool isReady(const ReplicasInfo *repsInfo) const;
         bool isCollected() const;
@@ -21,7 +21,7 @@ class QuorumVoteCollection{
         int16_t voteCnt;
         bool collected;
         
-        std::queue<QuorumVoteMsg *> votes;
+        std::vector<QuorumVoteMsg *> votes;
         int16_t calcMajorityNum(const ReplicasInfo *repsInfo) const;
         bool isVoteValid(QuorumVoteMsg *) const;
 };
@@ -30,7 +30,7 @@ class QuorumStarterMsg : public MessageBase{
     public:
         QuorumStarterMsg(SeqNum s, ViewNum v, ReplicaId senderId);
         bool addVoteMsg(QuorumVoteMsg *voteMsg);
-        bool isReady(const ReplicasInfo *repsInfo);
+        bool isReady(const ReplicasInfo *repsInfo) const;
         bool isCollected() const;
         void setCollected(bool status);
         void freeCollection();

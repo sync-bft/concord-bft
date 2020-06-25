@@ -20,7 +20,7 @@ namespace impl {
 
 QuorumVoteCollection::QuorumVoteCollection(ReplicaId owner){
     ownerId = owner;
-    votes = new std::queue<QuorumVoteMsg *>;
+    // votes = std::queue<QuorumVoteMsg *>;
     collected = false;
     voteCnt = 0;
 }
@@ -28,7 +28,7 @@ QuorumVoteCollection::QuorumVoteCollection(ReplicaId owner){
 bool QuorumVoteCollection::addVoteMsg(QuorumVoteMsg *voteMsg){
     bool status = isVoteValid(voteMsg);
     if (status) {
-        votes.push(voteMsg);
+        votes.push_back(voteMsg);
         voteCnt++;
     }
     return status;
@@ -51,22 +51,22 @@ void QuorumVoteCollection::setCollected(bool status){
 }
 
 void QuorumVoteCollection::free(){
-    while(!votes.empty()){votes.pop();}
+    votes.clear();
 }
 
 bool QuorumVoteCollection::isVoteValid(QuorumVoteMsg *newVoteMsg) const{
     if (votes.empty()) return true;
     bool identicalSenderFlag = false;
     bool identicalMsgFlag = false;  // TODO(QF): same flags?
-    for(auto it=votes.begin(); it!=votes.end();++it){
+    for(auto it=votes.begin(); it!=votes.end(); ++it){
         if (newVoteMsg->equals(*it)){
             identicalMsgFlag = true;
-            std::cout<<"Primary "<<ownerId<<" received a repetitive quorum vote msg from sender replica "<<newVoteMsg->senderId()<<endl;  //TODO(QF): is (NodeIdType) senderId printable?
+            std::cout<<"Primary "<<ownerId<<" received a repetitive quorum vote msg from sender replica "<<newVoteMsg->senderId()<<std::endl;  //TODO(QF): is (NodeIdType) senderId printable?
             break;  // TODO(QF): change cout to LOG_DEBUG
         }
         if (newVoteMsg->senderId() == *it->senderId()){  // TODO(QF): or equals
             identicalSenderFlag = true;
-            std::cout<<"Primary "<<ownerId<<" received a quorum vote msg from the same sender replica but different content "<<newVoteMsg->senderId()<<endl;  //TODO(QF): is (NodeIdType) senderId printable?
+            std::cout<<"Primary "<<ownerId<<" received a quorum vote msg from the same sender replica but different content "<<newVoteMsg->senderId()<<std::endl;  //TODO(QF): is (NodeIdType) senderId printable?
             break;
         }
     }
@@ -80,10 +80,11 @@ bool QuorumVoteCollection::isVoteValid(QuorumVoteMsg *newVoteMsg) const{
 QuorumStarterMsg::QuorumStarterMsg(SeqNum s, ViewNum v, ReplicaId senderId) // TODO(QF): do we need spanContext and msgSize as param
         : MessageBase(senderId,
                       MsgCode::QuorumStarter,
-                      sizeof(Header)){ // do we need to send any content in the msg?
+                      sizeof(Header))
+                      { // do we need to send any content in the msg?
     b()->viewNum = v;
     b()->seqNum = s;
-    voteCollection = new QuorumVoteCollection(senderId);
+    // voteCollection = new QuorumVoteCollection(senderId);
 }
 
 bool QuorumStarterMsg::addVoteMsg(QuorumVoteMsg *voteMsg){
