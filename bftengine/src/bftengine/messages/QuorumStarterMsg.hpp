@@ -1,30 +1,11 @@
 #pragma once
 
-#include <vector>
 #include "QuorumVoteMsg.hpp"
 #include "MessageBase.hpp"
+#include "QuorumVoteCollection.hpp"
 
 namespace bftEngine{
 namespace impl{
-
-class QuorumVoteCollection{
-    public:
-        QuorumVoteCollection(ReplicaId owner);
-        bool addVoteMsg(QuorumVoteMsg *voteMsg);
-        bool isReady(const ReplicasInfo *repsInfo) const;
-        bool isCollected() const;
-        void setCollected(bool status);
-        void free();
-
-    protected:
-        ReplicaId ownerId;
-        int16_t voteCnt;
-        bool collected;
-        
-        std::vector<QuorumVoteMsg *> votes;
-        int16_t calcMajorityNum(const ReplicasInfo *repsInfo) const;
-        bool isVoteValid(QuorumVoteMsg *) const;
-};
 
 class QuorumStarterMsg : public MessageBase{
     public:
