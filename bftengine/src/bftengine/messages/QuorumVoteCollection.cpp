@@ -51,13 +51,13 @@ bool QuorumVoteCollection::isVoteValid(QuorumVoteMsg *newVoteMsg) const{
     if (votes.empty()) return true;
     bool identicalSenderFlag = false;
     bool identicalMsgFlag = false;  // TODO(QF): same flags?
-    for(auto it=votes.begin(); it!=votes.end(); ++it){
-        if (newVoteMsg->equals(*it)){
+    for(int idx = 0; idx<votes.size(); idx++){
+        if (newVoteMsg == votes[idx]){ //TODO(QF): should rewrite equals
             identicalMsgFlag = true;
             std::cout<<"Primary "<<ownerId<<" received a repetitive quorum vote msg from sender replica "<<newVoteMsg->senderId()<<std::endl;  //TODO(QF): is (NodeIdType) senderId printable?
             break;  // TODO(QF): change cout to LOG_DEBUG
         }
-        if (newVoteMsg->senderId() == *it->senderId()){  // TODO(QF): or equals
+        if (newVoteMsg->senderId() == votes[idx]->senderId()){  // TODO(QF): or equals
             identicalSenderFlag = true;
             std::cout<<"Primary "<<ownerId<<" received a quorum vote msg from the same sender replica but different content "<<newVoteMsg->senderId()<<std::endl;  //TODO(QF): is (NodeIdType) senderId printable?
             break;
