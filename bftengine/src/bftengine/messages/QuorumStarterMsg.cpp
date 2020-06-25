@@ -16,7 +16,7 @@ QuorumStarterMsg::QuorumStarterMsg(SeqNum s, ViewNum v, ReplicaId senderId) // T
                       sizeof(Header)) { // do we need to send any content in the msg?
     b()->viewNum = v;
     b()->seqNum = s;
-    // voteCollection = new QuorumVoteCollection(senderId);
+    voteCollection = QuorumVoteCollection(senderId);
 }
 
 bool QuorumStarterMsg::addVoteMsg(QuorumVoteMsg *voteMsg){
