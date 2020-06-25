@@ -10,9 +10,7 @@ namespace impl {
 ///////////////////////////////////////////////////////////////////////////////
 // QuorumVoteCollection
 ///////////////////////////////////////////////////////////////////////////////
-QuorumVoteCollection::QuorumVoteCollection(){
-    ownerId = NULL;
-}
+QuorumVoteCollection::QuorumVoteCollection(){}  //dummy
 
 QuorumVoteCollection::QuorumVoteCollection(ReplicaId owner){
     ownerId = owner;
@@ -51,7 +49,7 @@ bool QuorumVoteCollection::isVoteValid(QuorumVoteMsg *newVoteMsg) const{
     if (votes.empty()) return true;
     bool identicalSenderFlag = false;
     bool identicalMsgFlag = false;  // TODO(QF): same flags?
-    for(int idx = 0; idx<votes.size(); idx++){
+    for(size_t idx = 0; idx<votes.size(); idx++){
         if (newVoteMsg == votes[idx]){ //TODO(QF): should rewrite equals
             identicalMsgFlag = true;
             std::cout<<"Primary "<<ownerId<<" received a repetitive quorum vote msg from sender replica "<<newVoteMsg->senderId()<<std::endl;  //TODO(QF): is (NodeIdType) senderId printable?
