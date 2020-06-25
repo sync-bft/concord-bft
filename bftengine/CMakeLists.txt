@@ -59,6 +59,7 @@ set(corebft_source_files
     src/bftengine/messages/StateTransferMsg.cpp
     src/bftengine/messages/QuorumStarterMsg.cpp
     src/bftengine/messages/QuorumVoteMsg.cpp
+    src/bftengine/MessageBase/QuorumVoteCollection.cpp
 )
 
 #
