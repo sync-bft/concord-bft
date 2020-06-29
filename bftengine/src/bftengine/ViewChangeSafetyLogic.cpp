@@ -138,7 +138,7 @@ ViewChangeSafetyLogic::ViewChangeSafetyLogic(const uint16_t n,
 
 // TODO(GG): consider to optimize this method
 SeqNum ViewChangeSafetyLogic::calcLBStableForView(ViewChangeMsg** const viewChangeMsgsOfPendingView) const {
-  const uint16_t INC_IN_VC = (2 * F + 2 * C + 1);
+  const uint16_t INC_IN_VC = (F + 1);
 
   SeqNum* stableNumbers = (SeqNum*)alloca(INC_IN_VC * sizeof(SeqNum));
   ViewNum v = 0;
