@@ -3474,7 +3474,7 @@ void ReplicaImp::onMessage<QuorumStarterMsg>(QuorumStarterMsg *msg){
   const ViewNum msgView = msg->viewNumber();
   const NodeIdType msgSender = msg->senderId();
 
-  LOG_DEBUG(GL, "Node " << config_.replicaId << "received a quorum starter messag from node "<< msgSender<< 
+  LOG_DEBUG(GL, "Node " << config_.replicaId << "received a quorum starter messag from node "<< msgSender 
                 << " with sequence number "<< msgSeqNum <<" and view number "<<msgView);
   
   if (relevantMsgForActiveView(msg) && currentPrimary() == msgSender){
@@ -3494,7 +3494,7 @@ void ReplicaImp::onMessage<QuorumVoteMsg>(QuorumVoteMsg *msg){}
   const ViewNum msgView = msg->viewNumber();
   const NodeIdType msgSender = msg->senderId();
 
-  LOG_DEBUG(GL, "Node " << config_.replicaId << "received a quorum vote messag from node "<< msgSender<< 
+  LOG_DEBUG(GL, "Node " << config_.replicaId << "received a quorum vote messag from node "<< msgSender 
                 << " with sequence number "<< msgSeqNum <<" and view number "<<msgView);
 
   Assert(repsInfo->isIdOfPeerReplica(msgSender));
