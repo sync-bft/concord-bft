@@ -3497,7 +3497,7 @@ void ReplicaImp::onMessage<QuorumVoteMsg>(QuorumVoteMsg *msg){
   LOG_DEBUG(GL, "Node " << config_.replicaId << "received a quorum vote messag from node "<< msgSender 
                 << " with sequence number "<< msgSeqNum <<" and view number "<<msgView);
 
-  Assert(repsInfo->isIdOfPeerReplica(msgSender));
+  // Assert(repsInfo->isIdOfPeerReplica(msgSender));
   Assert(isCurrentPrimary());
 
   bool msgAdded = false;
