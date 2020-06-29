@@ -3489,7 +3489,7 @@ void ReplicaImp::onMessage<QuorumStarterMsg>(QuorumStarterMsg *msg){
 }
 
 template<>
-void ReplicaImp::onMessage<QuorumVoteMsg>(QuorumVoteMsg *msg){}
+void ReplicaImp::onMessage<QuorumVoteMsg>(QuorumVoteMsg *msg){
   const SeqNum msgSeqNum = msg->seqNumber();
   const ViewNum msgView = msg->viewNumber();
   const NodeIdType msgSender = msg->senderId();
