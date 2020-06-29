@@ -133,7 +133,7 @@ ViewChangeSafetyLogic::ViewChangeSafetyLogic(const uint16_t n,
                                              IThresholdVerifier* const preparedCertificateVerifier,
                                              const Digest& digestOfNull)
     : N(n), F(f), C(c), preparedCertVerifier(preparedCertificateVerifier), nullDigest(digestOfNull) {
-  Assert(N == (3 * F + 2 * C + 1));
+  Assert(N == (2 * F + 1));
 }
 
 // TODO(GG): consider to optimize this method
