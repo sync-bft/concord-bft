@@ -15,7 +15,7 @@ rsa_public_keys:
 # Execution threshold cryptosystem public configuration.
 execution_cryptosystem_type: threshold-bls
 execution_cryptosystem_subtype_parameter: BN-P254
-execution_cryptosystem_num_signers: 4
+execution_cryptosystem_num_signers: 3
 execution_cryptosystem_threshold: 2
 execution_cryptosystem_public_key: 02067164cd32ed60cfd44746a5d5f0a094570e60a0c91132277868d2d6cc1ae6921e2c107a48f521ec9784cd1f2167f9287fdf5f9619adc6cbd6c3cf87956c861f
 execution_cryptosystem_verification_keys:
