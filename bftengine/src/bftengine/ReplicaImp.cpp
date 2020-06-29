@@ -3471,7 +3471,7 @@ void ReplicaImp::executeNextCommittedRequests(concordUtils::SpanWrapper &parent_
 template<>
 void ReplicaImp::onMessage<QuorumStarterMsg>(QuorumStarterMsg *msg){
   const SeqNum msgSeqNum = msg->seqNumber();
-  // const ViewNum msgView = msg->viewNumber();
+  const ViewNum msgView = msg->viewNumber();
   const NodeIdType msgSender = msg->senderId();
 
   LOG_DEBUG(GL, "Node " << config_.replicaId << "received a quorum starter messag from node "<< msgSender<< 
