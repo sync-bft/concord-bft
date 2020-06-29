@@ -3473,6 +3473,9 @@ void ReplicaImp::onMessage<QuorumStarterMsg>(QuorumStarterMsg *msg){
   const SeqNum msgSeqNum = msg->seqNumber();
   // const ViewNum msgView = msg->viewNumber();
   const NodeIdType msgSender = msg->senderId();
+
+  LOG_DEBUG(GL, "Node " << config_.replicaId << "received a quorum starter messag from node "<<< msgSender<<< 
+                <<< " with sequence number "<<< msgSeqNum <<<" and view number "<<<msgView);
   
   if (relevantMsgForActiveView(msg) && currentPrimary() == msgSender){
     sendAckIfNeeded(msg, msgSender, msgSeqNum);
@@ -3486,10 +3489,13 @@ void ReplicaImp::onMessage<QuorumStarterMsg>(QuorumStarterMsg *msg){
 }
 
 template<>
-void ReplicaImp::onMessage<QuorumVoteMsg>(QuorumVoteMsg *msg){
+void ReplicaImp::onMessage<QuorumVoteMsg>(QuorumVoteMsg *msg){}
   const SeqNum msgSeqNum = msg->seqNumber();
   const ViewNum msgView = msg->viewNumber();
   const NodeIdType msgSender = msg->senderId();
+
+  LOG_DEBUG(GL, "Node " << config_.replicaId << "received a quorum vote messag from node "<<< msgSender<<< 
+                <<< " with sequence number "<<< msgSeqNum <<<" and view number "<<<msgView);
 
   Assert(repsInfo->isIdOfPeerReplica(msgSender));
   Assert(isCurrentPrimary());
@@ -3516,16 +3522,16 @@ void ReplicaImp::onMessage<QuorumVoteMsg>(QuorumVoteMsg *msg){
       }
     }
     else {
-      LOG_DEBUG(GL,
-                "Node " << config_.replicaId << "received an improper quorum vote message from node "<< msgSender << " (seqNumber "
-                        << msgSeqNum << ")");
+      LOG_WARN(GL,
+              "Node " << config_.replicaId << "received an improper quorum vote message from node "<< msgSender << " (seqNumber "
+                      << msgSeqNum << ")");
     } 
   }
 
   if (!msgAdded){
-    LOG_DEBUG(GL,
-              "Node " << config_.replicaId << "ignored the quorum vote message from node "<< msgSender << " (seqNumber "
-                      << msgSeqNum << ")");
+    LOG_WARN(GL,
+            "Node " << config_.replicaId << "ignored the quorum vote message from node "<< msgSender << " (seqNumber "
+                    << msgSeqNum << ")");
     delete msg;
   }
 }
@@ -3544,11 +3550,16 @@ void ReplicaImp::sendQuorumStarter(SeqNum seqNum){
     for (ReplicaId x : repsInfo->idsOfPeerReplicas()) 
       sendRetransmittableMsgToReplica(msg, x, seqNum);
   }
+
+  LOG_DEBUG(GL, "Node " << config_.replicaId << "sent quorum starter messaage to all replicas (sequence number: "<<seqNum<<")");
 }
 
 void ReplicaImp::sendQuorumVote(SeqNum seqNum){
   QuorumVoteMsg *repMsg = new QuorumVoteMsg(seqNum, curView, config_.replicaId);
   send(repMsg, currentPrimary()); // could also be retranmissible msg
+  
+  LOG_DEBUG(GL, "Node " << config_.replicaId << "sent quorum vote messaage (sequence number: "<<seqNum<<")");
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////
