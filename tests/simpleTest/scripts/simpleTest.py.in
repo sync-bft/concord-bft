@@ -41,6 +41,9 @@ class SimpleClientParams:
 class BFT:
     def __init__(self, name, n, r, f, c, cl, vc):
         self.name = name
+        n = 3
+        r = 3
+        f = 1
         self.num_of_replicas = n
         self.num_of_replicas_to_run = r
         self.num_of_faulties = f
