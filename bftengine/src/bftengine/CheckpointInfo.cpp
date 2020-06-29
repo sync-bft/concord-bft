@@ -63,7 +63,7 @@ void CheckpointInfo::init(CheckpointInfo& i, void* d) {
   const uint16_t myId = info.myId();
 
   const uint16_t numOfReps = info.numberOfReplicas();
-  const uint16_t C = info.cVal();
+  // const uint16_t C = info.cVal();
   const uint16_t F = info.fVal();
   Assert(numOfReps == 2 * F + 1);
 
