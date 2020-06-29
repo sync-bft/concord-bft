@@ -41,7 +41,7 @@ void PrePrepareMsg::validate(const ReplicasInfo& repInfo) const {
   const uint16_t flags = b()->flags;
   const bool isNull = ((flags & 0x1) == 0);
   const bool isReady = (((flags >> 1) & 0x1) == 1);
-  const uint16_t firstPath_ = ((flags >> 2) & 0x3);
+  const uint16_t firstPath_ = 2;
   const uint16_t reservedBits = (flags >> 4);
 
   if (b()->seqNum == 0 || isNull ||  // we don't send null requests
