@@ -114,7 +114,7 @@ static bool validateFundamentalFields(const std::vector<bftEngine::ReplicaConfig
         std::cout << "FAILURE: Replica " << i
                   << " has a C"
                      " value not equal to 0 "
-                  << << ".\n";
+                  << ".\n";
         return false;
     }
   }
