@@ -506,7 +506,7 @@ def main():
                         action="store_true",
                         help="Enable perfomance measurement by test client")
     parser.add_argument("-bft",
-                       default=["n=4,r=4,f=1,c=0,cl=1"],
+                       default=["n=3,r=3,f=1,c=0,cl=1"],
                        nargs="+",
                        help="List of BFT configuration sets to use. All " +
                        "parameters should be separated by ','. " +
