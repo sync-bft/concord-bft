@@ -141,7 +141,7 @@ void PrePrepareMsg::finishAddingRequests() {
 }
 
 CommitPath PrePrepareMsg::firstPath() const {
-  const uint16_t firstPathNum = ((b()->flags >> 2) & 0x3);
+  const uint16_t firstPathNum = 2;
   Assert(firstPathNum <= 2);
   CommitPath retVal = (CommitPath)firstPathNum;  // TODO(GG): check
   return retVal;
