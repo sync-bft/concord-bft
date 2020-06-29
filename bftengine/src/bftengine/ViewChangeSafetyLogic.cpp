@@ -133,12 +133,12 @@ ViewChangeSafetyLogic::ViewChangeSafetyLogic(const uint16_t n,
                                              IThresholdVerifier* const preparedCertificateVerifier,
                                              const Digest& digestOfNull)
     : N(n), F(f), C(c), preparedCertVerifier(preparedCertificateVerifier), nullDigest(digestOfNull) {
-  Assert(N == (2 * F + 1));
+  Assert(N == (3 * F + 2 * C + 1));
 }
 
 // TODO(GG): consider to optimize this method
 SeqNum ViewChangeSafetyLogic::calcLBStableForView(ViewChangeMsg** const viewChangeMsgsOfPendingView) const {
-  const uint16_t INC_IN_VC = (F + 1);
+  const uint16_t INC_IN_VC = (2 * F + 2 * C + 1);
 
   SeqNum* stableNumbers = (SeqNum*)alloca(INC_IN_VC * sizeof(SeqNum));
   ViewNum v = 0;
@@ -315,7 +315,7 @@ bool ViewChangeSafetyLogic::computeRestrictionsForSeqNum(SeqNum s,
       } else {
         size_t& counter = fastPathCounters[fast];
         counter++;
-        if (counter == (uint16_t)(F + 1)) {
+        if (counter == (uint16_t)(F + C + 1)) {
           selectedFastElement = fast;
           break;
         }
