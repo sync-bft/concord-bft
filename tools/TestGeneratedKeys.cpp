@@ -67,8 +67,8 @@ static bool validateFundamentalFields(const std::vector<bftEngine::ReplicaConfig
   uint16_t cVal = configs.front().cVal;
 
   // Note we validate agreement of numReplicas, fVal, and cVal with 32-bit
-  // integers in case 3F + 2C + 1 overflows a 16-bit integer.
-  uint32_t expectedNumReplicas = 3 * (uint32_t)fVal + 2 * (uint32_t)cVal + 1;
+  // integers in case 2F + 1 overflows a 16-bit integer.
+  uint32_t expectedNumReplicas = 2 * (uint32_t)fVal + 1;
 
   // Note that check fVal >= 1 before enforcing agreement of fVal and cVal with
   // numReplicas to give precedence to complaining about invalid F over
@@ -79,7 +79,7 @@ static bool validateFundamentalFields(const std::vector<bftEngine::ReplicaConfig
                  " of replicas ("
               << numReplicas
               << "). It is required that numReplicas ="
-                 " (3 * fVal + 2 * cVal + 1).\n";
+                 " (2 * fVal + 1).\n";
     return false;
   }
 
@@ -109,6 +109,13 @@ static bool validateFundamentalFields(const std::vector<bftEngine::ReplicaConfig
                    " value inconsistent with replica(s) 0 through "
                 << (i - 1) << ".\n";
       return false;
+    }
+    if (config.cVal != 0) {
+        std::cout << "FAILURE: Replica " << i
+                  << " has a C"
+                     " value not equal to 0 "
+                  << << ".\n";
+        return false;
     }
   }
 

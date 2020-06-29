@@ -241,8 +241,8 @@ int main(int argc, char** argv) {
 
     // Verify constraints between F and N and compute C.
 
-    // Note we check that N >= 3F + 1 using uint32_ts even though F and N are
-    // uint16_ts just in case 3F + 1 overflows a uint16_t.
+    // Note we check that N >= 2F + 1 using uint32_ts even though F and N are
+    // uint16_ts just in case 2F + 1 overflows a uint16_t.
     uint32_t minN = 2 * (uint32_t)config.fVal + 1;
     if ((uint32_t)n < minN) {
       std::cout << "Due to the design of Byzantine fault tolerance, number of"
@@ -251,7 +251,7 @@ int main(int argc, char** argv) {
       return -1;
     }
 
-    // We require N - 3F - 1 to be even so C can be an integer.
+    // We require N - 2F - 1 to be even so C can be an integer.
     if (((n - (2 * config.fVal) - 1) % 2) != 0) {
       std::cout << "For technical reasons stemming from our current"
                    " implementation of Byzantine\nfault tolerant consensus, we currently"
@@ -264,7 +264,7 @@ int main(int argc, char** argv) {
 
     uint16_t execThresh = config.fVal + 1;
     uint16_t slowThresh = config.fVal + config.cVal + 1;
-    uint16_t commitThresh = config.fVal * 2 + config.cVal + 1;
+    uint16_t commitThresh = 2 * config.fVal + config.cVal + 1;
     uint16_t optThresh = n;
 
     // Verify cryptosystem selections.
