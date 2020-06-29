@@ -417,7 +417,7 @@ void SeqNumInfo::init(SeqNumInfo& i, void* d) {
 // 3 round protocol
 ///////////////////////////////////////////////////////////////////////////////
 bool SeqNumInfo::addSelfMsg(QuorumStarterMsg *m){ 
-  Assert(replica->getReplicasInfo().myId() != m->senderId());
+  Assert(replica->getReplicasInfo().myId() == m->senderId());
 
   if (quorumStarterMsg == nullptr){
     quorumStarterMsg = m; // its collection of votes needs to be free manually
