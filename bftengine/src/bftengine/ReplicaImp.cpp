@@ -379,7 +379,7 @@ void ReplicaImp::tryToSendPrePrepareMsg(bool batchingLogic) {
   SCOPED_MDC_PATH(CommitPathToMDCString(firstPath));
   {
     LOG_INFO(CNSUS,
-             "Sending PrePrepare with the following payload of the following correlation ids ["
+             "I CHANGED Sending PrePrepare with the following payload of the following correlation ids ["
                  << pp->getBatchCorrelationIdAsString() << "]");
   }
   SeqNumInfo &seqNumInfo = mainLog->get(primaryLastUsedSeqNum);
