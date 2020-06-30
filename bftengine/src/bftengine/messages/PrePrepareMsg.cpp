@@ -41,7 +41,7 @@ void PrePrepareMsg::validate(const ReplicasInfo& repInfo) const {
   const uint16_t flags = b()->flags;
   const bool isNull = ((flags & 0x1) == 0);
   const bool isReady = (((flags >> 1) & 0x1) == 1);
-  const uint16_t firstPath_ = 2;
+  const uint16_t firstPath_ = ((flags >> 2) & 0x3);
   const uint16_t reservedBits = (flags >> 4);
 
   if (b()->seqNum == 0 || isNull ||  // we don't send null requests
@@ -71,8 +71,8 @@ PrePrepareMsg::PrePrepareMsg(
                   MsgCode::PrePrepare,
                   spanContext.size(),
                   (((size + sizeof(Header)) < maxMessageSize<PrePrepareMsg>())
-                       ? (size + sizeof(Header))
-                       : maxMessageSize<PrePrepareMsg>() - spanContext.size()))
+                   ? (size + sizeof(Header))
+                   : maxMessageSize<PrePrepareMsg>() - spanContext.size()))
 
 {
   bool ready = size == 0;  // if null, then message is ready
@@ -141,7 +141,7 @@ void PrePrepareMsg::finishAddingRequests() {
 }
 
 CommitPath PrePrepareMsg::firstPath() const {
-  const uint16_t firstPathNum = 2;
+  const uint16_t firstPathNum = ((b()->flags >> 2) & 0x3);
   Assert(firstPathNum <= 2);
   CommitPath retVal = (CommitPath)firstPathNum;  // TODO(GG): check
   return retVal;
