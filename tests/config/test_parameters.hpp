@@ -15,7 +15,7 @@
 #define CONCORD_BFT_TEST_PARAMETERS_HPP
 
 struct ClientParams {
-  uint32_t numOfOperations = 1;
+  uint32_t numOfOperations = 2;
   uint16_t clientId = 3;
   uint16_t numOfReplicas = 3;
   uint16_t numOfClients = 1;
