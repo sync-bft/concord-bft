@@ -16,15 +16,15 @@
 
 struct ClientParams {
   uint32_t numOfOperations = 4600;
-  uint16_t clientId = 4;
-  uint16_t numOfReplicas = 4;
+  uint16_t clientId = 3;
+  uint16_t numOfReplicas = 3;
   uint16_t numOfClients = 1;
   uint16_t numOfFaulty = 1;
   uint16_t numOfSlow = 0;
   std::string configFileName;
   bool measurePerformance = false;
 
-  uint16_t get_numOfReplicas() { return (uint16_t)(3 * numOfFaulty + 2 * numOfSlow + 1); }
+  uint16_t get_numOfReplicas() { return (uint16_t)(2 * numOfFaulty + 1); }
 };
 
 enum class PersistencyMode {
@@ -46,7 +46,7 @@ enum class ReplicaBehavior {
 
 struct ReplicaParams {
   uint16_t replicaId;
-  uint16_t numOfReplicas = 4;
+  uint16_t numOfReplicas = 3;
   uint16_t numOfClients = 1;
   bool debug = false;
   bool viewChangeEnabled = false;
