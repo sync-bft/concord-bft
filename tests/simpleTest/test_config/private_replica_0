@@ -1,5 +1,5 @@
 # Concord-BFT replica keyfile private_replica_0.
-# For replica 0 in a 4-replica cluster.
+# For replica 0 in a 3-replica cluster.
 
 num_replicas: 3
 f_val: 1
