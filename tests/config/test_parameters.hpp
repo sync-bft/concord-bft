@@ -48,7 +48,7 @@ struct ReplicaParams {
   uint16_t replicaId;
   uint16_t numOfReplicas = 3;
   uint16_t numOfClients = 1;
-  bool debug = true;
+  bool debug = false;
   bool viewChangeEnabled = false;
   bool autoPrimaryRotationEnabled = false;
   uint16_t viewChangeTimeout = 60000;              // ms
