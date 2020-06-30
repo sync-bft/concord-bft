@@ -511,12 +511,12 @@ void ReplicaImp::onMessage<PrePrepareMsg>(PrePrepareMsg *msg) {
                          // before PrePrepareMsg
       {
         sendPartialProof(seqNumInfo);
+        LOG_INFO(CNSUS, "Sending PartialProof");
       } else {
         seqNumInfo.startSlowPath();
         metric_slow_path_count_.Get().Inc();
         sendPreparePartial(seqNumInfo);
-        LOG_INFO(CNSUS,
-                "Sending PreparePartial");
+        LOG_INFO(CNSUS, "Sending PreparePartial");
       }
     }
   }
