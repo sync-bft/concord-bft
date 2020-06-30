@@ -404,6 +404,9 @@ void ReplicaImp::tryToSendPrePrepareMsg(bool batchingLogic) {
   } else {
     sendPartialProof(seqNumInfo);
   }
+  LOG_DEBUG(GL,
+           "The Current Commit Commit Path is: ["
+               << firstPath << "]");
 }
 
 template <typename T>
