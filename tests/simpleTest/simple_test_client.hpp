@@ -98,9 +98,9 @@ class SimpleTestClient {
     LOG_INFO(clientLogger, "Starting " << cp.numOfOperations);
 
     // Perform this check once all parameters configured.
-    if (3 * cp.numOfFaulty + 2 * cp.numOfSlow + 1 != cp.numOfReplicas) {
+    if (2 * cp.numOfFaulty + 1 != cp.numOfReplicas) {
       LOG_FATAL(clientLogger,
-                "Number of replicas is not equal to 3f + 2c + 1 :"
+                "Number of replicas is not equal to 2f + 1 :"
                 " f="
                     << cp.numOfFaulty << ", c=" << cp.numOfSlow << ", numOfReplicas=" << cp.numOfReplicas);
       exit(-1);
