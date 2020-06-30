@@ -332,7 +332,7 @@ void ReplicaImp::tryToSendPrePrepareMsg(bool batchingLogic) {
   // because maxConcurrentAgreementsByPrimary <  MaxConcurrentFastPaths
   AssertLE((primaryLastUsedSeqNum + 1), lastExecutedSeqNum + MaxConcurrentFastPaths);
 
-  CommitPath firstPath = controller->getCurrentFirstPath();// force slow by setting it to 2
+  CommitPath firstPath = CommitPath::SLOW;// force slow by setting it to 2
 
   AssertOR((config_.cVal != 0), (firstPath != CommitPath::FAST_WITH_THRESHOLD));// this is true since first path is slow
 
@@ -379,7 +379,7 @@ void ReplicaImp::tryToSendPrePrepareMsg(bool batchingLogic) {
   SCOPED_MDC_PATH(CommitPathToMDCString(firstPath));
   {
     LOG_INFO(CNSUS,
-             "I CHANGED Sending PrePrepare with the following payload of the following correlation ids ["
+             "Sending PrePrepare with the following payload of the following correlation ids ["
                  << pp->getBatchCorrelationIdAsString() << "]");
   }
   SeqNumInfo &seqNumInfo = mainLog->get(primaryLastUsedSeqNum);
