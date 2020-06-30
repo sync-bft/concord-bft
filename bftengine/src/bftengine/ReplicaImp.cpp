@@ -1029,12 +1029,16 @@ void ReplicaImp::onMessage<PreparePartialMsg>(PreparePartialMsg *msg) {
 
     if (fcp != nullptr) {
       send(fcp, msgSender);
+      LOG_INFO(CNSUS, "Sending FullCommitProofMsg");
     } else if (commitFull != nullptr) {
       send(commitFull, msgSender);
+      LOG_INFO(CNSUS, "Sending CommitFullMsg");
     } else if (preFull != nullptr) {
       send(preFull, msgSender);
+      LOG_INFO(CNSUS, "Sending PrepareFullMsg");
     } else {
       msgAdded = seqNumInfo.addMsg(msg);
+      LOG_INFO(CNSUS, "Adding msg to seqNumInfo");
     }
   }
 
