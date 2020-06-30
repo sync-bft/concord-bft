@@ -515,7 +515,8 @@ void ReplicaImp::onMessage<PrePrepareMsg>(PrePrepareMsg *msg) {
         seqNumInfo.startSlowPath();
         metric_slow_path_count_.Get().Inc();
         sendPreparePartial(seqNumInfo);
-        ;
+        LOG_INFO(CNSUS,
+                "Sending PreparePartial");
       }
     }
   }
