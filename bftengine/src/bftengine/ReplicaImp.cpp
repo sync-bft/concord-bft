@@ -401,12 +401,13 @@ void ReplicaImp::tryToSendPrePrepareMsg(bool batchingLogic) {
     seqNumInfo.startSlowPath();
     metric_slow_path_count_.Get().Inc();
     sendPreparePartial(seqNumInfo);
+    LOG_DEBUG(GL,
+              "The Current Commit Commit Path is slow");
   } else {
     sendPartialProof(seqNumInfo);
+    LOG_DEBUG(GL,
+              "The Current Commit Commit Path is fast");
   }
-  LOG_DEBUG(GL,
-           "The Current Commit Commit Path is: ["
-               << firstPath << "]");
 }
 
 template <typename T>
