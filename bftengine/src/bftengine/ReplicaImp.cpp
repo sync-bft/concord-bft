@@ -1857,6 +1857,10 @@ void ReplicaImp::tryToSendStatusReport(bool onTimer) {
 
 template <>
 void ReplicaImp::onMessage<ViewChangeMsg>(ViewChangeMsg *msg) {
+  // attempting to disable viewchange
+  delete msg;
+  return;
+
   if (!viewChangeProtocolEnabled) {
     delete msg;
     return;
