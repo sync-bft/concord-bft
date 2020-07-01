@@ -175,8 +175,8 @@ void signalHandler(int signum) {
 
 int main(int argc, char **argv) {
   // set the log level to debug
-  replicaLogger.setLogLevel(logging::debug)
-  
+  replicaLogger.setLogLevel(logging::debug);
+
   ReplicaParams rp;
   parse_params(argc, argv, rp);
 
