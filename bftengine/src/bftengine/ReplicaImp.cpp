@@ -511,12 +511,10 @@ void ReplicaImp::onMessage<PrePrepareMsg>(PrePrepareMsg *msg) {
                          // before PrePrepareMsg
       {
         sendPartialProof(seqNumInfo);
-        LOG_INFO(CNSUS, "Sending PartialProof");
       } else {
         seqNumInfo.startSlowPath();
         metric_slow_path_count_.Get().Inc();
         sendPreparePartial(seqNumInfo);
-        LOG_INFO(CNSUS, "Sending PreparePartial");
       }
     }
   }
@@ -1029,16 +1027,12 @@ void ReplicaImp::onMessage<PreparePartialMsg>(PreparePartialMsg *msg) {
 
     if (fcp != nullptr) {
       send(fcp, msgSender);
-      LOG_INFO(CNSUS, "Sending FullCommitProofMsg");
     } else if (commitFull != nullptr) {
       send(commitFull, msgSender);
-      LOG_INFO(CNSUS, "Sending CommitFullMsg");
     } else if (preFull != nullptr) {
       send(preFull, msgSender);
-      LOG_INFO(CNSUS, "Sending PrepareFullMsg");
     } else {
       msgAdded = seqNumInfo.addMsg(msg);
-      LOG_INFO(CNSUS, "Adding msg to seqNumInfo");
     }
   }
 
