@@ -401,12 +401,8 @@ void ReplicaImp::tryToSendPrePrepareMsg(bool batchingLogic) {
     seqNumInfo.startSlowPath();
     metric_slow_path_count_.Get().Inc();
     sendPreparePartial(seqNumInfo);
-    LOG_INFO(GL,
-              "The Current Commit Commit Path is slow");
   } else {
     sendPartialProof(seqNumInfo);
-    LOG_INFO(GL,
-              "The Current Commit Commit Path is fast");
   }
 }
 
@@ -500,7 +496,7 @@ void ReplicaImp::onMessage<PrePrepareMsg>(PrePrepareMsg *msg) {
     if (seqNumInfo.addMsg(msg)) {
       {
         LOG_INFO(CNSUS,
-                 "PrePrepare witLOG_INFOh the following correlation IDs [" << msg->getBatchCorrelationIdAsString() << "]");
+                 "PrePrepare with the following correlation IDs [" << msg->getBatchCorrelationIdAsString() << "]");
       }
       msgAdded = true;
 
