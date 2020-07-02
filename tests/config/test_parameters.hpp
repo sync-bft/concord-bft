@@ -15,8 +15,8 @@
 #define CONCORD_BFT_TEST_PARAMETERS_HPP
 
 struct ClientParams {
-  uint32_t numOfOperations = 400;
-  uint16_t clientId = 3;
+  uint32_t numOfOperations = 4600;
+  uint16_t clientId = 4;
   uint16_t numOfReplicas = 3;
   uint16_t numOfClients = 1;
   uint16_t numOfFaulty = 1;
@@ -48,7 +48,7 @@ struct ReplicaParams {
   uint16_t replicaId;
   uint16_t numOfReplicas = 3;
   uint16_t numOfClients = 1;
-  bool debug = true;
+  bool debug = false;
   bool viewChangeEnabled = false;
   bool autoPrimaryRotationEnabled = false;
   uint16_t viewChangeTimeout = 60000;              // ms

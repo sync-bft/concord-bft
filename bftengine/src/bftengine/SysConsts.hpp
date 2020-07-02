@@ -43,9 +43,9 @@ constexpr int MaxNumberOfReplicas = 64;
 // Work windows and intervals
 ///////////////////////////////////////////////////////////////////////////////
 
-constexpr uint16_t kWorkWindowSize = 8;
+constexpr uint16_t kWorkWindowSize = 300;
 
-constexpr uint16_t checkpointWindowSize = 4;
+constexpr uint16_t checkpointWindowSize = 150;
 static_assert(kWorkWindowSize == 2 * checkpointWindowSize, "kWorkWindowSize != 2 * checkpointWindowSize");
 
 // TODO(GG): check the value in config:
@@ -53,7 +53,7 @@ static_assert(kWorkWindowSize == 2 * checkpointWindowSize, "kWorkWindowSize != 2
 constexpr uint16_t maxLegalConcurrentAgreementsByPrimary = 1;
 
 // Maximum number of fast paths that are simultaneously in progress.
-constexpr uint16_t MaxConcurrentFastPaths = 2;
+constexpr uint16_t MaxConcurrentFastPaths = 75;
 static_assert(kWorkWindowSize > MaxConcurrentFastPaths + checkpointWindowSize,
               "Violation of kWorkWindowSize > MaxConcurrentFastPaths + checkpointWindowSize");
 static_assert(maxLegalConcurrentAgreementsByPrimary < MaxConcurrentFastPaths,
