@@ -515,6 +515,7 @@ void ReplicaImp::onMessage<PrePrepareMsg>(PrePrepareMsg *msg) {
         seqNumInfo.startSlowPath();
         metric_slow_path_count_.Get().Inc();
         sendPreparePartial(seqNumInfo);
+        ;
       }
     }
   }
@@ -1012,8 +1013,7 @@ void ReplicaImp::onMessage<PreparePartialMsg>(PreparePartialMsg *msg) {
 
     sendAckIfNeeded(msg, msgSender, msgSeqNum);
 
-    // LOG_DEBUG(GL, "Received relevant PreparePartialMsg." << KVLOG(msgSender));
-    LOG_INFO(CNSUS, "Received relevant PreparePartialMsg." << KVLOG(msgSender));
+    LOG_DEBUG(GL, "Received relevant PreparePartialMsg." << KVLOG(msgSender));
 
     controller->onMessage(msg);
 
