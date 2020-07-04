@@ -506,7 +506,7 @@ def main():
                         action="store_true",
                         help="Enable perfomance measurement by test client")
     parser.add_argument("-bft",
-                       default=["n=4,r=4,f=1,c=0,cl=1"],
+                       default=["n=3,r=3,f=1,c=0,cl=1"],
                        nargs="+",
                        help="List of BFT configuration sets to use. All " +
                        "parameters should be separated by ','. " +
@@ -557,16 +557,16 @@ def main():
         if n is None or r is None or f is None or c is None or cl is None:
             print("Unable to parse BFT parameters")
             return -1
-        if 3 * f + 2 * c + 1 != n:
-            g_logger.error("N = 3f + 2c + 1 is not satisfied")
+        if 2 * f + 1 != n:
+            g_logger.error("N = 2f + 1 is not satisfied")
             return -1
-        max_r = max(4, multiprocessing.cpu_count() * 3)
+        max_r = max(3, multiprocessing.cpu_count() * 3)
         if r > max_r or r > 63:
             g_logger.error("max number of running replicas on your machine is "
                            "" + str(max_r))
             return -1
-        if r < 2 * f + c + 1:
-            g_logger.error("r >= 2f + c + 1 is not satisfied")
+        if r < f + 1:
+            g_logger.error("r >= f + 1 is not satisfied")
             return -1
         if r > n:
             g_logger.error("r <= n is not satisfied")

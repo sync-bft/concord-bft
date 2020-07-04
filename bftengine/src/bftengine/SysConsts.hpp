@@ -50,7 +50,7 @@ static_assert(kWorkWindowSize == 2 * checkpointWindowSize, "kWorkWindowSize != 2
 
 // TODO(GG): check the value in config:
 // (maxConcurrentAgreementsByPrimary should be <= maxLegalConcurrentAgreementsByPrimary)
-constexpr uint16_t maxLegalConcurrentAgreementsByPrimary = 16;
+constexpr uint16_t maxLegalConcurrentAgreementsByPrimary = 1;
 
 // Maximum number of fast paths that are simultaneously in progress.
 constexpr uint16_t MaxConcurrentFastPaths = 75;

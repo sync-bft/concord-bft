@@ -53,7 +53,7 @@ void outputReplicaKeyfile(uint16_t numReplicas,
                           Cryptosystem* commitSys,
                           Cryptosystem* optSys) {
   std::ofstream output(outputFilename);
-  if ((3 * config.fVal + 2 * config.cVal + 1) != numReplicas)
+  if ((2 * config.fVal + 1) != numReplicas)
     throw std::runtime_error("F, C, and number of replicas do not agree for requested output.");
 
   output << "# Concord-BFT replica keyfile " << outputFilename << ".\n"
@@ -442,11 +442,11 @@ bool inputReplicaKeyfile(const std::string& filename, bftEngine::ReplicaConfig& 
   config.numRoReplicas = parse<std::uint16_t>("num_ro_replicas", valueAssignments, filename, identifierLines, true);
 
   // Note we validate the number of replicas using 32-bit integers in case
-  // (3 * f + 2 * c + 1) overflows a 16-bit integer.
-  uint32_t predictedNumReplicas = 3 * (uint32_t)config.fVal + 2 * (uint32_t)config.cVal + 1;
+  // (2 * f + 1) overflows a 16-bit integer.
+  uint32_t predictedNumReplicas = 2 * (uint32_t)config.fVal + 1;
   if (predictedNumReplicas != (uint32_t)config.numReplicas) {
     std::cout << filename << ": line " << identifierLines["num_replicas"]
-              << ": num_replicas must be equal to (3 * f_val + 2 * c_val + 1).\n";
+              << ": num_replicas must be equal to (2 * f_val + 1).\n";
     return false;
   }
   if (config.replicaId >= config.numReplicas + config.numRoReplicas) {

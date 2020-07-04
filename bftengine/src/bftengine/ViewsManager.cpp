@@ -49,7 +49,7 @@ ViewsManager::ViewsManager(const ReplicasInfo* const r,
     : replicasInfo(r), N(r->numberOfReplicas()), F(r->fVal()), C(r->cVal()), myId(r->myId()) {
   sigManager_ = sigmgr;
   Assert(preparedCertificateVerifier != nullptr);
-  Assert(N == (3 * F + 2 * C + 1));
+  Assert(N == (2 * F + 1));
 
   viewChangeSafetyLogic =
       new ViewChangeSafetyLogic(N, F, C, preparedCertificateVerifier, PrePrepareMsg::digestOfNullPrePrepareMsg());
@@ -194,7 +194,7 @@ ViewsManager* ViewsManager::createInsideView(const ReplicasInfo* const r,
   Assert(stableLowerBound >= 0);
   Assert(newViewMsg != nullptr);
   Assert(newViewMsg->newView() == view);
-  Assert(viewChangeMsgs.size() == (size_t)(2 * r->fVal() + 2 * r->cVal() + 1));
+  Assert(viewChangeMsgs.size() == (size_t)(1 * r->fVal() + 1));
   std::set<ReplicaId> replicasWithVCMsg;
   for (size_t i = 0; i < viewChangeMsgs.size(); i++) {
     Assert(viewChangeMsgs[i] != nullptr);

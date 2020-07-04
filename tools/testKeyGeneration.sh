@@ -22,10 +22,10 @@ echo "testKeyGeneration: Testing GenerateConcordKeys for several different" \
   " cluster sizes..."
 
 rm test_keyfile_*
-echo "Generating keys for a 4-replica cluster..."
-./GenerateConcordKeys -f 1 -n 4 -o test_keyfile_
+echo "Generating keys for a 3-replica cluster..."
+./GenerateConcordKeys -f 1 -n 3 -o test_keyfile_
 echo "Done. Testing the keys..."
-if ! ./TestGeneratedKeys -n 4 -o test_keyfile_; then
+if ! ./TestGeneratedKeys -n 3 -o test_keyfile_; then
   echo "testKeyGeneration: FAILURE"
   exit -1
 fi
