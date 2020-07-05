@@ -111,7 +111,7 @@ constexpr int timeToWaitBeforeStartingStateTransferInMainWindowMilli = 2000;  //
 ///////////////////////////////////////////////////////////////////////////////
 
 constexpr CommitPath ControllerWithSimpleHistory_debugInitialFirstPath =
-    CommitPath::OPTIMISTIC_FAST;  // CommitPath::SLOW;
+   CommitPath::SLOW;
 
 constexpr float ControllerWithSimpleHistory_debugDowngradeFactor = 0.85F;  //  0.0F;
 

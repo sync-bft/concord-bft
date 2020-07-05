@@ -71,8 +71,8 @@ PrePrepareMsg::PrePrepareMsg(
                   MsgCode::PrePrepare,
                   spanContext.size(),
                   (((size + sizeof(Header)) < maxMessageSize<PrePrepareMsg>())
-                       ? (size + sizeof(Header))
-                       : maxMessageSize<PrePrepareMsg>() - spanContext.size()))
+                   ? (size + sizeof(Header))
+                   : maxMessageSize<PrePrepareMsg>() - spanContext.size()))
 
 {
   bool ready = size == 0;  // if null, then message is ready
