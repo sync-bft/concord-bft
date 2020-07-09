@@ -1,0 +1,108 @@
+#pragma once
+
+#include "MessageBase.hpp"
+// #include "SignedShareMsgs.hpp"
+#include "Digest.hpp"
+#include "ReplicaConfig.hpp"
+
+namespace bftEngine{
+namespace impl{
+class ContentIterator;
+
+class ProposalMsg : public MessageBase{
+
+    protected:
+        template <typename MessageT>
+        friend size_t sizeOfHeader();
+    
+    #pragma pack(push, 1)
+        struct Header {
+            MessageBase::Header header;
+            ViewNum viewNum;
+            SeqNum seqNum;
+            uint16_t flags;
+            Digest digestOfRequestsSeqNum;
+
+            uint16_t numberOfRequests;
+            uint32_t endLocationOfLastRequest;
+
+            uint16_t numberOfSignatures;
+            uint32_t endLocationOfLastSignature;
+
+            // bits in flags
+            // bit 0: 0=null , 1=non-null
+            // bit 1: 0=not ready , 1=ready
+            // bits 2-15: zeros
+        };
+
+    #pragma pack(pop)
+      static_assert(sizeof(Header) == (6 + 8 + 8 + 2 + DIGEST_SIZE + 2 + 4 + 2 + 4), "Header is 68B");
+
+      static const size_t prePrepareHeaderPrefix =
+        sizeof(Header) - sizeof(Header::numberOfRequests) - sizeof(Header::endLocationOfLastRequest) 
+                       - sizeof(Header::numberOfSignatures) - sizeof(Header::endLocationOfLastSignature);
+
+    public:
+
+        uint32_t remainingSizeForRequests() const;
+
+        void addRequest(const char* pRequest, uint32_t requestSize);
+
+        void finishAddingRequests();
+
+        bool isNull() const { return ((b()->flags & 0x1) == 0); }
+
+        // getter methods
+
+        ViewNum viewNumber() const {return b()->viewNum;}
+
+        SeqNum seqNumber() const {return b()->seqNum;}
+        
+        uint16_t numberOfRequests() const { return b()->numberOfRequests; }
+
+        uint16_t numberOfSignatures() const {return b()->numberOfSignatures;}
+
+        Digest& digestOfRequestsSeqNum() const {return b()->digestOfRequestsSeqNum;}
+    
+    protected:
+
+        bool isReady() const { return (((b()->flags >> 1) & 0x1) == 1); }
+
+        bool checkRequests() const;
+
+        Header* b() const { return (Header*)msgBody_; }
+
+        uint32_t requestsPayloadShift() const;
+
+        uint32_t signaturesPayloadShift() const;
+
+        friend class ContentIterator;
+
+};
+
+class ContentIterator {
+ public:
+  ContentIterator(const ProposalMsg* const m);
+
+  void restart();
+
+  bool getCurrent(char*& pContent) const;
+
+  bool end() const;
+
+  void gotoNext();
+
+  bool getAndGoToNext(char*& pContent);
+
+ protected:
+  const ProposalMsg* const msg;
+  uint32_t currLoc;
+};
+
+template <>
+inline MsgSize maxMessageSize<ProposalMsg>() {
+  return ReplicaConfigSingleton::GetInstance().GetMaxExternalMessageSize() + MessageBase::SPAN_CONTEXT_MAX_SIZE;
+}
+
+}  //  namespace impl
+}  //  namespace bftEngine
