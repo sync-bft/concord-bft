@@ -768,7 +768,7 @@ void ReplicaImp::sendPreparePartial(SeqNumInfo &seqNumInfo) {
 void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
   Assert(currentViewIsActive());
 
-  if (seqNumInfo.getselfPreparePartialMsg() == nullptr && seqNumInfo.hasPrePrepareMsg() && !seqNumInfo.isPrepared()) {
+  if (seqNumInfo.getSelfVoteMsg() == nullptr && seqNumInfo.hasPrePrepareMsg() && !seqNumInfo.isPrepared()) {
     PrePrepareMsg *pp = seqNumInfo.getPrePrepareMsg();
 
     AssertNE(pp, nullptr);
