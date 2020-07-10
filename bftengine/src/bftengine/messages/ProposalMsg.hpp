@@ -23,11 +23,12 @@ class ProposalMsg : public MessageBase{
             uint16_t flags;
             Digest digestOfRequestsSeqNum;
 
-            uint16_t numberOfRequests;
-            uint32_t endLocationOfLastRequest;
-
             uint16_t numberOfSignatures;
             uint32_t endLocationOfLastSignature;
+
+            SeqNum seqNumDigestFill;  // used to calculate digest
+            uint16_t numberOfRequests;
+            uint32_t endLocationOfLastRequest;
 
             // bits in flags
             // bit 0: 0=null , 1=non-null
@@ -36,13 +37,18 @@ class ProposalMsg : public MessageBase{
         };
 
     #pragma pack(pop)
-      static_assert(sizeof(Header) == (6 + 8 + 8 + 2 + DIGEST_SIZE + 2 + 4 + 2 + 4), "Header is 68B");
+      static_assert(sizeof(Header) == (6 + 8 + 8 + 2 + DIGEST_SIZE + 8 + 2 + 4 + 2 + 4), "Header is 68B");
 
-      static const size_t prePrepareHeaderPrefix =
-        sizeof(Header) - sizeof(Header::numberOfRequests) - sizeof(Header::endLocationOfLastRequest) 
+      static const size_t proprosalHeaderPrefix =
+        sizeof(Header) - sizeof(Header::seqNumDigestFill) - sizeof(Header::numberOfRequests) - sizeof(Header::endLocationOfLastRequest) 
                        - sizeof(Header::numberOfSignatures) - sizeof(Header::endLocationOfLastSignature);
 
+      static const size_t proposalHeaderPrefixSig =
+        sizeof(Header) - sizeof(Header::numberOfSignatures) - sizeof(Header::endLocationOfLastSignature);
+    
     public:
+
+        void validate(const ReplicasInfo&) const override;
 
         uint32_t remainingSizeForRequests() const;
 
@@ -50,7 +56,19 @@ class ProposalMsg : public MessageBase{
 
         void finishAddingRequests();
 
+        uint32_t remainingSizeForSignatures() const;
+
+        void addSignature(const char* pSignature, uint32_t signatreSize);
+
+        void finishAddingSignatures();
+
         bool isNull() const { return ((b()->flags & 0x1) == 0); }
+
+        const std::string ProposalMsg::getClientCorrelationIdForMsg(int index) const;
+
+        const std::string getBatchCorrelationIdAsString() const;
+
+        const char* ProposalMsg::getCorrelationSigByIndex(int index) const;
 
         // getter methods
 
@@ -64,11 +82,19 @@ class ProposalMsg : public MessageBase{
 
         Digest& digestOfRequestsSeqNum() const {return b()->digestOfRequestsSeqNum;}
     
+        size_t signatureSize() const {return signatureSize;}
+    
     protected:
 
+        size_t signatureSize;
+
+        bool signaturesFilled = false;
+
+        static int16_t computeFlagsForProposalMsg(bool isNull, bool isReady);
+,
         bool isReady() const { return (((b()->flags >> 1) & 0x1) == 1); }
 
-        bool checkRequests() const;
+        // bool checkRequests() const;
 
         Header* b() const { return (Header*)msgBody_; }
 
@@ -82,7 +108,7 @@ class ProposalMsg : public MessageBase{
 
 class ContentIterator {
  public:
-  ContentIterator(const ProposalMsg* const m);
+  ContentIterator(const ProposalMsg* const m, bool isR);
 
   void restart();
 
@@ -97,6 +123,7 @@ class ContentIterator {
  protected:
   const ProposalMsg* const msg;
   uint32_t currLoc;
+  bool isRequest;
 };
 
 template <>
