@@ -102,6 +102,13 @@ class CollectorOfThresholdSignatures {
     return r.partialSigMsg;
   }
 
+  PART* getVoteMsgFromReplica(ReplicaId repId) const {
+    if (replicasInfo.count(repId == 0) return nullptr;
+
+    const RepInfo& r = replicasInfo.at(repId);
+    return r.partialSigMsg;
+  }
+
   FULL* getMsgWithValidCombinedSignature() const { return combinedValidSignatureMsg; }
 
   bool isComplete() const { return (combinedValidSignatureMsg != nullptr); }

@@ -88,6 +88,24 @@ class PreparePartialMsg : public SignedShareBase {
 };
 
 ///////////////////////////////////////////////////////////////////////////////
+// VoteMsg
+///////////////////////////////////////////////////////////////////////////////
+
+class VoteMsg : public SignedShareBase {
+  template <typename MessageT>
+  friend size_t sizeOfHeader();
+
+ public:
+  static VoteMsg* create(ViewNum v,
+                                   SeqNum s,
+                                   ReplicaId senderId,
+                                   Digest& ppDigest,
+                                   IThresholdSigner* thresholdSigner,
+                                   const std::string& spanContext = "");
+  void validate(const ReplicasInfo&) const override;
+};
+
+///////////////////////////////////////////////////////////////////////////////
 // PrepareFullMsg
 ///////////////////////////////////////////////////////////////////////////////
 
