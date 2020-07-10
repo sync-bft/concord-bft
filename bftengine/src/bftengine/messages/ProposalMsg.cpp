@@ -210,7 +210,7 @@ const char* ProposalMsg::getCorrelationSigByIndex(int index) const {
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// RequestsIterator
+// ContentsIterator
 ///////////////////////////////////////////////////////////////////////////////
 
 ContentIterator::ContentIterator(const ProposalMsg* const m, bool isR) : isRequest{isR}, msg{m}, currLoc{isRequest?m->requestsPayloadShift()
