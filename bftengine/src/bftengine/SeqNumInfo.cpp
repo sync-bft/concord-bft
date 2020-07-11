@@ -220,6 +220,10 @@ PreparePartialMsg* SeqNumInfo::getSelfPreparePartialMsg() const {
   PreparePartialMsg* p = prepareSigCollector->getPartialMsgFromReplica(replica->getReplicasInfo().myId());
   return p;
 }
+VoteMsg* SeqNumInfo::getSelfVoteMsg() const {
+  VoteMsg* v = prepareSigCollector->getVoteMsgFromReplica(replica->getReplicasInfo().myId());
+  return v;
+}
 
 PrepareFullMsg* SeqNumInfo::getValidPrepareFullMsg() const {
   return prepareSigCollector->getMsgWithValidCombinedSignature();

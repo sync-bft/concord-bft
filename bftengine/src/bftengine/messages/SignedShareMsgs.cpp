@@ -105,6 +105,27 @@ void PreparePartialMsg::validate(const ReplicasInfo& repInfo) const {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// VoteMsg
+///////////////////////////////////////////////////////////////////////////////
+
+VoteMsg* VoteMsg::create(ViewNum v,
+                         SeqNum s,
+                         ReplicaId senderId,
+                         Digest& ppDigest,
+                         IThresholdSigner* thresholdSigner,
+                         const std::string& spanContext) {
+  return (VoteMsg*)SignedShareBase::create(
+      MsgCode::Vote, v, s, senderId, ppDigest, thresholdSigner, spanContext);
+}
+
+void VoteMsg::validate(const ReplicasInfo& repInfo) const {
+  SignedShareBase::_validate(repInfo, MsgCode::Vote);
+
+  if (repInfo.myId() != repInfo.primaryOfView(viewNumber()))
+    throw std::runtime_error(__PRETTY_FUNCTION__ + std::string(": the primary is the collector of VoteMsg"));
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // PrepareFullMsg
 ///////////////////////////////////////////////////////////////////////////////
 

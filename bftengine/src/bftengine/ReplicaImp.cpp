@@ -515,6 +515,7 @@ void ReplicaImp::onMessage<PrePrepareMsg>(PrePrepareMsg *msg) {
         seqNumInfo.startSlowPath();
         metric_slow_path_count_.Get().Inc();
         sendPreparePartial(seqNumInfo);
+        sendVote(seqNumInfo);
       }
     }
   }
@@ -761,6 +762,33 @@ void ReplicaImp::sendPreparePartial(SeqNumInfo &seqNumInfo) {
     seqNumInfo.addSelfMsg(p);
 
     if (!isCurrentPrimary()) sendRetransmittableMsgToReplica(p, currentPrimary(), pp->seqNumber());
+  }
+}
+
+void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
+  Assert(currentViewIsActive());
+
+  if (seqNumInfo.getSelfVoteMsg() == nullptr && seqNumInfo.hasPrePrepareMsg() && !seqNumInfo.isPrepared()) {
+    PrePrepareMsg *pp = seqNumInfo.getPrePrepareMsg();
+
+    AssertNE(pp, nullptr);
+
+    LOG_DEBUG(GL, "Sending Vote." << KVLOG(pp->seqNumber()));
+
+    const auto &span_context = pp->spanContext<std::remove_pointer<decltype(pp)>::type>();
+    VoteMsg *v = Vote::create(curView,
+                              pp->seqNumber(),
+                              config_.replicaId,
+                              pp->digestOfRequests(),
+                              config_.thresholdSignerForSlowPathCommit,
+                              span_context);
+    seqNumInfo.addSelfMsg(p);
+
+    if (!isCurrentPrimary()) {
+      for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
+        sendRetransmittableMsgToReplica(v, x, primaryLastUsedSeqNum);
+      }
+    }
   }
 }
 
@@ -1578,6 +1606,16 @@ void ReplicaImp::onRetransmissionsProcessingResults(SeqNum relatedLastStableSeqN
         LOG_DEBUG(GL,
                   "Replica " << myId << " retransmits to replica " << s.replicaId
                              << " PreparePartialMsg with seqNumber " << s.msgSeqNum);
+      } break;
+      
+      case MsgCode::Vote: {
+        SeqNumInfo &seqNumInfo = mainLog->get(s.msgSeqNum);
+        VoteMsg *msgToSend = seqNumInfo.getVoteMsg();
+        AssertNE(msgToSend, nullptr);
+        sendRetransmittableMsgToReplica(msgToSend, s.replicaId, s.msgSeqNum);
+        LOG_DEBUG(GL,
+                  "Replica " << myId << " retransmits to replica " << s.replicaId
+                             << " VoteMsg with seqNumber " << s.msgSeqNum);
       } break;
       case MsgCode::PrepareFull: {
         SeqNumInfo &seqNumInfo = mainLog->get(s.msgSeqNum);
