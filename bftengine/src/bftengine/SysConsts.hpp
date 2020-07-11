@@ -50,7 +50,7 @@ static_assert(kWorkWindowSize == 2 * checkpointWindowSize, "kWorkWindowSize != 2
 
 // TODO(GG): check the value in config:
 // (maxConcurrentAgreementsByPrimary should be <= maxLegalConcurrentAgreementsByPrimary)
-constexpr uint16_t maxLegalConcurrentAgreementsByPrimary = 16;
+constexpr uint16_t maxLegalConcurrentAgreementsByPrimary = 1;
 
 // Maximum number of fast paths that are simultaneously in progress.
 constexpr uint16_t MaxConcurrentFastPaths = 75;
@@ -111,7 +111,7 @@ constexpr int timeToWaitBeforeStartingStateTransferInMainWindowMilli = 2000;  //
 ///////////////////////////////////////////////////////////////////////////////
 
 constexpr CommitPath ControllerWithSimpleHistory_debugInitialFirstPath =
-    CommitPath::OPTIMISTIC_FAST;  // CommitPath::SLOW;
+   CommitPath::SLOW;
 
 constexpr float ControllerWithSimpleHistory_debugDowngradeFactor = 0.85F;  //  0.0F;
 

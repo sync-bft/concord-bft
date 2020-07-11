@@ -20,7 +20,7 @@ namespace impl {
 
 SimpleController::SimpleController(size_t degradationThreshold, int C)
     : dThreshold(degradationThreshold), onlyOptimisticFast(C == 0) {
-  currentFirstPath = CommitPath::OPTIMISTIC_FAST;
+  currentFirstPath = CommitPath::SLOW;
   numberOfSlowCommitPaths = 0;
 }
 
@@ -42,7 +42,7 @@ void SimpleController::onStartingSlowCommit(SeqNum n) {
       currentFirstPath = CommitPath::SLOW;
   } else {
     if (currentFirstPath == CommitPath::OPTIMISTIC_FAST && numberOfSlowCommitPaths == dThreshold)
-      currentFirstPath = CommitPath::FAST_WITH_THRESHOLD;
+      currentFirstPath = CommitPath::SLOW;
     else if (currentFirstPath == CommitPath::FAST_WITH_THRESHOLD && numberOfSlowCommitPaths == (dThreshold * 2))
       currentFirstPath = CommitPath::SLOW;
   }

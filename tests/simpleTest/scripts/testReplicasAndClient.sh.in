@@ -8,7 +8,7 @@ echo "Generating new keys..."
 
 rm -f private_replica_*
 
-$toolsdir/GenerateConcordKeys -n 4 -f 1 -o private_replica_
+$toolsdir/GenerateConcordKeys -n 3 -f 1 -o private_replica_
 
 if ! [ -x "$(command -v parallel)" ]; then
   echo 'Error: parallel is not installed.' >&2
@@ -18,8 +18,7 @@ fi
 parallel --halt now,fail=1 -j0 ::: \
     "$scriptdir/../server 0" \
     "$scriptdir/../server 1" \
-    "$scriptdir/../server 2" \
-    "$scriptdir/../server 3" &
+    "$scriptdir/../server 2" &
 
 repl_pid=$!
 

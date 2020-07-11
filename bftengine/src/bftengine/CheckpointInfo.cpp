@@ -63,12 +63,12 @@ void CheckpointInfo::init(CheckpointInfo& i, void* d) {
   const uint16_t myId = info.myId();
 
   const uint16_t numOfReps = info.numberOfReplicas();
-  const uint16_t C = info.cVal();
+  // const uint16_t C = info.cVal();
   const uint16_t F = info.fVal();
-  Assert(numOfReps == 3 * F + 2 * C + 1);
+  Assert(numOfReps == 2 * F + 1);
 
   i.checkpointCertificate =
-      new MsgsCertificate<CheckpointMsg, true, true, true, CheckpointMsgCmp>(numOfReps, F, 2 * F + C + 1, myId);
+      new MsgsCertificate<CheckpointMsg, true, true, true, CheckpointMsgCmp>(numOfReps, F, F + 1, myId);
 }
 
 void CheckpointInfo::free(CheckpointInfo& i) { i.resetAndFree(); }

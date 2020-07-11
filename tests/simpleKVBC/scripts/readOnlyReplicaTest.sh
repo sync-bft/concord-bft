@@ -10,12 +10,11 @@ trap 'cleanup' SIGINT
 
 cleanup
 
-../../../tools/GenerateConcordKeys -f 1 -n 4 -r 1 -o ro_config_
+../../../tools/GenerateConcordKeys -f 1 -n 3 -r 1 -o ro_config_
 
 ../TesterReplica/skvbc_replica -k ro_config_ -i 0 -p &
 ../TesterReplica/skvbc_replica -k ro_config_ -i 1 -p &
 ../TesterReplica/skvbc_replica -k ro_config_ -i 2 -p &
-../TesterReplica/skvbc_replica -k ro_config_ -i 3 -p &
 
 echo "Sleeping for 5 seconds"
 sleep 5
