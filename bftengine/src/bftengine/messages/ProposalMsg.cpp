@@ -69,7 +69,7 @@ ProposalMsg::ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const std::strin
 }
 
 int32_t ProposalMsg::remainingSizeForRequests() const {
-  Asset(signaturesFilled);
+  Assert(signaturesFilled);
   Assert(!isReady());
   Assert(!isNull());
   Assert(b()->endLocationOfLastRequest >= requestSPayloadShift());
@@ -78,7 +78,7 @@ int32_t ProposalMsg::remainingSizeForRequests() const {
 }
 
 void ProposalMsg::addRequest(const char* pRequest, uint32_t requestSize) {
-  Asset(signaturesFilled);
+  Assert(signaturesFilled);
   Assert(getRequestSizeTemp(pRequest) == requestSize);
   Assert(!isNull());
   Assert(!isReady());
@@ -93,7 +93,7 @@ void ProposalMsg::addRequest(const char* pRequest, uint32_t requestSize) {
 }
 
 void ProposalMsg::finishAddingRequests() {
-  Asset(signaturesFilled);
+  Assert(signaturesFilled);
   Assert(!isNull());
   Assert(!isReady());
   Assert(b()->numberOfRequests > 0);
@@ -129,7 +129,7 @@ int32_t ProposalMsg::remainingSizeForSignatures() const {
 }
 
 void ProposalMsg::addSignature(const char* pSignature, uint32_t size) {
-  Asset(!signaturesFilled);
+  Assert(!signaturesFilled);
   // Assert(getRequestSizeTemp(pRequest) == signatureSize);
   Assert(!isNull());
   Assert(!isReady());
@@ -146,7 +146,7 @@ void ProposalMsg::addSignature(const char* pSignature, uint32_t size) {
 }
 
 void ProposalMsg::finishAddingSignatures() {
-  Asset(!signaturesFilled);
+  Assert(!signaturesFilled);
   Assert(!isNull());
   Assert(!isReady());
   Assert(b()->numberOfSignatures > 0);
