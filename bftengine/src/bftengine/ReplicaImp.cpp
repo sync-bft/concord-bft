@@ -332,9 +332,9 @@ void ReplicaImp::tryToSendPrePrepareMsg(bool batchingLogic) {
   // because maxConcurrentAgreementsByPrimary <  MaxConcurrentFastPaths
   AssertLE((primaryLastUsedSeqNum + 1), lastExecutedSeqNum + MaxConcurrentFastPaths);
 
-  CommitPath firstPath = CommitPath::SLOW;// force slow by setting it to 2
+  CommitPath firstPath = controller->getCurrentFirstPath();
 
-  AssertOR((config_.cVal != 0), (firstPath != CommitPath::FAST_WITH_THRESHOLD));// this is true since first path is slow
+  AssertOR((config_.cVal != 0), (firstPath != CommitPath::FAST_WITH_THRESHOLD));
 
   controller->onSendingPrePrepare((primaryLastUsedSeqNum + 1), firstPath);
 
@@ -406,6 +406,157 @@ void ReplicaImp::tryToSendPrePrepareMsg(bool batchingLogic) {
   }
 }
 
+void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
+  Assert(isCurrentPrimary());
+  Assert(currentViewIsActive());
+
+  if (primaryLastUsedSeqNum + 1 > lastStableSeqNum + kWorkWindowSize) {
+    LOG_INFO(GL,
+             "Will not send PrePrepare since next sequence number ["
+                 << primaryLastUsedSeqNum + 1 << "] exceeds window threshold [" << lastStableSeqNum + kWorkWindowSize
+                 << "]");
+    return;
+  }
+
+  if (primaryLastUsedSeqNum > lastExecutedSeqNum + config_.concurrencyLevel) { //  config_.concurrencyLevel
+    LOG_INFO(GL,
+             "Will not send PrePrepare since next sequence number ["
+                 << primaryLastUsedSeqNum + 1 << "] exceeds the next executed sequence
+                 number [" << lastExecutedSeqNum << "]");
+    return;  // TODO(GG): should also be checked by the non-primary replicas
+  }
+
+   if (requestsQueueOfPrimary.empty()) return;
+
+  ClientRequestMsg *first = requestQueueOfPrimary.front();
+  // TODO(QY): change queue to iterateable structure
+  while (first != nullptr &&
+         !clientsManager->noPendingAndRequestCanBecomePending(first->clientProxyId(), first->requestSeqNum())) {
+    SCOPED_MDC_CID(first->getCid());
+    primaryCombinedReqSize -= first->size();
+    delete first;
+    requestsQueueOfPrimary.pop();
+    first = (!requestsQueueOfPrimary.empty() ? requestsQueueOfPrimary.front() : nullptr);
+  }
+
+  if (requestsQueueOfPrimary.size() == 0) return;
+  
+  unit64_t concurrentDiff = ((primaryLastUsedSeqNum + 1) - lastExecutedSeqNum);
+
+  unit64_t minBatchSize = 1;
+
+  // update maxNumberOfPendingRequestsInRecentHistory (if needed)
+  if (requestsInQueue > maxNumberOfPendingRequestsInRecentHistory)
+    maxNumberOfPendingRequestsInRecentHistory = requestsInQueue;
+
+  // TODO(GG): the batching logic should be part of the configuration - TBD.
+  if (batchingLogic && (concurrentDiff >= 2)) {
+    minBatchSize = concurrentDiff * batchingFactor;
+
+    const size_t maxReasonableMinBatchSize = 350;  // TODO(GG): use param from configuration
+
+    if (minBatchSize > maxReasonableMinBatchSize) minBatchSize = maxReasonableMinBatchSize;
+  }
+
+  if (requestsInQueue < minBatchSize) {
+    LOG_INFO(GL,
+             "Not enough client requests to fill the batch threshold size. " << KVLOG(minBatchSize, requestsInQueue));
+    metric_not_enough_client_requests_event_.Get().Inc();
+    return;
+  }
+
+  // update batchingFactor
+  if (((primaryLastUsedSeqNum + 1) % kWorkWindowSize) ==
+      0)  // TODO(GG): do we want to update batchingFactor when the view is changed
+  {
+    const size_t aa = 4;  // TODO(GG): read from configuration
+    batchingFactor = (maxNumberOfPendingRequestsInRecentHistory / aa);
+    if (batchingFactor < 1) batchingFactor = 1;
+    maxNumberOfPendingRequestsInRecentHistory = 0;
+    LOG_DEBUG(GL, "PrePrepare batching factor updated. " << KVLOG(batchingFactor));
+  }
+
+  // because maxConcurrentAgreementsByPrimary <  MaxConcurrentFastPaths
+  AssertLE((primaryLastUsedSeqNum + 1), lastExecutedSeqNum + MaxConcurrentFastPaths);
+
+  CommitPath firstPath = CommitPath::SLOW;// force slow by setting it to 2
+
+  AssertOR((config_.cVal != 0), (firstPath != CommitPath::FAST_WITH_THRESHOLD));// this is true since first path is slow
+
+  //controller->onSendingPrePrepare((primaryLastUsedSeqNum + 1), firstPath); // TODO(QF): write the proposal method in controller
+
+  ClientRequestMsg *nextRequest = (!requestsQueueOfPrimary.empty() ? requestsQueueOfPrimary.front() : nullptr);
+  const auto &span_context = nextRequest ? nextRequest->spanContext<ClientRequestMsg>() : std::string{};
+
+  // TODO(QF): calculated the total size of sig and updated primaryCombinedReqSize
+
+  ProposalMsg *proposal = new ProposalMsg(
+      config_.replicaId, curView, (primaryLastUsedSeqNum + 1), span_context, primaryCombinedReqSize);
+  
+  // TODO(QF): added the sigs
+
+  uint16_t initialStorageForRequests = proposal->remainingSizeForRequests();
+  while (nextRequest != nullptr) {
+    if (nextRequest->size() <= proposal->remainingSizeForRequests()) {
+      SCOPED_MDC_CID(nextRequest->getCid());
+      if (clientsManager->noPendingAndRequestCanBecomePending(nextRequest->clientProxyId(),
+                                                              nextRequest->requestSeqNum())) {
+        proposal->addRequest(nextRequest->body(), nextRequest->size());
+        clientsManager->addPendingRequest(nextRequest->clientProxyId(), nextRequest->requestSeqNum());
+      }
+      primaryCombinedReqSize -= nextRequest->size();
+    } else if (nextRequest->size() > initialStorageForRequests) {
+      // The message is too big
+      LOG_ERROR(GL,
+                "Request was dropped because it exceeds maximum allowed size. "
+                    << KVLOG(nextRequest->senderId(), nextRequest->size(), initialStorageForRequests));
+    }
+    delete nextRequest;
+    requestsQueueOfPrimary.pop();
+    nextRequest = (!requestsQueueOfPrimary.empty() ? requestsQueueOfPrimary.front() : nullptr);
+  }
+
+  if (proposal->numberOfRequests() == 0) {
+    LOG_WARN(GL, "No client requests added to PrePrepare batch. Nothing to send.");
+    return;
+  }
+
+  proposal->finishAddingRequests();
+
+
+  primaryLastUsedSeqNum++;
+  SCOPED_MDC_SEQ_NUM(std::to_string(primaryLastUsedSeqNum));
+  SCOPED_MDC_PATH(CommitPathToMDCString(firstPath));
+  {
+    LOG_INFO(CNSUS,
+             "Sending PrePrepare with the following payload of the following correlation ids ["
+                 << proposal->getBatchCorrelationIdAsString() << "]");
+  }
+  SeqNumInfo &seqNumInfo = mainLog->get(primaryLastUsedSeqNum);
+  seqNumInfo.addSelfMsg(pp);
+
+  if (ps_) {
+    ps_->beginWriteTran();
+    ps_->setPrimaryLastUsedSeqNum(primaryLastUsedSeqNum);
+    ps_->setPrePrepareMsgInSeqNumWindow(primaryLastUsedSeqNum, pp);
+    if (firstPath == CommitPath::SLOW) ps_->setSlowStartedInSeqNumWindow(primaryLastUsedSeqNum, true);
+    ps_->endWriteTran();
+  }
+
+  for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
+    sendRetransmittableMsgToReplica(proposal, x, primaryLastUsedSeqNum);
+  }
+
+  if (firstPath == CommitPath::SLOW) {
+    seqNumInfo.startSlowPath();
+    metric_slow_path_count_.Get().Inc();
+    sendPreparePartial(seqNumInfo);
+  } else {
+    sendPartialProof(seqNumInfo);
+  }
+}
+
+}
 template <typename T>
 bool ReplicaImp::relevantMsgForActiveView(const T *msg) {
   const SeqNum msgSeqNum = msg->seqNumber();
@@ -515,6 +666,7 @@ void ReplicaImp::onMessage<PrePrepareMsg>(PrePrepareMsg *msg) {
         seqNumInfo.startSlowPath();
         metric_slow_path_count_.Get().Inc();
         sendPreparePartial(seqNumInfo);
+        ;
       }
     }
   }
