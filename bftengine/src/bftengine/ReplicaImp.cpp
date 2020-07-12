@@ -1071,6 +1071,48 @@ void ReplicaImp::onMessage<PreparePartialMsg>(PreparePartialMsg *msg) {
   }
 }
 
+void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalMsg
+  //metric_received_prepare_partials_.Get().Inc(); Do we have other metrices?
+  const SeqNum msgSeqNum = msg->seqNumber();
+  const ReplicaId msgSender = msg->senderId();
+  const ViewNum msgViewNum = msg->viewNum();
+
+  //SCOPED_MDC_PRIMARY(std::to_string(currentPrimary()));
+ // SCOPED_MDC_SEQ_NUM(std::to_string(msgSeqNum));
+  //SCOPED_MDC_PATH(CommitPathToMDCString(CommitPath::SLOW)); Do we care aboutr scope?
+
+  bool msgAdded = false;
+
+ // auto span = concordUtils::startChildSpanFromContext(msg->spanContext<std::remove_pointer<decltype(msg)>::type>(),
+                                                      "bft_handle_prepare_partial_msg");//can I change this?
+
+  if (relevantMsgForActiveView(msg)) {
+
+    sendAckIfNeeded(msg, msgSender, msgSeqNum);
+
+    LOG_DEBUG(GL, "Received relevant VoteMsg." << KVLOG(msgSender));
+
+    //controller->onMessage(msg);
+
+    SeqNumInfo &seqNumInfo = mainLog->get(msgSeqNum);
+
+    VoteMsg *vote = SeqNumInfo.getVoteMsg()
+
+    if (vote != nullptr) {
+      sendVote(seqNumInfo)
+    } else {
+      msgAdded = seqNumInfo.addMsg(msg);
+    }
+  }
+
+  if (!msgAdded) {
+    LOG_DEBUG(GL,
+              "Node " << config_.replicaId << " ignored the Proposal from node " << msgSender << " (seqNumber "
+                      << msgSeqNum << ")");
+    delete msg;
+  }
+}
+
 template <>
 void ReplicaImp::onMessage<CommitPartialMsg>(CommitPartialMsg *msg) {
   metric_received_commit_partials_.Get().Inc();
