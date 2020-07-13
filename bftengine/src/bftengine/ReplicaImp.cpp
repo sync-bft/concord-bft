@@ -1077,6 +1077,10 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   const ReplicaId msgSender = msg->senderId();
   const ViewNum msgViewNum = msg->viewNum();
 
+  for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
+    sendRetransmittableMsgToReplica(v, x, primaryLastUsedSeqNum);
+  }
+
   //SCOPED_MDC_PRIMARY(std::to_string(currentPrimary()));
  // SCOPED_MDC_SEQ_NUM(std::to_string(msgSeqNum));
   //SCOPED_MDC_PATH(CommitPathToMDCString(CommitPath::SLOW)); Do we care aboutr scope?
@@ -1084,7 +1088,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   bool msgAdded = false;
 
  // auto span = concordUtils::startChildSpanFromContext(msg->spanContext<std::remove_pointer<decltype(msg)>::type>(),
-                                                      "bft_handle_prepare_partial_msg");//can I change this?
+                                                     // "bft_handle_prepare_partial_msg");//can I change this?
 
   if (relevantMsgForActiveView(msg)) {
 
@@ -1103,7 +1107,14 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     } else {
       msgAdded = seqNumInfo.addMsg(msg);
     }
+/*
+    if (ps_) {
+      ps_->beginWriteTran();
+      ps_->setVoteMsgInSeqNumWindow(seqNumber, vote);
+      ps_->endWriteTran();
+    }
   }
+  */
 
   if (!msgAdded) {
     LOG_DEBUG(GL,
