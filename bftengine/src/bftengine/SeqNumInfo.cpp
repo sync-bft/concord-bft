@@ -20,6 +20,7 @@ SeqNumInfo::SeqNumInfo()
     : replica(nullptr),
       prePrepareMsg(nullptr),
       prepareSigCollector(nullptr),
+      voteSigCollector(nullptr),
       commitMsgsCollector(nullptr),
       partialProofsSet(nullptr),
       primary(false),
@@ -33,6 +34,7 @@ SeqNumInfo::~SeqNumInfo() {
   resetAndFree();
 
   delete prepareSigCollector;
+  delete voteSigCollector;
   delete commitMsgsCollector;
   delete partialProofsSet;
 }
@@ -42,6 +44,7 @@ void SeqNumInfo::resetAndFree() {
   prePrepareMsg = nullptr;
 
   prepareSigCollector->resetAndFree();
+  voteSigCollector->resetAndFree();
   commitMsgsCollector->resetAndFree();
   partialProofsSet->resetAndFree();
 
@@ -221,7 +224,7 @@ PreparePartialMsg* SeqNumInfo::getSelfPreparePartialMsg() const {
   return p;
 }
 VoteMsg* SeqNumInfo::getSelfVoteMsg() const {
-  VoteMsg* v = prepareSigCollector->getVoteMsgFromReplica(replica->getReplicasInfo().myId());
+  VoteMsg* v = voteSigCollector->getVoteMsgFromReplica(replica->getReplicasInfo().myId());
   return v;
 }
 
@@ -411,7 +414,7 @@ void SeqNumInfo::init(SeqNumInfo& i, void* d) {
   i.replica = r;
 
   i.prepareSigCollector =
-      new CollectorOfThresholdSignatures<PreparePartialMsg, PrepareFullMsg, ExFuncForPrepareCollector>(context);
+      new CollectorOfThresholdSignatures<PreparePartialMsg, VoteMsg, PrepareFullMsg, ExFuncForPrepareCollector>(context);
   i.commitMsgsCollector =
       new CollectorOfThresholdSignatures<CommitPartialMsg, CommitFullMsg, ExFuncForCommitCollector>(context);
   i.partialProofsSet = new PartialProofsSet((InternalReplicaApi*)r);

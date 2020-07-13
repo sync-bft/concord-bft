@@ -773,7 +773,7 @@ void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
 
     AssertNE(pp, nullptr);
 
-    LOG_DEBUG(GL, "Sending Vote." << KVLOG(pp->seqNumber()));
+    LOG_INFO(GL, "Sending Vote." << KVLOG(pp->seqNumber()));
 
     const auto &span_context = pp->spanContext<std::remove_pointer<decltype(pp)>::type>();
     VoteMsg *v = Vote::create(curView,

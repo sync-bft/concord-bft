@@ -146,6 +146,24 @@ class CommitPartialMsg : public SignedShareBase {
 };
 
 ///////////////////////////////////////////////////////////////////////////////
+// CommitVoteMsg
+///////////////////////////////////////////////////////////////////////////////
+
+class CommitVoteMsg : public SignedShareBase {
+  template <typename MessageT>
+  friend size_t sizeOfHeader();
+
+ public:
+  static CommitVoteMsg* create(ViewNum v,
+                                  SeqNum s,
+                                  ReplicaId senderId,
+                                  Digest& ppDoubleDigest,
+                                  IThresholdSigner* thresholdSigner,
+                                  const std::string& spanContext = "");
+  void validate(const ReplicasInfo&) const override;
+};
+
+///////////////////////////////////////////////////////////////////////////////
 // CommitFullMsg
 ///////////////////////////////////////////////////////////////////////////////
 
