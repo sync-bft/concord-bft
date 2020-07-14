@@ -118,6 +118,8 @@ class CollectorOfThresholdSignatures {
     return r.partialSigMsg;
   }
 
+  bool hasVoteMsgFromReplica(ReplicaId repId) const { return (replicasInfo.count(repId) > 0); }
+
   PART* getVoteMsgFromReplica(ReplicaId repId) const {
     if (replicasInfo.count(repId) == 0) return nullptr;
 
@@ -513,6 +515,7 @@ class CollectorOfThresholdSignatures {
     for (auto&& m : replicasInfo) {
       RepInfo& repInfo = m.second;
       delete repInfo.partialSigMsg;
+      delete repInfo.voteSigMsg;
     }
     replicasInfo.clear();
 

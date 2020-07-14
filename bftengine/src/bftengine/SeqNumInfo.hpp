@@ -51,6 +51,9 @@ class SeqNumInfo {
   bool addMsg(CommitPartialMsg* m);
   bool addSelfCommitPartialMsgAndDigest(CommitPartialMsg* m, Digest& commitDigest, bool directAdd = false);
 
+  bool addMsg(CommitVoteMsg* m);
+  bool addSelfCommitVoteMsgAndDigest(CommitVoteMsg* m, Digest& commitDigest, bool directAdd = false);
+
   bool addMsg(CommitFullMsg* m, bool directAdd = false);
 
   void forceComplete();
@@ -62,6 +65,7 @@ class SeqNumInfo {
   PrepareFullMsg* getValidPrepareFullMsg() const;
 
   VoteMsg* getSelfVoteMsg() const;
+  CommitVoteMsg* getSelfCommitVoteMsg() const;
 
   CommitPartialMsg* getSelfCommitPartialMsg() const;
   CommitFullMsg* getValidCommitFullMsg() const;
@@ -69,10 +73,14 @@ class SeqNumInfo {
   bool hasPrePrepareMsg() const;
 
   bool isPrepared() const;
+  bool hasVoted() const;
   bool isCommitted__gg() const;  // TODO(GG): beware this name may mislead (not sure...). rename ??
+  bool hasCommitVoted() const;
 
   bool preparedOrHasPreparePartialFromReplica(ReplicaId repId) const;
+  bool votedOrHasVoteFromReplica(ReplicaId repId) const;
   bool committedOrHasCommitPartialFromReplica(ReplicaId repId) const;
+  bool commitVotedOrHasCommitVoteFromReplica(ReplicaId repId) const;
 
   Time getTimeOfFisrtRelevantInfoFromPrimary() const;
   Time getTimeOfLastInfoRequest() const;
@@ -145,12 +153,12 @@ class SeqNumInfo {
   class ExFuncForVoteCollector {
    public:
     // external messages
-    static VoteMsg* createCombinedSignatureMsg(void* context,
-                                                      SeqNum seqNumber,
-                                                      ViewNum viewNumber,
-                                                      const char* const combinedSig,
-                                                      uint16_t combinedSigLen,
-                                                      const std::string& span_context);
+    static CommitVoteMsg* createCombinedSignatureMsg(void* context,
+                                                    SeqNum seqNumber,
+                                                    ViewNum viewNumber,
+                                                    const char* const combinedSig,
+                                                    uint16_t combinedSigLen,
+                                                    const std::string& span_context);
     // internal messages
     static InternalMessage createInterCombinedSigFailed(SeqNum seqNumber,
                                                         ViewNum viewNumber,
@@ -201,8 +209,8 @@ class SeqNumInfo {
 
   PrePrepareMsg* prePrepareMsg;
 
-  CollectorOfThresholdSignatures<VoteMsg, CommitVoteMsg, ExFuncForVoteCollector> voteSigCollector; 
   CollectorOfThresholdSignatures<PreparePartialMsg, PrepareFullMsg, ExFuncForPrepareCollector>* prepareSigCollector;
+  CollectorOfThresholdSignatures<VoteMsg, CommitVoteMsg, ExFuncForVoteCollector> voteSigCollector; 
   CollectorOfThresholdSignatures<CommitPartialMsg, CommitFullMsg, ExFuncForCommitCollector>* commitMsgsCollector;
 
   PartialProofsSet* partialProofsSet;  // TODO(GG): replace with an instance of CollectorOfThresholdSignatures
