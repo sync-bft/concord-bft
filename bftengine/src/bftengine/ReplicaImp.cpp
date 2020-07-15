@@ -91,6 +91,9 @@ void ReplicaImp::registerMsgHandlers() {
   msgHandlers_->registerMsgHandler(MsgCode::PreparePartial,
                                    bind(&ReplicaImp::messageHandler<PreparePartialMsg>, this, _1));
 
+  msgHandlers_->registerMsgHandler(MsgCode::Vote,
+                                   bind(&ReplicaImp::messageHandler<VoteMsg>, this, _1));
+                                                               
   msgHandlers_->registerMsgHandler(MsgCode::PrepareFull, bind(&ReplicaImp::messageHandler<PrepareFullMsg>, this, _1));
 
   msgHandlers_->registerMsgHandler(MsgCode::ReqMissingData,
@@ -514,6 +517,7 @@ void ReplicaImp::onMessage<PrePrepareMsg>(PrePrepareMsg *msg) {
       } else {
         seqNumInfo.startSlowPath();
         metric_slow_path_count_.Get().Inc();
+    
         sendPreparePartial(seqNumInfo);
         sendVote(seqNumInfo);
       }
@@ -521,6 +525,11 @@ void ReplicaImp::onMessage<PrePrepareMsg>(PrePrepareMsg *msg) {
   }
 
   if (!msgAdded) delete msg;
+}
+
+template<>
+void ReplicaImp::onMessage<VoteMsg>(VoteMsg *msg) {
+  LOG_INFO(CNSUS, "Received VoteMsg");
 }
 
 void ReplicaImp::tryToStartSlowPaths() {
@@ -768,7 +777,7 @@ void ReplicaImp::sendPreparePartial(SeqNumInfo &seqNumInfo) {
 void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
   Assert(currentViewIsActive());
 
-  if (seqNumInfo.getSelfVoteMsg() == nullptr && seqNumInfo.hasPrePrepareMsg() && !seqNumInfo.isPrepared()) {
+  // if (seqNumInfo.getSelfVoteMsg() == nullptr && seqNumInfo.hasPrePrepareMsg() && !seqNumInfo.isPrepared()) {
     PrePrepareMsg *pp = seqNumInfo.getPrePrepareMsg();
 
     AssertNE(pp, nullptr);
@@ -776,20 +785,21 @@ void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
     LOG_INFO(GL, "Sending Vote." << KVLOG(pp->seqNumber()));
 
     const auto &span_context = pp->spanContext<std::remove_pointer<decltype(pp)>::type>();
-    VoteMsg *v = Vote::create(curView,
+    VoteMsg *v = VoteMsg::create(curView,
                               pp->seqNumber(),
                               config_.replicaId,
                               pp->digestOfRequests(),
                               config_.thresholdSignerForSlowPathCommit,
                               span_context);
-    seqNumInfo.addSelfMsg(p);
+    // seqNumInfo.addSelfMsg(p);
 
     if (!isCurrentPrimary()) {
       for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
         sendRetransmittableMsgToReplica(v, x, primaryLastUsedSeqNum);
+        LOG_INFO(CNSUS, "Vote sent to replica ");
       }
     }
-  }
+  // }
 }
 
 void ReplicaImp::sendCommitPartial(const SeqNum s) {
@@ -1071,7 +1081,7 @@ void ReplicaImp::onMessage<PreparePartialMsg>(PreparePartialMsg *msg) {
   }
 }
 
-void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalMsg
+/* void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalMsg
   //metric_received_prepare_partials_.Get().Inc(); Do we have other metrices?
   const SeqNum msgSeqNum = msg->seqNumber();
   const ReplicaId msgSender = msg->senderId();
@@ -1082,12 +1092,12 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   }
 
   //SCOPED_MDC_PRIMARY(std::to_string(currentPrimary()));
- // SCOPED_MDC_SEQ_NUM(std::to_string(msgSeqNum));
+  //SCOPED_MDC_SEQ_NUM(std::to_string(msgSeqNum));
   //SCOPED_MDC_PATH(CommitPathToMDCString(CommitPath::SLOW)); Do we care aboutr scope?
 
   bool msgAdded = false;
 
- // auto span = concordUtils::startChildSpanFromContext(msg->spanContext<std::remove_pointer<decltype(msg)>::type>(),
+  //auto span = concordUtils::startChildSpanFromContext(msg->spanContext<std::remove_pointer<decltype(msg)>::type>(),
                                                      // "bft_handle_prepare_partial_msg");//can I change this?
 
   if (relevantMsgForActiveView(msg)) {
@@ -1107,14 +1117,14 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     } else {
       msgAdded = seqNumInfo.addMsg(msg);
     }
-/*
+  
     if (ps_) {
       ps_->beginWriteTran();
       ps_->setVoteMsgInSeqNumWindow(seqNumber, vote);
       ps_->endWriteTran();
     }
   }
-  */
+  
 
   if (!msgAdded) {
     LOG_DEBUG(GL,
@@ -1123,6 +1133,8 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     delete msg;
   }
 }
+*/
+
 
 template <>
 void ReplicaImp::onMessage<CommitPartialMsg>(CommitPartialMsg *msg) {
@@ -1661,7 +1673,7 @@ void ReplicaImp::onRetransmissionsProcessingResults(SeqNum relatedLastStableSeqN
                              << " PreparePartialMsg with seqNumber " << s.msgSeqNum);
       } break;
       
-      case MsgCode::Vote: {
+      /* case MsgCode::Vote: {
         SeqNumInfo &seqNumInfo = mainLog->get(s.msgSeqNum);
         VoteMsg *msgToSend = seqNumInfo.getVoteMsg();
         AssertNE(msgToSend, nullptr);
@@ -1670,6 +1682,7 @@ void ReplicaImp::onRetransmissionsProcessingResults(SeqNum relatedLastStableSeqN
                   "Replica " << myId << " retransmits to replica " << s.replicaId
                              << " VoteMsg with seqNumber " << s.msgSeqNum);
       } break;
+      */
       case MsgCode::PrepareFull: {
         SeqNumInfo &seqNumInfo = mainLog->get(s.msgSeqNum);
         PrepareFullMsg *msgToSend = seqNumInfo.getValidPrepareFullMsg();

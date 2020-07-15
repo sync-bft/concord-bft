@@ -51,22 +51,6 @@ class CollectorOfThresholdSignatures {
     return true;
   }
 
-  bool addMsgWithVoteSignature(PART* voteSigMsg, ReplicaId repId) {
-    Assert(voteSigMsg != nullptr);
-
-    if ((combinedValidSignatureMsg != nullptr) || (replicasInfo.count(repId) > 0)) return false;
-
-    // add voteSigMsg to replicasInfo
-    RepInfo info = {voteSigMsg, SigState::Unknown};
-    replicasInfo[repId] = info;
-
-    numberOfUnknownSignatures++;
-
-    trySendToBkThread();
-
-    return true;
-  }
-
   bool addMsgWithCombinedSignature(FULL* combinedSigMsg) {
     if (combinedValidSignatureMsg != nullptr || candidateCombinedSignatureMsg != nullptr) return false;
 
@@ -116,13 +100,6 @@ class CollectorOfThresholdSignatures {
 
     const RepInfo& r = replicasInfo.at(repId);
     return r.partialSigMsg;
-  }
-
-  PART* getVoteMsgFromReplica(ReplicaId repId) const {
-    if (replicasInfo.count(repId) == 0) return nullptr;
-
-    const RepInfo& r = replicasInfo.at(repId);
-    return r.voteSigMsg;
   }
 
   FULL* getMsgWithValidCombinedSignature() const { return combinedValidSignatureMsg; }
@@ -215,33 +192,6 @@ class CollectorOfThresholdSignatures {
 
     // add partialSigMsg to replicasInfo
     RepInfo info = {partialSigMsg, SigState::Unknown};
-    replicasInfo[repId] = info;
-
-    // TODO(GG): do we want to verify the partial signature here?
-
-    numberOfUnknownSignatures++;
-
-    if (numOfRequiredSigs == 0)  // init numOfRequiredSigs
-      numOfRequiredSigs = ExternalFunc::numberOfRequiredSignatures(context);
-
-    Assert(numberOfUnknownSignatures < numOfRequiredSigs);  // because numOfRequiredSigs > 1
-
-    return true;
-  }
-
-  // init the PART message directly (without sending to a background thread)
-  bool initMsgWithVoteSignature(PART* voteSigMsg, ReplicaId repId) {
-    Assert(voteSigMsg != nullptr);
-
-    Assert(!processingSignaturesInTheBackground);
-    Assert(expectedSeqNumber != 0);
-    Assert(combinedValidSignatureMsg == nullptr);
-    Assert(candidateCombinedSignatureMsg == nullptr);
-    Assert(replicasInfo.count(repId) == 0);
-    Assert(numberOfUnknownSignatures == 0);  // we can use this method to add at most one PART message
-
-    // add voteSigMsg to replicasInfo
-    RepInfo info = {voteSigMsg, SigState::Unknown};
     replicasInfo[repId] = info;
 
     // TODO(GG): do we want to verify the partial signature here?
@@ -534,7 +484,6 @@ class CollectorOfThresholdSignatures {
 
   struct RepInfo {
     PART* partialSigMsg;
-    PART* voteSigMsg;
     SigState state;
   };
 

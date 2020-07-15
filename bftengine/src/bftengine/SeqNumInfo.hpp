@@ -42,9 +42,6 @@ class SeqNumInfo {
 
   bool addMsg(PreparePartialMsg* m);
   bool addSelfMsg(PreparePartialMsg* m, bool directAdd = false);
-
-  bool addMsg(VoteMsg* m);
-  bool addSelfMsg(VoteMsg* m, bool directAdd = false);
   
   bool addMsg(PrepareFullMsg* m, bool directAdd = false);
 
@@ -60,8 +57,6 @@ class SeqNumInfo {
 
   PreparePartialMsg* getSelfPreparePartialMsg() const;
   PrepareFullMsg* getValidPrepareFullMsg() const;
-
-  VoteMsg* getSelfVoteMsg() const;
 
   CommitPartialMsg* getSelfCommitPartialMsg() const;
   CommitFullMsg* getValidCommitFullMsg() const;
@@ -142,33 +137,6 @@ class SeqNumInfo {
     static IncomingMsgsStorage& incomingMsgsStorage(void* context);
   };
 
-  class ExFuncForVoteCollector {
-   public:
-    // external messages
-    static VoteMsg* createCombinedSignatureMsg(void* context,
-                                                      SeqNum seqNumber,
-                                                      ViewNum viewNumber,
-                                                      const char* const combinedSig,
-                                                      uint16_t combinedSigLen,
-                                                      const std::string& span_context);
-    // internal messages
-    static InternalMessage createInterCombinedSigFailed(SeqNum seqNumber,
-                                                        ViewNum viewNumber,
-                                                        std::set<uint16_t> replicasWithBadSigs);
-    static InternalMessage createInterCombinedSigSucceeded(SeqNum seqNumber,
-                                                           ViewNum viewNumber,
-                                                           const char* combinedSig,
-                                                           uint16_t combinedSigLen,
-                                                           const std::string& span_context);
-    static InternalMessage createInterVerifyCombinedSigResult(SeqNum seqNumber, ViewNum viewNumber, bool isValid);
-
-    // from the Replica object
-    static uint16_t numberOfRequiredSignatures(void* context);
-    static IThresholdVerifier* thresholdVerifier(void* context);
-    static util::SimpleThreadPool& threadPool(void* context);
-    static IncomingMsgsStorage& incomingMsgsStorage(void* context);
-  };
-
   class ExFuncForCommitCollector {
    public:
     // external messages
@@ -201,7 +169,6 @@ class SeqNumInfo {
 
   PrePrepareMsg* prePrepareMsg;
 
-  CollectorOfThresholdSignatures<VoteMsg, CommitVoteMsg, ExFuncForVoteCollector> voteSigCollector; 
   CollectorOfThresholdSignatures<PreparePartialMsg, PrepareFullMsg, ExFuncForPrepareCollector>* prepareSigCollector;
   CollectorOfThresholdSignatures<CommitPartialMsg, CommitFullMsg, ExFuncForCommitCollector>* commitMsgsCollector;
 

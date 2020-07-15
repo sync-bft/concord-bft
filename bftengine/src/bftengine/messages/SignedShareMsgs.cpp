@@ -122,7 +122,7 @@ void VoteMsg::validate(const ReplicasInfo& repInfo) const {
   SignedShareBase::_validate(repInfo, MsgCode::Vote);
 
   if (repInfo.myId() != repInfo.primaryOfView(viewNumber()))
-    throw std::runtime_error(__PRETTY_FUNCTION__ + std::string(": the primary is the collector of VoteMsg"));
+    throw std::runtime_error(__PRETTY_FUNCTION__ + std::string(": Replicas are the collectors of VoteMsg"));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
