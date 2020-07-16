@@ -108,7 +108,7 @@ class SeqNumInfo {
     commitMsgsCollector->onCompletionOfCombinedSigVerification(seqNumber, viewNumber, isValid);
   }
 
- protected:
+ // protected:
   class ExFuncForPrepareCollector {
    public:
     // external messages
@@ -137,6 +137,36 @@ class SeqNumInfo {
     static IncomingMsgsStorage& incomingMsgsStorage(void* context);
   };
 
+<<<<<<< Updated upstream
+=======
+  class ExFuncForVoteCollector {
+   public:
+    // external messages
+    static VoteMsg* createCombinedSignatureMsg(void* context,
+                                                    SeqNum seqNumber,
+                                                    ViewNum viewNumber,
+                                                    const char* const combinedSig,
+                                                    uint16_t combinedSigLen,
+                                                    const std::string& span_context);
+    // internal messages
+    static InternalMessage createInterCombinedSigFailed(SeqNum seqNumber,
+                                                        ViewNum viewNumber,
+                                                        std::set<uint16_t> replicasWithBadSigs);
+    static InternalMessage createInterCombinedSigSucceeded(SeqNum seqNumber,
+                                                           ViewNum viewNumber,
+                                                           const char* combinedSig,
+                                                           uint16_t combinedSigLen,
+                                                           const std::string& span_context);
+    static InternalMessage createInterVerifyCombinedSigResult(SeqNum seqNumber, ViewNum viewNumber, bool isValid);
+
+    // from the Replica object
+    static uint16_t numberOfRequiredSignatures(void* context);
+    static IThresholdVerifier* thresholdVerifier(void* context);
+    static util::SimpleThreadPool& threadPool(void* context);
+    static IncomingMsgsStorage& incomingMsgsStorage(void* context);
+  };
+
+>>>>>>> Stashed changes
   class ExFuncForCommitCollector {
    public:
     // external messages
@@ -170,6 +200,10 @@ class SeqNumInfo {
   PrePrepareMsg* prePrepareMsg;
 
   CollectorOfThresholdSignatures<PreparePartialMsg, PrepareFullMsg, ExFuncForPrepareCollector>* prepareSigCollector;
+<<<<<<< Updated upstream
+=======
+  CollectorOfThresholdSignatures<VoteMsg, CommitVoteMsg, ExFuncForVoteCollector>* voteSigCollector; 
+>>>>>>> Stashed changes
   CollectorOfThresholdSignatures<CommitPartialMsg, CommitFullMsg, ExFuncForCommitCollector>* commitMsgsCollector;
 
   PartialProofsSet* partialProofsSet;  // TODO(GG): replace with an instance of CollectorOfThresholdSignatures

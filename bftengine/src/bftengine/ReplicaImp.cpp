@@ -519,7 +519,7 @@ void ReplicaImp::onMessage<PrePrepareMsg>(PrePrepareMsg *msg) {
         metric_slow_path_count_.Get().Inc();
     
         sendPreparePartial(seqNumInfo);
-        sendVote(seqNumInfo);
+        // sendVote(seqNumInfo);
       }
     }
   }
@@ -774,6 +774,7 @@ void ReplicaImp::sendPreparePartial(SeqNumInfo &seqNumInfo) {
   }
 }
 
+/* 
 void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
   Assert(currentViewIsActive());
 
@@ -801,6 +802,7 @@ void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
     }
   // }
 }
+*/
 
 void ReplicaImp::sendCommitPartial(const SeqNum s) {
   Assert(currentViewIsActive());
@@ -1086,32 +1088,25 @@ void ReplicaImp::onMessage<PreparePartialMsg>(PreparePartialMsg *msg) {
   const SeqNum msgSeqNum = msg->seqNumber();
   const ReplicaId msgSender = msg->senderId();
   const ViewNum msgViewNum = msg->viewNum();
-
   for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
     sendRetransmittableMsgToReplica(v, x, primaryLastUsedSeqNum);
   }
-
   //SCOPED_MDC_PRIMARY(std::to_string(currentPrimary()));
   //SCOPED_MDC_SEQ_NUM(std::to_string(msgSeqNum));
   //SCOPED_MDC_PATH(CommitPathToMDCString(CommitPath::SLOW)); Do we care aboutr scope?
-
   bool msgAdded = false;
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
   //auto span = concordUtils::startChildSpanFromContext(msg->spanContext<std::remove_pointer<decltype(msg)>::type>(),
                                                      // "bft_handle_prepare_partial_msg");//can I change this?
-
   if (relevantMsgForActiveView(msg)) {
-
     sendAckIfNeeded(msg, msgSender, msgSeqNum);
-
     LOG_DEBUG(GL, "Received relevant VoteMsg." << KVLOG(msgSender));
-
     //controller->onMessage(msg);
-
     SeqNumInfo &seqNumInfo = mainLog->get(msgSeqNum);
-
     VoteMsg *vote = SeqNumInfo.getVoteMsg()
-
     if (vote != nullptr) {
       sendVote(seqNumInfo)
     } else {
@@ -1125,7 +1120,10 @@ void ReplicaImp::onMessage<PreparePartialMsg>(PreparePartialMsg *msg) {
     }
   }
   
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
   if (!msgAdded) {
     LOG_DEBUG(GL,
               "Node " << config_.replicaId << " ignored the Proposal from node " << msgSender << " (seqNumber "
