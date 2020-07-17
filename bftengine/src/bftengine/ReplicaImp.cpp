@@ -35,6 +35,7 @@
 #include "messages/ViewChangeMsg.hpp"
 #include "messages/NewViewMsg.hpp"
 #include "messages/PartialCommitProofMsg.hpp"
+#include "messages/VoteMsg.hpp"
 #include "messages/FullCommitProofMsg.hpp"
 #include "messages/ReplicaStatusMsg.hpp"
 #include "messages/AskForCheckpointMsg.hpp"
@@ -774,7 +775,7 @@ void ReplicaImp::sendPreparePartial(SeqNumInfo &seqNumInfo) {
   }
 }
 
-/* 
+/*
 void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
   Assert(currentViewIsActive());
 
@@ -1095,10 +1096,6 @@ void ReplicaImp::onMessage<PreparePartialMsg>(PreparePartialMsg *msg) {
   //SCOPED_MDC_SEQ_NUM(std::to_string(msgSeqNum));
   //SCOPED_MDC_PATH(CommitPathToMDCString(CommitPath::SLOW)); Do we care aboutr scope?
   bool msgAdded = false;
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
   //auto span = concordUtils::startChildSpanFromContext(msg->spanContext<std::remove_pointer<decltype(msg)>::type>(),
                                                      // "bft_handle_prepare_partial_msg");//can I change this?
   if (relevantMsgForActiveView(msg)) {
@@ -1120,10 +1117,6 @@ void ReplicaImp::onMessage<PreparePartialMsg>(PreparePartialMsg *msg) {
     }
   }
   
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
   if (!msgAdded) {
     LOG_DEBUG(GL,
               "Node " << config_.replicaId << " ignored the Proposal from node " << msgSender << " (seqNumber "

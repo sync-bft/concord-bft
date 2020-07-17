@@ -19,7 +19,7 @@
 #include "messages/SignedShareMsgs.hpp"
 #include "messages/FullCommitProofMsg.hpp"
 #include "messages/CheckpointMsg.hpp"
-//#include "messages/VoteMsg.hpp"
+// #include "messages/VoteMsg.hpp"
 #include <memory>
 
 namespace bftEngine {
@@ -44,14 +44,14 @@ class SeqNumData {
              FullCommitProofMsg *fullCommitProof,
              PrepareFullMsg *prepareFull,
              CommitFullMsg *commitFull,
-             //VoteMsg *Vote,
+             // VoteMsg *Vote,
              bool forceComplete,
              bool slowStart)
       : prePrepareMsg_(prePrepare),
         fullCommitProofMsg_(fullCommitProof),
         prepareFullMsg_(prepareFull),
         commitFullMsg_(commitFull),
-        //voteMsg_(Vote)//votemsg
+        // voteMsg_(Vote) //votemsg
         forceCompleted_(forceComplete),
         slowStarted_(slowStart) {}
 
@@ -64,7 +64,7 @@ class SeqNumData {
   size_t serializeFullCommitProofMsg(char *&buf) const;
   size_t serializePrepareFullMsg(char *&buf) const;
   size_t serializeCommitFullMsg(char *&buf) const;
- // size_t serializeVoteMsg(char *&buf) const;//voteMsg
+  // size_t serializeVoteMsg (char *&buf) const; //voteMsg
   size_t serializeForceCompleted(char *&buf) const;
   size_t serializeSlowStarted(char *&buf) const;
   void serialize(char *buf, uint32_t bufLen, size_t &actualSize) const;
@@ -73,13 +73,13 @@ class SeqNumData {
   bool isFullCommitProofMsgSet() const { return (fullCommitProofMsg_ != nullptr); }
   bool isPrepareFullMsgSet() const { return (prepareFullMsg_ != nullptr); }
   bool isCommitFullMsgSet() const { return (commitFullMsg_ != nullptr); }
-  //bool isVoteMsgSet()const { return (voteMsg_ != nullptr); }//VoteMsg
+  // bool isVoteMsgSet()const { return (voteMsg_ != nullptr); } //VoteMsg
 
   PrePrepareMsg *getPrePrepareMsg() const { return prePrepareMsg_; }
   FullCommitProofMsg *getFullCommitProofMsg() const { return fullCommitProofMsg_; }
   PrepareFullMsg *getPrepareFullMsg() const { return prepareFullMsg_; }
   CommitFullMsg *getCommitFullMsg() const { return commitFullMsg_; }
- // VoteMsg *getVoteMsg() const{return voteMsg_}//voteMsg
+ // VoteMsg *getVoteMsg() const{return voteMsg_} //voteMsg
   bool getSlowStarted() const { return slowStarted_; }
   bool getForceCompleted() const { return forceCompleted_; }
 
@@ -87,7 +87,7 @@ class SeqNumData {
   void setFullCommitProofMsg(MessageBase *msg) { fullCommitProofMsg_ = (FullCommitProofMsg *)msg; }
   void setPrepareFullMsg(MessageBase *msg) { prepareFullMsg_ = (PrepareFullMsg *)msg; }
   void setCommitFullMsg(MessageBase *msg) { commitFullMsg_ = (CommitFullMsg *)msg; }
-  //void setVoteMsg(MessageBase *msg) { voteMsg_ = (VoteMsg *)msg; }//voteMsg
+  // void setVoteMsg(MessageBase *msg) { voteMsg_ = (VoteMsg *)msg; } //voteMsg
   void setSlowStarted(const bool &slowStarted) { slowStarted_ = slowStarted; }
   void setForceCompleted(const bool &forceCompleted) { forceCompleted_ = forceCompleted; }
 
@@ -112,7 +112,7 @@ class SeqNumData {
   FullCommitProofMsg *fullCommitProofMsg_ = nullptr;
   PrepareFullMsg *prepareFullMsg_ = nullptr;
   CommitFullMsg *commitFullMsg_ = nullptr;
-  //VoteMsg *voteMsg_ = nullptr;//voteMsg
+  // VoteMsg *voteMsg_ = nullptr; //voteMsg
   bool forceCompleted_ = false;
   bool slowStarted_ = false;
 };

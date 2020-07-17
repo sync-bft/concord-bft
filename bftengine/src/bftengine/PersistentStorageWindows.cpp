@@ -26,7 +26,7 @@ void SeqNumData::reset() {
   fullCommitProofMsg_ = nullptr;
   prepareFullMsg_ = nullptr;
   commitFullMsg_ = nullptr;
-  voteMsg_ = nullptr; //voteMsg
+  // voteMsg_ = nullptr; //voteMsg
   slowStarted_ = false;
   forceCompleted_ = false;
 }
@@ -40,8 +40,6 @@ size_t SeqNumData::serializeFullCommitProofMsg(char *&buf) const {
 }
 
 size_t SeqNumData::serializePrepareFullMsg(char *&buf) const { return MessageBase::serializeMsg(buf, prepareFullMsg_); }
-
-size_t SeqNumData::serializeCommitFullMsg(char *&buf) const { return MessageBase::serializeMsg(buf, commitFullMsg_); }
 
 size_t SeqNumData::serializeCommitFullMsg(char *&buf) const { return MessageBase::serializeMsg(buf, commitFullMsg_); }
 
