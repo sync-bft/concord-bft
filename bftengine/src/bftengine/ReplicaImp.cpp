@@ -1083,7 +1083,7 @@ void ReplicaImp::onMessage<PreparePartialMsg>(PreparePartialMsg *msg) {
     delete msg;
   }
 }
-
+/*
 void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalMsg
   //metric_received_prepare_partials_.Get().Inc(); Do we have other metrices?
   const SeqNum msgSeqNum = msg->seqNumber();
@@ -1128,14 +1128,14 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
 
     const Time currTime = getMonotonicTime();
 
-    /* I don't think we need this for now
+    // I don't think we need this for now
     for (SeqNum i = minSeqNum; i <= maxSeqNum; i++) {
       SeqNumInfo &seqNumInfo = mainLog->get(i);
 
       if(seqNumInfo.partialProofs().hasFullProof()||//we may need to alter hasFullProof in the future
           (!seqNumInfo.hasProposalMsg()))
         continue;
-        */
+        
     const Time timeOfPartProof = seqNumInfo.partialProofs().getTimeOfSelfPartialProof();
 
     while (currTime - timeOfPartProof > milliseconds(controller->timeToStartCommitMilli())){
@@ -1151,6 +1151,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     }
   }
   
+  
   if (!msgAdded) {
     LOG_DEBUG(GL,
               "Node " << config_.replicaId << " ignored the Proposal from node " << msgSender << " (seqNumber "
@@ -1158,6 +1159,8 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     delete msg;
   }
 }
+*/
+
 
 
 
