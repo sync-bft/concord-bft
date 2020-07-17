@@ -20,7 +20,7 @@ SeqNumInfo::SeqNumInfo()
     : replica(nullptr),
       prePrepareMsg(nullptr),
       prepareSigCollector(nullptr),
-      voteSigCollector(nullptr),
+      // voteSigCollector(nullptr),
       commitMsgsCollector(nullptr),
       partialProofsSet(nullptr),
       primary(false),
@@ -34,7 +34,7 @@ SeqNumInfo::~SeqNumInfo() {
   resetAndFree();
 
   delete prepareSigCollector;
-  delete voteSigCollector;
+  // delete voteSigCollector;
   delete commitMsgsCollector;
   delete partialProofsSet;
 }
@@ -44,7 +44,7 @@ void SeqNumInfo::resetAndFree() {
   prePrepareMsg = nullptr;
 
   prepareSigCollector->resetAndFree();
-  voteSigCollector->resetAndFree();
+  // voteSigCollector->resetAndFree();
   commitMsgsCollector->resetAndFree();
   partialProofsSet->resetAndFree();
 
@@ -64,7 +64,7 @@ void SeqNumInfo::getAndReset(PrePrepareMsg*& outPrePrepare, PrepareFullMsg*& out
   prePrepareMsg = nullptr;
 
   prepareSigCollector->getAndReset(outCombinedValidSignatureMsg);
-  voteSigCollector->getAndReset(outCombinedValidSignatureMsg);
+  // voteSigCollector->getAndReset(outCombinedValidSignatureMsg);
 
   resetAndFree();
 }
@@ -75,19 +75,21 @@ bool SeqNumInfo::addMsg(PrePrepareMsg* m, bool directAdd) {
   Assert(primary == false);
   Assert(!forcedCompleted);
   Assert(!prepareSigCollector->hasPartialMsgFromReplica(replica->getReplicasInfo().myId()));
-  Assert(!voteSigCollector->hasVoteMsgFromReplica(replica->getReplicasInfo().myId()));
+  // Assert(!voteSigCollector->hasVoteMsgFromReplica(replica->getReplicasInfo().myId()));
 
   prePrepareMsg = m;
 
   // set expected
   Digest tmpDigest;
   Digest::calcCombination(m->digestOfRequests(), m->viewNumber(), m->seqNumber(), tmpDigest);
-  if (!directAdd)
+  if (!directAdd) {
     prepareSigCollector->setExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
-    voteSigCollector->setExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
-  else
+    // voteSigCollector->setExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
+  }
+  else {
     prepareSigCollector->initExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
-    voteSigCollector->setExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
+    // voteSigCollector->setExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
+  }
 
   if (firstSeenFromPrimary == MinTime)  // TODO(GG): remove condition - TBD
     firstSeenFromPrimary = getMonotonicTime();
@@ -98,7 +100,6 @@ bool SeqNumInfo::addMsg(PrePrepareMsg* m, bool directAdd) {
 bool SeqNumInfo::addSelfMsg(PrePrepareMsg* m, bool directAdd) {
   Assert(primary == false);
   Assert(replica->getReplicasInfo().myId() == replica->getReplicasInfo().primaryOfView(m->viewNumber()));
-  Assert(!forcedCompleted);
   Assert(prePrepareMsg == nullptr);
 
   // Assert(me->id() == m->senderId()); // GG: incorrect assert - because after a view change it may has been sent by
@@ -110,12 +111,14 @@ bool SeqNumInfo::addSelfMsg(PrePrepareMsg* m, bool directAdd) {
   // set expected
   Digest tmpDigest;
   Digest::calcCombination(m->digestOfRequests(), m->viewNumber(), m->seqNumber(), tmpDigest);
-  if (!directAdd)
+  if (!directAdd) {
     prepareSigCollector->setExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
-    voteSigCollector->setExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
-  else
+    // voteSigCollector->setExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
+  }
+  else {
     prepareSigCollector->initExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
-    voteSigCollector->setExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
+    // voteSigCollector->setExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
+  }
 
   if (firstSeenFromPrimary == MinTime)  // TODO(GG): remove condition - TBD
     firstSeenFromPrimary = getMonotonicTime();
@@ -149,10 +152,12 @@ bool SeqNumInfo::addSelfMsg(PreparePartialMsg* m, bool directAdd) {
 }
 
 bool SeqNumInfo::addMsg(VoteMsg* m) {
-  Assert(replica->getReplicasInfo().myId != m->senderId());
+  Assert(replica->getReplicasInfo().myId() != m->senderId());
   Assert(!forcedCompleted);
 
-  bool retVal = voteSigCollector->addMsgWithVoteSignature(m, m->senderId());
+  // bool retVal = voteSigCollector->addMsgWithVoteSignature(m, m->senderId());
+
+  bool retVal = true;
 
   return retVal;
 }
@@ -161,14 +166,14 @@ bool SeqNumInfo::addSelfMsg(VoteMsg* m, bool directAdd) {
   Assert(replica->getReplicasInfo().myId() == m->senderId());
   Assert(!forcedCompleted);
 
-  bool r;
+  // bool r;
 
-  if (!directAdd)
-    r = voteSigCollector->addMsgWithVoteSignature(m, m->senderId());
-  else 
-    r = voteSigCollector->initMsgWithVoteSignature(m, m->senderId());
+  // if (!directAdd)
+    // r = voteSigCollector->addMsgWithVoteSignature(m, m->senderId());
+  // else 
+    // r = voteSigCollector->initMsgWithVoteSignature(m, m->senderId());
 
-  Assert(r);
+  // Assert(r);
 
   return true;
 }
@@ -221,11 +226,13 @@ bool SeqNumInfo::addMsg(CommitVoteMsg* m) {
   Assert(replica->getReplicasInfo().myId() != m->senderId());  // TODO(GG): TBD
   Assert(!forcedCompleted);
 
-  bool r = voteSigCollector->addMsgWithVoteSignature(m, m->senderId());
+  return true;
 
-  if (r) commitUpdateTime = getMonotonicTime();
+  // bool r = voteSigCollector->addMsgWithVoteSignature(m, m->senderId());
 
-  return r;
+  // if (r) commitUpdateTime = getMonotonicTime();
+
+  // return r;
 }
 
 bool SeqNumInfo::addSelfCommitVoteMsgAndDigest(CommitVoteMsg* m, Digest& commitDigest, bool directAdd) {
@@ -237,10 +244,10 @@ bool SeqNumInfo::addSelfCommitVoteMsgAndDigest(CommitVoteMsg* m, Digest& commitD
   bool r;
   if (!directAdd) {
     voteSigCollector->setExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
-    r = voteSigCollector->addMsgWithVoteSignature(m, m->senderId());
+    // r = voteSigCollector->addMsgWithVoteSignature(m, m->senderId());
   } else {
     voteSigCollector->initExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
-    r = voteSigCollector->initMsgWithVoteSignature(m, m->senderId());
+    // r = voteSigCollector->initMsgWithVoteSignature(m, m->senderId());
   }
   Assert(r);
   commitUpdateTime = getMonotonicTime();
@@ -301,10 +308,12 @@ CommitPartialMsg* SeqNumInfo::getSelfCommitPartialMsg() const {
   return p;
 }
 
+/* 
 CommitVoteMsg* SeqNumInfo::getSelfCommitVoteMsg() const {
   CommitVoteMsg* cv = voteSigCollector->getVoteMsgFromReplica(replica->getReplicasInfo().myId());
   return cv;
 }
+*/
 
 CommitFullMsg* SeqNumInfo::getValidCommitFullMsg() const {
   return commitMsgsCollector->getMsgWithValidCombinedSignature();
@@ -327,10 +336,11 @@ bool SeqNumInfo::isCommitted__gg() const {
   return retVal;
 }
 
-bool SeqNumInfo::hasCommitVoted() const {
+/* bool SeqNumInfo::hasCommitVoted() const {
   bool retVal = forcedCompleted || voteSigCollector->isComplete();
   return retVal;
 }
+*/
 
 bool SeqNumInfo::preparedOrHasPreparePartialFromReplica(ReplicaId repId) const {
   return isPrepared() || prepareSigCollector->hasPartialMsgFromReplica(repId);
@@ -344,9 +354,10 @@ bool SeqNumInfo::committedOrHasCommitPartialFromReplica(ReplicaId repId) const {
   return isCommitted__gg() || commitMsgsCollector->hasPartialMsgFromReplica(repId);
 }
 
-bool SeqNumInfo::commitVotedOrHasCommitVoteFromReplica(ReplicaId repId) const {
+/* bool SeqNumInfo::commitVotedOrHasCommitVoteFromReplica(ReplicaId repId) const {
   return hasCommitVoted() || voteSigCollector->hasCommitVoteMsgFromReplica(repId);
 }
+*/
 
 Time SeqNumInfo::getTimeOfFisrtRelevantInfoFromPrimary() const { return firstSeenFromPrimary; }
 
@@ -439,7 +450,7 @@ IncomingMsgsStorage& SeqNumInfo::ExFuncForPrepareCollector::incomingMsgsStorage(
 // class SeqNumInfo::ExFuncForVoteCollector
 ///////////////////////////////////////////////////////////////////////////////
 
-VoteMsg* SeqNumInfo::ExFuncForVoteCollector::createVoteSignatureMsg(void* context,
+VoteMsg* SeqNumInfo::ExFuncForVoteCollector::createCombinedSignatureMsg(void* context,
                                                                     SeqNum seqNumber,
                                                                     ViewNum viewNumber,
                                                                     const char* const combinedSig,
@@ -528,7 +539,8 @@ InternalMessage SeqNumInfo::ExFuncForCommitCollector::createInterVerifyCombinedS
 uint16_t SeqNumInfo::ExFuncForCommitCollector::numberOfRequiredSignatures(void* context) {
   InternalReplicaApi* r = (InternalReplicaApi*)context;
   const ReplicasInfo& info = r->getReplicasInfo();
-  return (uint16_t)((info.fVal()) + info.cVal() + 1);
+  return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
+}
 
 IThresholdVerifier* SeqNumInfo::ExFuncForCommitCollector::thresholdVerifier(void* context) {
   InternalReplicaApi* r = (InternalReplicaApi*)context;

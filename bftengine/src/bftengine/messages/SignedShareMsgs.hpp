@@ -99,8 +99,8 @@ class VoteMsg : public SignedShareBase {
   static VoteMsg* create(ViewNum v,
                          SeqNum s,
                          ReplicaId senderId,
-                         Digest& ppDigest,
-                         IThresholdSigner* thresholdSigner,
+                         const char* sig,
+                         uint16_t sigLen,
                          const std::string& spanContext = "");
   void validate(const ReplicasInfo&) const override;
 };

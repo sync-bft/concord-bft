@@ -121,7 +121,7 @@ class SeqNumInfo {
     commitMsgsCollector->onCompletionOfCombinedSigVerification(seqNumber, viewNumber, isValid);
   }
 
- protected:
+ // protected:
   class ExFuncForPrepareCollector {
    public:
     // external messages
@@ -153,7 +153,7 @@ class SeqNumInfo {
   class ExFuncForVoteCollector {
    public:
     // external messages
-    static CommitVoteMsg* createCombinedSignatureMsg(void* context,
+    static VoteMsg* createCombinedSignatureMsg(void* context,
                                                     SeqNum seqNumber,
                                                     ViewNum viewNumber,
                                                     const char* const combinedSig,
@@ -210,7 +210,7 @@ class SeqNumInfo {
   PrePrepareMsg* prePrepareMsg;
 
   CollectorOfThresholdSignatures<PreparePartialMsg, PrepareFullMsg, ExFuncForPrepareCollector>* prepareSigCollector;
-  CollectorOfThresholdSignatures<VoteMsg, CommitVoteMsg, ExFuncForVoteCollector> voteSigCollector; 
+  CollectorOfThresholdSignatures<VoteMsg, CommitVoteMsg, ExFuncForVoteCollector>* voteSigCollector; 
   CollectorOfThresholdSignatures<CommitPartialMsg, CommitFullMsg, ExFuncForCommitCollector>* commitMsgsCollector;
 
   PartialProofsSet* partialProofsSet;  // TODO(GG): replace with an instance of CollectorOfThresholdSignatures

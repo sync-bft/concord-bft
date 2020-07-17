@@ -51,7 +51,7 @@ class CollectorOfThresholdSignatures {
     return true;
   }
 
-  bool addMsgWithVoteSignature(PART* voteSigMsg, ReplicaId repId) {
+  /* bool addMsgWithVoteSignature(PART* voteSigMsg, ReplicaId repId) {
     Assert(voteSigMsg != nullptr);
 
     if ((combinedValidSignatureMsg != nullptr) || (replicasInfo.count(repId) > 0)) return false;
@@ -66,6 +66,7 @@ class CollectorOfThresholdSignatures {
 
     return true;
   }
+  */
 
   bool addMsgWithCombinedSignature(FULL* combinedSigMsg) {
     if (combinedValidSignatureMsg != nullptr || candidateCombinedSignatureMsg != nullptr) return false;
@@ -124,7 +125,7 @@ class CollectorOfThresholdSignatures {
     if (replicasInfo.count(repId) == 0) return nullptr;
 
     const RepInfo& r = replicasInfo.at(repId);
-    return r.voteSigMsg;
+    return r.partialSigMsg;
   }
 
   FULL* getMsgWithValidCombinedSignature() const { return combinedValidSignatureMsg; }
@@ -243,17 +244,17 @@ class CollectorOfThresholdSignatures {
     Assert(numberOfUnknownSignatures == 0);  // we can use this method to add at most one PART message
 
     // add voteSigMsg to replicasInfo
-    RepInfo info = {voteSigMsg, SigState::Unknown};
-    replicasInfo[repId] = info;
+    // RepInfo info = {voteSigMsg, SigState::Unknown};
+    // replicasInfo[repId] = info;
 
     // TODO(GG): do we want to verify the partial signature here?
 
-    numberOfUnknownSignatures++;
+    // numberOfUnknownSignatures++;
 
-    if (numOfRequiredSigs == 0)  // init numOfRequiredSigs
-      numOfRequiredSigs = ExternalFunc::numberOfRequiredSignatures(context);
+    // if (numOfRequiredSigs == 0)  // init numOfRequiredSigs
+      // numOfRequiredSigs = ExternalFunc::numberOfRequiredSignatures(context);
 
-    Assert(numberOfUnknownSignatures < numOfRequiredSigs);  // because numOfRequiredSigs > 1
+    // Assert(numberOfUnknownSignatures < numOfRequiredSigs);  // because numOfRequiredSigs > 1
 
     return true;
   }
@@ -515,7 +516,7 @@ class CollectorOfThresholdSignatures {
     for (auto&& m : replicasInfo) {
       RepInfo& repInfo = m.second;
       delete repInfo.partialSigMsg;
-      delete repInfo.voteSigMsg;
+      // delete repInfo.voteSigMsg;
     }
     replicasInfo.clear();
 
@@ -537,7 +538,7 @@ class CollectorOfThresholdSignatures {
 
   struct RepInfo {
     PART* partialSigMsg;
-    PART* voteSigMsg;
+    // PART* voteSigMsg;
     SigState state;
   };
 
