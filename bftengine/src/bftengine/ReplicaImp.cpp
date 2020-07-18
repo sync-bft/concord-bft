@@ -524,12 +524,6 @@ void ReplicaImp::onMessage<PrePrepareMsg>(PrePrepareMsg *msg) {
         metric_slow_path_count_.Get().Inc();
     
         sendPreparePartial(seqNumInfo);
-<<<<<<< HEAD
-        LOG_INFO(GL,
-                 "The Current Commit Commit Path is slow");
-=======
-        // sendVote(seqNumInfo);
->>>>>>> 5f79571fe8639905b5d4c979c93bc432b41d918f
       }
     }
   }
