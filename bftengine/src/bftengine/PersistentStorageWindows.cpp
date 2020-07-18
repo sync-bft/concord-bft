@@ -26,6 +26,7 @@ void SeqNumData::reset() {
   fullCommitProofMsg_ = nullptr;
   prepareFullMsg_ = nullptr;
   commitFullMsg_ = nullptr;
+  // voteMsg_ = nullptr; //voteMsg
   slowStarted_ = false;
   forceCompleted_ = false;
 }

@@ -46,6 +46,8 @@ class MsgCode {
     ClientRequest = 700,
     ClientReply = 800,
 
+    Vote,
+
   };
 };
 

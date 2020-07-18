@@ -35,6 +35,7 @@
 #include "messages/ViewChangeMsg.hpp"
 #include "messages/NewViewMsg.hpp"
 #include "messages/PartialCommitProofMsg.hpp"
+#include "messages/VoteMsg.hpp"
 #include "messages/FullCommitProofMsg.hpp"
 #include "messages/ReplicaStatusMsg.hpp"
 #include "messages/AskForCheckpointMsg.hpp"
@@ -91,6 +92,9 @@ void ReplicaImp::registerMsgHandlers() {
   msgHandlers_->registerMsgHandler(MsgCode::PreparePartial,
                                    bind(&ReplicaImp::messageHandler<PreparePartialMsg>, this, _1));
 
+  msgHandlers_->registerMsgHandler(MsgCode::Vote,
+                                   bind(&ReplicaImp::messageHandler<VoteMsg>, this, _1));
+                                                               
   msgHandlers_->registerMsgHandler(MsgCode::PrepareFull, bind(&ReplicaImp::messageHandler<PrepareFullMsg>, this, _1));
 
   msgHandlers_->registerMsgHandler(MsgCode::ReqMissingData,
@@ -518,14 +522,28 @@ void ReplicaImp::onMessage<PrePrepareMsg>(PrePrepareMsg *msg) {
       } else {
         seqNumInfo.startSlowPath();
         metric_slow_path_count_.Get().Inc();
+    
         sendPreparePartial(seqNumInfo);
+<<<<<<< HEAD
         LOG_INFO(GL,
                  "The Current Commit Commit Path is slow");
+=======
+        // sendVote(seqNumInfo);
+>>>>>>> 5f79571fe8639905b5d4c979c93bc432b41d918f
       }
     }
   }
 
+  commitReportTimer_ = timers_.addtimers_.add(milliseconds(1000),
+                                   Timers::Timer::ONESHOT,
+                                   [this](Timers::Handle h) { onStartCommitTimer(h); });
+
   if (!msgAdded) delete msg;
+}
+
+template<>
+void ReplicaImp::onMessage<VoteMsg>(VoteMsg *msg) {
+  LOG_INFO(CNSUS, "Received VoteMsg");
 }
 
 void ReplicaImp::tryToStartSlowPaths() {
@@ -769,6 +787,36 @@ void ReplicaImp::sendPreparePartial(SeqNumInfo &seqNumInfo) {
     if (!isCurrentPrimary()) sendRetransmittableMsgToReplica(p, currentPrimary(), pp->seqNumber());
   }
 }
+
+/*
+void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
+  Assert(currentViewIsActive());
+
+  // if (seqNumInfo.getSelfVoteMsg() == nullptr && seqNumInfo.hasPrePrepareMsg() && !seqNumInfo.isPrepared()) {
+    PrePrepareMsg *pp = seqNumInfo.getPrePrepareMsg();
+
+    AssertNE(pp, nullptr);
+
+    LOG_INFO(GL, "Sending Vote." << KVLOG(pp->seqNumber()));
+
+    const auto &span_context = pp->spanContext<std::remove_pointer<decltype(pp)>::type>();
+    VoteMsg *v = VoteMsg::create(curView,
+                              pp->seqNumber(),
+                              config_.replicaId,
+                              pp->digestOfRequests(),
+                              config_.thresholdSignerForSlowPathCommit,
+                              span_context);
+    // seqNumInfo.addSelfMsg(p);
+
+    if (!isCurrentPrimary()) {
+      for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
+        sendRetransmittableMsgToReplica(v, x, primaryLastUsedSeqNum);
+        LOG_INFO(CNSUS, "Vote sent to replica ");
+      }
+    }
+  // }
+}
+*/
 
 void ReplicaImp::sendCommitPartial(const SeqNum s) {
   Assert(currentViewIsActive());
@@ -1048,6 +1096,89 @@ void ReplicaImp::onMessage<PreparePartialMsg>(PreparePartialMsg *msg) {
     delete msg;
   }
 }
+/*
+void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalMsg
+  //metric_received_prepare_partials_.Get().Inc(); Do we have other metrices?
+  const SeqNum msgSeqNum = msg->seqNumber();
+  const ReplicaId msgSender = msg->senderId();
+  const ViewNum msgViewNum = msg->viewNum();
+  for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
+    sendRetransmittableMsgToReplica(v, x, primaryLastUsedSeqNum);
+  }
+  //SCOPED_MDC_PRIMARY(std::to_string(currentPrimary()));
+  //SCOPED_MDC_SEQ_NUM(std::to_string(msgSeqNum));
+  //SCOPED_MDC_PATH(CommitPathToMDCString(CommitPath::SLOW)); Do we care aboutr scope?
+  bool msgAdded = false;
+  //auto span = concordUtils::startChildSpanFromContext(msg->spanContext<std::remove_pointer<decltype(msg)>::type>(),
+                                                     // "bft_handle_prepare_partial_msg");//can I change this?
+  const SeqNum minSeqNum = lastExecutedSeqNum + 1;
+
+  const SeqNum maxSeqNum = primaryLastUsedSeqNum;
+
+  AssertLE(minSeqNum, maxSeqNum + 1);
+
+  if (minSeqNum > maxSeqNum) return;
+
+  if (relevantMsgForActiveView(msg)) {
+    sendAckIfNeeded(msg, msgSender, msgSeqNum);
+    LOG_DEBUG(GL, "Received relevant VoteMsg." << KVLOG(msgSender));
+    //controller->onMessage(msg);
+    SeqNumInfo &seqNumInfo = mainLog->get(msgSeqNum);
+    VoteMsg *vote = SeqNumInfo.getVoteMsg()
+    if (vote != nullptr) {
+      sendVote(seqNumInfo)
+    } else {
+      msgAdded = seqNumInfo.addMsg(msg);
+    }
+<<<<<<< HEAD
+=======
+
+    const SeqNum minSeqNum = lastExecutedSeqNum + 1;
+
+    const SeqNum maxSeqNum = primaryLastUsedSeqNum;
+
+    AssertLE(minSeqNum, maxSeqNum + 1);
+
+    if (minSeqNum > maxSeqNum) return;
+
+    const Time currTime = getMonotonicTime();
+
+    // I don't think we need this for now
+    for (SeqNum i = minSeqNum; i <= maxSeqNum; i++) {
+      SeqNumInfo &seqNumInfo = mainLog->get(i);
+
+      if(seqNumInfo.partialProofs().hasFullProof()||//we may need to alter hasFullProof in the future
+          (!seqNumInfo.hasProposalMsg()))
+        continue;
+        
+    const Time timeOfPartProof = seqNumInfo.partialProofs().getTimeOfSelfPartialProof();
+
+    while (currTime - timeOfPartProof > milliseconds(controller->timeToStartCommitMilli())){
+      continue;//Since our window is 1, the only thing we need to do is wait?
+    }
+
+    controller->onStartingSlowCommit(msgSeqNum);// we may need to alter this once finishing writing commit
+>>>>>>> 3a6cc5d24353753839207b000586a5e885e9712c
+  
+    if (ps_) {
+      ps_->beginWriteTran();
+      ps_->setVoteMsgInSeqNumWindow(seqNumber, vote);
+      ps_->endWriteTran();
+    }
+  }
+  
+  
+  if (!msgAdded) {
+    LOG_DEBUG(GL,
+              "Node " << config_.replicaId << " ignored the Proposal from node " << msgSender << " (seqNumber "
+                      << msgSeqNum << ")");
+    delete msg;
+  }
+}
+*/
+
+
+
 
 template <>
 void ReplicaImp::onMessage<CommitPartialMsg>(CommitPartialMsg *msg) {
@@ -1125,6 +1256,30 @@ void ReplicaImp::onMessage<PrepareFullMsg>(PrepareFullMsg *msg) {
     } else {
       msgAdded = seqNumInfo.addMsg(msg);
     }
+  }
+
+  const SeqNum minSeqNum = lastExecutedSeqNum + 1;
+
+  const SeqNum maxSeqNum = primaryLastUsedSeqNum;
+
+  AssertLE(minSeqNum, maxSeqNum + 1);
+
+  if (minSeqNum > maxSeqNum) return;//sufficient for leader equivocation detection?
+
+  const Time currTime = getMonotonicTime();
+
+  /* I don't think we need this for now
+  for (SeqNum i = minSeqNum; i <= maxSeqNum; i++) {
+    SeqNumInfo &seqNumInfo = mainLog->get(i);
+
+    if(seqNumInfo.partialProofs().hasFullProof()||//we may need to alter hasFullProof in the future
+        (!seqNumInfo.hasProposalMsg()))
+      continue;
+      */
+  const Time timeOfPartProof = seqNumInfo.partialProofs().getTimeOfSelfPartialProof();
+
+  while (currTime - timeOfPartProof > milliseconds(controller->timeToStartCommitMilli())){
+    continue;//Since our window is 1, the only thing we need to do is wait?
   }
 
   if (!msgAdded) {
@@ -1585,6 +1740,17 @@ void ReplicaImp::onRetransmissionsProcessingResults(SeqNum relatedLastStableSeqN
                   "Replica " << myId << " retransmits to replica " << s.replicaId
                              << " PreparePartialMsg with seqNumber " << s.msgSeqNum);
       } break;
+      
+      /* case MsgCode::Vote: {
+        SeqNumInfo &seqNumInfo = mainLog->get(s.msgSeqNum);
+        VoteMsg *msgToSend = seqNumInfo.getVoteMsg();
+        AssertNE(msgToSend, nullptr);
+        sendRetransmittableMsgToReplica(msgToSend, s.replicaId, s.msgSeqNum);
+        LOG_DEBUG(GL,
+                  "Replica " << myId << " retransmits to replica " << s.replicaId
+                             << " VoteMsg with seqNumber " << s.msgSeqNum);
+      } break;
+      */
       case MsgCode::PrepareFull: {
         SeqNumInfo &seqNumInfo = mainLog->get(s.msgSeqNum);
         PrepareFullMsg *msgToSend = seqNumInfo.getValidPrepareFullMsg();
@@ -2634,6 +2800,10 @@ void ReplicaImp::onStatusReportTimer(Timers::Handle timer) {
 #ifdef DEBUG_MEMORY_MSG
   MessageBase::printLiveMessages();
 #endif
+}
+
+void ReplicaImp::onStartCommitTimer(Timers::Handle timer) {
+  LOG_INFO(GL, "Timer Triggered by PreprepareMsg");
 }
 
 void ReplicaImp::onSlowPathTimer(Timers::Handle timer) {

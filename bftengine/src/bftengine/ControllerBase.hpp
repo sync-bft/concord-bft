@@ -62,6 +62,7 @@ class SimpleController : public ControllerBase {
   virtual CommitPath getCurrentFirstPath() override;
   virtual uint32_t timeToStartSlowPathMilli() override;
   virtual uint32_t slowPathsTimerMilli() override;
+  // virtual uint32_t timeToStartCommitMilli() override;
 
   // events (used to pass information to the controller)
 
