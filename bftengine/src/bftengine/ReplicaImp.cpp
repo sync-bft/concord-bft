@@ -1252,31 +1252,6 @@ void ReplicaImp::onMessage<PrepareFullMsg>(PrepareFullMsg *msg) {
     }
   }
 
-  const SeqNum minSeqNum = lastExecutedSeqNum + 1;
-
-  const SeqNum maxSeqNum = primaryLastUsedSeqNum;
-
-  AssertLE(minSeqNum, maxSeqNum + 1);
-
-  if (minSeqNum > maxSeqNum) return;//sufficient for leader equivocation detection?
-
-  const Time currTime = getMonotonicTime();
-
-  /* I don't think we need this for now
-  for (SeqNum i = minSeqNum; i <= maxSeqNum; i++) {
-    SeqNumInfo &seqNumInfo = mainLog->get(i);
-
-    if(seqNumInfo.partialProofs().hasFullProof()||//we may need to alter hasFullProof in the future
-        (!seqNumInfo.hasProposalMsg()))
-      continue;
-
-  const Time timeOfPartProof = seqNumInfo.partialProofs().getTimeOfSelfPartialProof();
-
-  while (currTime - timeOfPartProof > milliseconds(controller->timeToStartCommitMilli())){
-    continue;//Since our window is 1, the only thing we need to do is wait?
-  }
-   */
-
   if (!msgAdded) {
     LOG_DEBUG(GL, "Ignored PrepareFullMsg." << KVLOG(msgSender));
     delete msg;
