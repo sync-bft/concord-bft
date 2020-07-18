@@ -524,6 +524,10 @@ void ReplicaImp::onMessage<PrePrepareMsg>(PrePrepareMsg *msg) {
     }
   }
 
+  commitReportTimer_ = timers_.addtimers_.add(milliseconds(1000),
+                                   Timers::Timer::ONESHOT,
+                                   [this](Timers::Handle h) { onStartCommitTimer(h); });
+
   if (!msgAdded) delete msg;
 }
 
@@ -1120,32 +1124,6 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     } else {
       msgAdded = seqNumInfo.addMsg(msg);
     }
-
-    const SeqNum minSeqNum = lastExecutedSeqNum + 1;
-
-    const SeqNum maxSeqNum = primaryLastUsedSeqNum;
-
-    AssertLE(minSeqNum, maxSeqNum + 1);
-
-    if (minSeqNum > maxSeqNum) return;
-
-    const Time currTime = getMonotonicTime();
-
-    /* I don't think we need this for now
-    for (SeqNum i = minSeqNum; i <= maxSeqNum; i++) {
-      SeqNumInfo &seqNumInfo = mainLog->get(i);
-
-      if(seqNumInfo.partialProofs().hasFullProof()||//we may need to alter hasFullProof in the future
-          (!seqNumInfo.hasProposalMsg()))
-        continue;
-        */
-    const Time timeOfPartProof = seqNumInfo.partialProofs().getTimeOfSelfPartialProof();
-
-    while (currTime - timeOfPartProof > milliseconds(controller->timeToStartCommitMilli())){
-      continue;//Since our window is 1, the only thing we need to do is wait?
-    }
-
-    controller->onStartingSlowCommit(msgSeqNum);// we may need to alter this once finishing writing commit
   
     if (ps_) {
       ps_->beginWriteTran();
@@ -1244,6 +1222,30 @@ void ReplicaImp::onMessage<PrepareFullMsg>(PrepareFullMsg *msg) {
     } else {
       msgAdded = seqNumInfo.addMsg(msg);
     }
+  }
+
+  const SeqNum minSeqNum = lastExecutedSeqNum + 1;
+
+  const SeqNum maxSeqNum = primaryLastUsedSeqNum;
+
+  AssertLE(minSeqNum, maxSeqNum + 1);
+
+  if (minSeqNum > maxSeqNum) return;//sufficient for leader equivocation detection?
+
+  const Time currTime = getMonotonicTime();
+
+  /* I don't think we need this for now
+  for (SeqNum i = minSeqNum; i <= maxSeqNum; i++) {
+    SeqNumInfo &seqNumInfo = mainLog->get(i);
+
+    if(seqNumInfo.partialProofs().hasFullProof()||//we may need to alter hasFullProof in the future
+        (!seqNumInfo.hasProposalMsg()))
+      continue;
+      */
+  const Time timeOfPartProof = seqNumInfo.partialProofs().getTimeOfSelfPartialProof();
+
+  while (currTime - timeOfPartProof > milliseconds(controller->timeToStartCommitMilli())){
+    continue;//Since our window is 1, the only thing we need to do is wait?
   }
 
   if (!msgAdded) {
@@ -2764,6 +2766,10 @@ void ReplicaImp::onStatusReportTimer(Timers::Handle timer) {
 #ifdef DEBUG_MEMORY_MSG
   MessageBase::printLiveMessages();
 #endif
+}
+
+void ReplicaImp::onStartCommitTimer(Timers::Handle timer) {
+  LOG_INFO(GL, "Timer Triggered by PreprepareMsg");
 }
 
 void ReplicaImp::onSlowPathTimer(Timers::Handle timer) {
