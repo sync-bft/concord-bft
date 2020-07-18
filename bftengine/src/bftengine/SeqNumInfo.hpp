@@ -16,6 +16,7 @@
 // TODO(GG): clean/move 'include' statements
 #include "PrimitiveTypes.hpp"
 #include "SysConsts.hpp"
+#include "messages/ProposalMsg.hpp"
 #include "messages/PrePrepareMsg.hpp"
 #include "messages/SignedShareMsgs.hpp"
 #include "messages/PartialProofsSet.hpp"
@@ -49,6 +50,8 @@ class SeqNumInfo {
   bool addSelfCommitPartialMsgAndDigest(CommitPartialMsg* m, Digest& commitDigest, bool directAdd = false);
 
   bool addMsg(CommitFullMsg* m, bool directAdd = false);
+
+  bool addSelfMsg(ProposalMsg* proposalMsg, bool directAdd = false);
 
   void forceComplete();
 

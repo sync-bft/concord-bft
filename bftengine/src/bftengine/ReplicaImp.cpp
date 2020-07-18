@@ -38,6 +38,7 @@
 #include "messages/FullCommitProofMsg.hpp"
 #include "messages/ReplicaStatusMsg.hpp"
 #include "messages/AskForCheckpointMsg.hpp"
+#include "messages/ProposalMsg.hpp"
 
 #include <string>
 #include <type_traits>
@@ -406,157 +407,6 @@ void ReplicaImp::tryToSendPrePrepareMsg(bool batchingLogic) {
   }
 }
 
-void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
-  Assert(isCurrentPrimary());
-  Assert(currentViewIsActive());
-
-  if (primaryLastUsedSeqNum + 1 > lastStableSeqNum + kWorkWindowSize) {
-    LOG_INFO(GL,
-             "Will not send PrePrepare since next sequence number ["
-                 << primaryLastUsedSeqNum + 1 << "] exceeds window threshold [" << lastStableSeqNum + kWorkWindowSize
-                 << "]");
-    return;
-  }
-
-  if (primaryLastUsedSeqNum > lastExecutedSeqNum + config_.concurrencyLevel) { //  config_.concurrencyLevel
-    LOG_INFO(GL,
-             "Will not send PrePrepare since next sequence number ["
-                 << primaryLastUsedSeqNum + 1 << "] exceeds the next executed sequence
-                 number [" << lastExecutedSeqNum << "]");
-    return;  // TODO(GG): should also be checked by the non-primary replicas
-  }
-
-   if (requestsQueueOfPrimary.empty()) return;
-
-  ClientRequestMsg *first = requestQueueOfPrimary.front();
-  // TODO(QY): change queue to iterateable structure
-  while (first != nullptr &&
-         !clientsManager->noPendingAndRequestCanBecomePending(first->clientProxyId(), first->requestSeqNum())) {
-    SCOPED_MDC_CID(first->getCid());
-    primaryCombinedReqSize -= first->size();
-    delete first;
-    requestsQueueOfPrimary.pop();
-    first = (!requestsQueueOfPrimary.empty() ? requestsQueueOfPrimary.front() : nullptr);
-  }
-
-  if (requestsQueueOfPrimary.size() == 0) return;
-  
-  unit64_t concurrentDiff = ((primaryLastUsedSeqNum + 1) - lastExecutedSeqNum);
-
-  unit64_t minBatchSize = 1;
-
-  // update maxNumberOfPendingRequestsInRecentHistory (if needed)
-  if (requestsInQueue > maxNumberOfPendingRequestsInRecentHistory)
-    maxNumberOfPendingRequestsInRecentHistory = requestsInQueue;
-
-  // TODO(GG): the batching logic should be part of the configuration - TBD.
-  if (batchingLogic && (concurrentDiff >= 2)) {
-    minBatchSize = concurrentDiff * batchingFactor;
-
-    const size_t maxReasonableMinBatchSize = 350;  // TODO(GG): use param from configuration
-
-    if (minBatchSize > maxReasonableMinBatchSize) minBatchSize = maxReasonableMinBatchSize;
-  }
-
-  if (requestsInQueue < minBatchSize) {
-    LOG_INFO(GL,
-             "Not enough client requests to fill the batch threshold size. " << KVLOG(minBatchSize, requestsInQueue));
-    metric_not_enough_client_requests_event_.Get().Inc();
-    return;
-  }
-
-  // update batchingFactor
-  if (((primaryLastUsedSeqNum + 1) % kWorkWindowSize) ==
-      0)  // TODO(GG): do we want to update batchingFactor when the view is changed
-  {
-    const size_t aa = 4;  // TODO(GG): read from configuration
-    batchingFactor = (maxNumberOfPendingRequestsInRecentHistory / aa);
-    if (batchingFactor < 1) batchingFactor = 1;
-    maxNumberOfPendingRequestsInRecentHistory = 0;
-    LOG_DEBUG(GL, "PrePrepare batching factor updated. " << KVLOG(batchingFactor));
-  }
-
-  // because maxConcurrentAgreementsByPrimary <  MaxConcurrentFastPaths
-  AssertLE((primaryLastUsedSeqNum + 1), lastExecutedSeqNum + MaxConcurrentFastPaths);
-
-  CommitPath firstPath = CommitPath::SLOW;// force slow by setting it to 2
-
-  AssertOR((config_.cVal != 0), (firstPath != CommitPath::FAST_WITH_THRESHOLD));// this is true since first path is slow
-
-  //controller->onSendingPrePrepare((primaryLastUsedSeqNum + 1), firstPath); // TODO(QF): write the proposal method in controller
-
-  ClientRequestMsg *nextRequest = (!requestsQueueOfPrimary.empty() ? requestsQueueOfPrimary.front() : nullptr);
-  const auto &span_context = nextRequest ? nextRequest->spanContext<ClientRequestMsg>() : std::string{};
-
-  // TODO(QF): calculated the total size of sig and updated primaryCombinedReqSize
-
-  ProposalMsg *proposal = new ProposalMsg(
-      config_.replicaId, curView, (primaryLastUsedSeqNum + 1), span_context, primaryCombinedReqSize);
-  
-  // TODO(QF): added the sigs
-
-  uint16_t initialStorageForRequests = proposal->remainingSizeForRequests();
-  while (nextRequest != nullptr) {
-    if (nextRequest->size() <= proposal->remainingSizeForRequests()) {
-      SCOPED_MDC_CID(nextRequest->getCid());
-      if (clientsManager->noPendingAndRequestCanBecomePending(nextRequest->clientProxyId(),
-                                                              nextRequest->requestSeqNum())) {
-        proposal->addRequest(nextRequest->body(), nextRequest->size());
-        clientsManager->addPendingRequest(nextRequest->clientProxyId(), nextRequest->requestSeqNum());
-      }
-      primaryCombinedReqSize -= nextRequest->size();
-    } else if (nextRequest->size() > initialStorageForRequests) {
-      // The message is too big
-      LOG_ERROR(GL,
-                "Request was dropped because it exceeds maximum allowed size. "
-                    << KVLOG(nextRequest->senderId(), nextRequest->size(), initialStorageForRequests));
-    }
-    delete nextRequest;
-    requestsQueueOfPrimary.pop();
-    nextRequest = (!requestsQueueOfPrimary.empty() ? requestsQueueOfPrimary.front() : nullptr);
-  }
-
-  if (proposal->numberOfRequests() == 0) {
-    LOG_WARN(GL, "No client requests added to PrePrepare batch. Nothing to send.");
-    return;
-  }
-
-  proposal->finishAddingRequests();
-
-
-  primaryLastUsedSeqNum++;
-  SCOPED_MDC_SEQ_NUM(std::to_string(primaryLastUsedSeqNum));
-  SCOPED_MDC_PATH(CommitPathToMDCString(firstPath));
-  {
-    LOG_INFO(CNSUS,
-             "Sending PrePrepare with the following payload of the following correlation ids ["
-                 << proposal->getBatchCorrelationIdAsString() << "]");
-  }
-  SeqNumInfo &seqNumInfo = mainLog->get(primaryLastUsedSeqNum);
-  seqNumInfo.addSelfMsg(pp);
-
-  if (ps_) {
-    ps_->beginWriteTran();
-    ps_->setPrimaryLastUsedSeqNum(primaryLastUsedSeqNum);
-    ps_->setPrePrepareMsgInSeqNumWindow(primaryLastUsedSeqNum, pp);
-    if (firstPath == CommitPath::SLOW) ps_->setSlowStartedInSeqNumWindow(primaryLastUsedSeqNum, true);
-    ps_->endWriteTran();
-  }
-
-  for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
-    sendRetransmittableMsgToReplica(proposal, x, primaryLastUsedSeqNum);
-  }
-
-  if (firstPath == CommitPath::SLOW) {
-    seqNumInfo.startSlowPath();
-    metric_slow_path_count_.Get().Inc();
-    sendPreparePartial(seqNumInfo);
-  } else {
-    sendPartialProof(seqNumInfo);
-  }
-}
-
-}
 template <typename T>
 bool ReplicaImp::relevantMsgForActiveView(const T *msg) {
   const SeqNum msgSeqNum = msg->seqNumber();
@@ -3598,5 +3448,278 @@ IncomingMsgsStorage &ReplicaImp::getIncomingMsgsStorage() { return *msgsCommunic
 // TODO(GG): the timer for state transfer !!!!
 
 // TODO(GG): !!!! view changes and retransmissionsLogic --- check ....
+
+//////////////////////////////////////////////////////////////////////
+// Sync-HotStuff
+//////////////////////////////////////////////////////////////////////
+
+void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
+  Assert(isCurrentPrimary());
+  Assert(currentViewIsActive());
+
+  if (primaryLastUsedSeqNum + 1 > lastStableSeqNum + kWorkWindowSize) {
+    LOG_INFO(GL,
+             "Will not send Proposal since next sequence number ["
+                 << primaryLastUsedSeqNum + 1 << "] exceeds window threshold [" << lastStableSeqNum + kWorkWindowSize
+                 << "]");
+    return;
+  }
+
+  if (primaryLastUsedSeqNum > lastExecutedSeqNum + config_.concurrencyLevel) { //  config_.concurrencyLevel
+    LOG_INFO(GL,
+             "Will not send Proposal since next sequence number ["
+                 << primaryLastUsedSeqNum + 1 << "] exceeds the next executed sequence
+                 number [" << lastExecutedSeqNum << "]");
+    return;  // TODO(GG): should also be checked by the non-primary replicas
+  }
+
+   if (requestsQueueOfPrimary.empty()) return;
+
+  ClientRequestMsg *first = requestQueueOfPrimary.front();
+  
+  // TODO(QY): change queue to iterateable structure
+  while (first != nullptr &&
+         !clientsManager->noPendingAndRequestCanBecomePending(first->clientProxyId(), first->requestSeqNum())) {
+    SCOPED_MDC_CID(first->getCid());
+    primaryCombinedReqSize -= first->size();
+    delete first;
+    requestsQueueOfPrimary.pop();
+    first = (!requestsQueueOfPrimary.empty() ? requestsQueueOfPrimary.front() : nullptr);
+  }
+
+  if (requestsQueueOfPrimary.size() == 0) return;
+  
+  unit64_t concurrentDiff = ((primaryLastUsedSeqNum + 1) - lastExecutedSeqNum);
+
+  unit64_t minBatchSize = 1;
+
+  // update maxNumberOfPendingRequestsInRecentHistory (if needed)
+  if (requestsInQueue > maxNumberOfPendingRequestsInRecentHistory)
+    maxNumberOfPendingRequestsInRecentHistory = requestsInQueue;
+
+  // TODO(GG): the batching logic should be part of the configuration - TBD.
+  if (batchingLogic && (concurrentDiff >= 2)) {
+    minBatchSize = concurrentDiff * batchingFactor;
+
+    const size_t maxReasonableMinBatchSize = 350;  // TODO(GG): use param from configuration
+
+    if (minBatchSize > maxReasonableMinBatchSize) minBatchSize = maxReasonableMinBatchSize;
+  }
+
+  if (requestsInQueue < minBatchSize) {
+    LOG_INFO(GL,
+             "Not enough client requests to fill the batch threshold size. " << KVLOG(minBatchSize, requestsInQueue));
+    metric_not_enough_client_requests_event_.Get().Inc();
+    return;
+  }
+
+  // update batchingFactor
+  if (((primaryLastUsedSeqNum + 1) % kWorkWindowSize) ==
+      0)  // TODO(GG): do we want to update batchingFactor when the view is changed
+  {
+    const size_t aa = 4;  // TODO(GG): read from configuration
+    batchingFactor = (maxNumberOfPendingRequestsInRecentHistory / aa);
+    if (batchingFactor < 1) batchingFactor = 1;
+    maxNumberOfPendingRequestsInRecentHistory = 0;
+    LOG_DEBUG(GL, "Proposal batching factor updated. " << KVLOG(batchingFactor));
+  }
+
+  // because maxConcurrentAgreementsByPrimary <  MaxConcurrentFastPaths
+  AssertLE((primaryLastUsedSeqNum + 1), lastExecutedSeqNum + MaxConcurrentFastPaths);
+
+  controller->onSendingProposal((primaryLastUsedSeqNum + 1));
+
+  ClientRequestMsg *nextRequest = (!requestsQueueOfPrimary.empty() ? requestsQueueOfPrimary.front() : nullptr);
+  const auto &span_context = nextRequest ? nextRequest->spanContext<ClientRequestMsg>() : std::string{};
+
+  // TODO(QF): calculated the total size of sig and updated primaryCombinedReqSize
+
+  ProposalMsg *proposal = new ProposalMsg(
+      config_.replicaId, curView, (primaryLastUsedSeqNum + 1), span_context, primaryCombinedReqSize);
+  
+  // TODO(QF): added the sigs
+
+  uint16_t initialStorageForRequests = proposal->remainingSizeForRequests();
+  while (nextRequest != nullptr) {
+    if (nextRequest->size() <= proposal->remainingSizeForRequests()) {
+      SCOPED_MDC_CID(nextRequest->getCid());
+      if (clientsManager->noPendingAndRequestCanBecomePending(nextRequest->clientProxyId(),
+                                                              nextRequest->requestSeqNum())) {
+        proposal->addRequest(nextRequest->body(), nextRequest->size());
+        clientsManager->addPendingRequest(nextRequest->clientProxyId(), nextRequest->requestSeqNum());
+      }
+      primaryCombinedReqSize -= nextRequest->size();
+    } else if (nextRequest->size() > initialStorageForRequests) {
+      // The message is too big
+      LOG_ERROR(GL,
+                "Request was dropped because it exceeds maximum allowed size. "
+                    << KVLOG(nextRequest->senderId(), nextRequest->size(), initialStorageForRequests));
+    }
+    delete nextRequest;
+    requestsQueueOfPrimary.pop();
+    nextRequest = (!requestsQueueOfPrimary.empty() ? requestsQueueOfPrimary.front() : nullptr);
+  }
+
+  if (proposal->numberOfRequests() == 0) {
+    LOG_WARN(GL, "No client requests added to PrePrepare batch. Nothing to send.");
+    return;
+  }
+
+  proposal->finishAddingRequests();
+
+
+  primaryLastUsedSeqNum++;
+  LOG_INFO(CNSUS,
+           "Sending Proposal with the following payload of the following correlation ids ["
+            << proposal->getBatchCorrelationIdAsString() << "]");
+  SeqNumInfo &seqNumInfo = mainLog->get(primaryLastUsedSeqNum);
+  seqNumInfo.addSelfMsg(proposal);
+
+  // skip ps_
+
+  for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
+    sendRetransmittableMsgToReplica(proposal, x, primaryLastUsedSeqNum);
+  }
+}
+
+void ReplicaImp::executeRequestsInProposalMsg(concordUtils::SpanWrapper &parent_span,
+                                              ProposalMsg *pMsg,
+                                              bool recoverFromErrorInRequestsExecution) {
+  auto span = concordUtils::startChildSpan("bft_execute_requests_in_preprepare", parent_span);
+  AssertAND(!isCollectingState(), currentViewIsActive());
+  AssertNE(pMsg, nullptr);
+  AssertEQ(pMsg->viewNumber(), curView);
+  AssertEQ(pMsg->seqNumber(), lastExecutedSeqNum + 1);
+
+  const uint16_t numOfRequests = pMsg->numberOfRequests();
+
+  // recoverFromErrorInRequestsExecution ==> (numOfRequests > 0)
+  AssertOR(!recoverFromErrorInRequestsExecution, (numOfRequests > 0));
+
+  if (numOfRequests > 0) {
+    Bitmap requestSet(numOfRequests);
+    size_t reqIdx = 0;
+    bool isRequest = true;
+    ContentIterator reqIter(pMsg, isRequest);
+    char *requestBody = nullptr;
+
+    //////////////////////////////////////////////////////////////////////
+    // Phase 1:
+    // a. Find the requests that should be executed
+    // b. Send reply for each request that has already been executed
+    //////////////////////////////////////////////////////////////////////
+    if (!recoverFromErrorInRequestsExecution) {
+      while (reqIter.getAndGoToNext(requestBody)) {
+        ClientRequestMsg req((ClientRequestMsgHeader *)requestBody);
+        SCOPED_MDC_CID(req.getCid());
+        NodeIdType clientId = req.clientProxyId();
+
+        const bool validClient = isValidClient(clientId);
+        if (!validClient) {
+          LOG_WARN(GL, "The client is not valid. " << KVLOG(clientId));
+          continue;
+        }
+
+        if (seqNumberOfLastReplyToClient(clientId) >= req.requestSeqNum()) {
+          ClientReplyMsg *replyMsg = clientsManager->allocateMsgWithLatestReply(clientId, currentPrimary());
+          send(replyMsg, clientId);
+          delete replyMsg;
+          continue;
+        }
+
+        requestSet.set(reqIdx);
+        reqIdx++;
+      }
+      reqIter.restart();
+
+    } else {
+      requestSet = mapOfRequestsThatAreBeingRecovered;
+    }
+
+    //////////////////////////////////////////////////////////////////////
+    // Phase 2: execute requests + send replies
+    // In this phase the application state may be changed. We also change data in the state transfer module.
+    // TODO(GG): Explain what happens in recovery mode (what are the requirements from  the application, and from the
+    // state transfer module.
+    //////////////////////////////////////////////////////////////////////
+
+    reqIdx = 0;
+    requestBody = nullptr;
+
+    auto dur = controller->durationSincePoposal(lastExecutedSeqNum + 1);
+    if (dur > 0) {
+      // Primary
+      LOG_DEBUG(CNSUS, "Consensus reached, duration [" << dur << "ms]");
+
+    } else {
+      LOG_DEBUG(CNSUS, "Consensus reached");
+    }
+
+    while (reqIter.getAndGoToNext(requestBody)) {
+      size_t tmp = reqIdx;
+      reqIdx++;
+      if (!requestSet.get(tmp)) {
+        continue;
+      }
+
+      ClientRequestMsg req((ClientRequestMsgHeader *)requestBody);
+      SCOPED_MDC_CID(req.getCid());
+      NodeIdType clientId = req.clientProxyId();
+
+      uint32_t actualReplyLength = 0;
+      userRequestsHandler->execute(
+          clientId,
+          lastExecutedSeqNum + 1,
+          req.flags(),
+          req.requestLength(),
+          req.requestBuf(),
+          ReplicaConfigSingleton::GetInstance().GetMaxReplyMessageSize() - sizeof(ClientReplyMsgHeader),
+          replyBuffer,
+          actualReplyLength,
+          span);
+
+      AssertGT(actualReplyLength,
+               0);  // TODO(GG): TBD - how do we want to support empty replies? (actualReplyLength==0)
+
+      ClientReplyMsg *replyMsg = clientsManager->allocateNewReplyMsgAndWriteToStorage(
+          clientId, req.requestSeqNum(), currentPrimary(), replyBuffer, actualReplyLength);
+      send(replyMsg, clientId);
+      delete replyMsg;
+      clientsManager->removePendingRequestOfClient(clientId);
+    }
+  }
+
+  if ((lastExecutedSeqNum + 1) % checkpointWindowSize == 0) {
+    const uint64_t checkpointNum = (lastExecutedSeqNum + 1) / checkpointWindowSize;
+    stateTransfer->createCheckpointOfCurrentState(checkpointNum);
+  }
+
+  //////////////////////////////////////////////////////////////////////
+  // Phase 3: finalize the execution of lastExecutedSeqNum+1
+  // TODO(GG): Explain what happens in recovery mode
+  //////////////////////////////////////////////////////////////////////
+
+  LOG_DEBUG(GL, "Finalized execution. " << KVLOG(lastExecutedSeqNum + 1, curView, lastStableSeqNum));
+
+  lastExecutedSeqNum = lastExecutedSeqNum + 1;
+
+  if (lastViewThatTransferredSeqNumbersFullyExecuted < curView &&
+      (lastExecutedSeqNum >= maxSeqNumTransferredFromPrevViews)) {
+    lastViewThatTransferredSeqNumbersFullyExecuted = curView;
+  }
+
+  // TODO(QF): removed the original checkpoint
+
+  // TODO(GG): clean the following logic
+  if (mainLog->insideActiveWindow(lastExecutedSeqNum)) {  // update dynamicUpperLimitOfRounds
+    const SeqNumInfo &seqNumInfo = mainLog->get(lastExecutedSeqNum);
+    const Time firstInfo = seqNumInfo.getTimeOfFisrtRelevantInfoFromPrimary();
+    const Time currTime = getMonotonicTime();
+    if ((firstInfo < currTime)) {
+      const int64_t durationMilli = duration_cast<milliseconds>(currTime - firstInfo).count();
+      dynamicUpperLimitOfRounds->add(durationMilli);
+    }
+  }
+}
 
 }  // namespace bftEngine::impl
