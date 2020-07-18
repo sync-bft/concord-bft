@@ -1269,12 +1269,13 @@ void ReplicaImp::onMessage<PrepareFullMsg>(PrepareFullMsg *msg) {
     if(seqNumInfo.partialProofs().hasFullProof()||//we may need to alter hasFullProof in the future
         (!seqNumInfo.hasProposalMsg()))
       continue;
-      */
+
   const Time timeOfPartProof = seqNumInfo.partialProofs().getTimeOfSelfPartialProof();
 
   while (currTime - timeOfPartProof > milliseconds(controller->timeToStartCommitMilli())){
     continue;//Since our window is 1, the only thing we need to do is wait?
   }
+   */
 
   if (!msgAdded) {
     LOG_DEBUG(GL, "Ignored PrepareFullMsg." << KVLOG(msgSender));
