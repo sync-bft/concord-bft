@@ -114,6 +114,10 @@ void ReplicaImp::registerMsgHandlers() {
                                    bind(&ReplicaImp::messageHandler<AskForCheckpointMsg>, this, _1));
 
   msgHandlers_->registerInternalMsgHandler([this](InternalMessage &&msg) { onInternalMsg(std::move(msg)); });
+
+  msgHandlers_->registerMsgHandler(MsgCode::Proposal,
+                                   bind(&ReplicaImp::messageHandler<ProposalMsg>, this, _1));
+
 }
 
 template <typename T>

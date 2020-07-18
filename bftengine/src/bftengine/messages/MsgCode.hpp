@@ -39,6 +39,8 @@ class MsgCode {
     ReqMissingData,
     StateTransfer,
 
+    Proposal,
+
     ClientPreProcessRequest,
     PreProcessRequest,
     PreProcessReply,
