@@ -32,7 +32,7 @@ uint32_t SimpleController::timeToStartSlowPathMilli() { return 150; }
 
 uint32_t SimpleController::slowPathsTimerMilli() { return 150; }
 
-uint32_t SimpleController::timeToStartCommitMilli() { return 150; }
+// uint32_t SimpleController::timeToStartCommitMilli() { return 150; }
 
 int SimpleController::durationSincePrePrepare(SeqNum n) { return -1; }
 

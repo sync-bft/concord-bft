@@ -122,7 +122,7 @@ class PersistentStorageImp : public PersistentStorage {
   void setFullCommitProofMsgInSeqNumWindow(SeqNum seqNum, FullCommitProofMsg *msg) override;
   void setForceCompletedInSeqNumWindow(SeqNum seqNum, bool forceCompleted) override;
   void setPrepareFullMsgInSeqNumWindow(SeqNum seqNum, PrepareFullMsg *msg) override;
-  void setVoteMsgInSeqNumWindow(SeqNum seqNum, VoteMsg *msg) override;
+  // void setVoteMsgInSeqNumWindow(SeqNum seqNum, VoteMsg *msg) override;
   void setCommitFullMsgInSeqNumWindow(SeqNum seqNum, CommitFullMsg *msg) override;
   void setCheckpointMsgInCheckWindow(SeqNum seqNum, CheckpointMsg *msg) override;
   void setCompletedMarkInCheckWindow(SeqNum seqNum, bool completed) override;

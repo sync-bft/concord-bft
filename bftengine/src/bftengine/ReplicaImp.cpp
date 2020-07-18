@@ -35,6 +35,7 @@
 #include "messages/ViewChangeMsg.hpp"
 #include "messages/NewViewMsg.hpp"
 #include "messages/PartialCommitProofMsg.hpp"
+#include "messages/VoteMsg.hpp"
 #include "messages/FullCommitProofMsg.hpp"
 #include "messages/ReplicaStatusMsg.hpp"
 #include "messages/AskForCheckpointMsg.hpp"
@@ -778,7 +779,7 @@ void ReplicaImp::sendPreparePartial(SeqNumInfo &seqNumInfo) {
   }
 }
 
-/* 
+/*
 void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
   Assert(currentViewIsActive());
 
@@ -1086,7 +1087,7 @@ void ReplicaImp::onMessage<PreparePartialMsg>(PreparePartialMsg *msg) {
     delete msg;
   }
 }
-
+/*
 void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalMsg
   //metric_received_prepare_partials_.Get().Inc(); Do we have other metrices?
   const SeqNum msgSeqNum = msg->seqNumber();
@@ -1099,10 +1100,6 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   //SCOPED_MDC_SEQ_NUM(std::to_string(msgSeqNum));
   //SCOPED_MDC_PATH(CommitPathToMDCString(CommitPath::SLOW)); Do we care aboutr scope?
   bool msgAdded = false;
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
   //auto span = concordUtils::startChildSpanFromContext(msg->spanContext<std::remove_pointer<decltype(msg)>::type>(),
                                                      // "bft_handle_prepare_partial_msg");//can I change this?
   const SeqNum minSeqNum = lastExecutedSeqNum + 1;
@@ -1124,6 +1121,35 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     } else {
       msgAdded = seqNumInfo.addMsg(msg);
     }
+<<<<<<< HEAD
+=======
+
+    const SeqNum minSeqNum = lastExecutedSeqNum + 1;
+
+    const SeqNum maxSeqNum = primaryLastUsedSeqNum;
+
+    AssertLE(minSeqNum, maxSeqNum + 1);
+
+    if (minSeqNum > maxSeqNum) return;
+
+    const Time currTime = getMonotonicTime();
+
+    // I don't think we need this for now
+    for (SeqNum i = minSeqNum; i <= maxSeqNum; i++) {
+      SeqNumInfo &seqNumInfo = mainLog->get(i);
+
+      if(seqNumInfo.partialProofs().hasFullProof()||//we may need to alter hasFullProof in the future
+          (!seqNumInfo.hasProposalMsg()))
+        continue;
+        
+    const Time timeOfPartProof = seqNumInfo.partialProofs().getTimeOfSelfPartialProof();
+
+    while (currTime - timeOfPartProof > milliseconds(controller->timeToStartCommitMilli())){
+      continue;//Since our window is 1, the only thing we need to do is wait?
+    }
+
+    controller->onStartingSlowCommit(msgSeqNum);// we may need to alter this once finishing writing commit
+>>>>>>> 3a6cc5d24353753839207b000586a5e885e9712c
   
     if (ps_) {
       ps_->beginWriteTran();
@@ -1132,10 +1158,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     }
   }
   
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
+  
   if (!msgAdded) {
     LOG_DEBUG(GL,
               "Node " << config_.replicaId << " ignored the Proposal from node " << msgSender << " (seqNumber "
@@ -1143,6 +1166,8 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     delete msg;
   }
 }
+*/
+
 
 
 
