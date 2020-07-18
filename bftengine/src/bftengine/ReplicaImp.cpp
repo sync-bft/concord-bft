@@ -528,7 +528,7 @@ void ReplicaImp::onMessage<PrePrepareMsg>(PrePrepareMsg *msg) {
     }
   }
 
-  commitReportTimer_ = timers_.addtimers_.add(milliseconds(1000),
+  commitReportTimer_ = timers_.add(milliseconds(1000),
                                    Timers::Timer::ONESHOT,
                                    [this](Timers::Handle h) { onStartCommitTimer(h); });
 
