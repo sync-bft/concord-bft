@@ -75,6 +75,8 @@ constexpr double factorForMinTimeBetweenStatusRequestsMilli = 0.5;  // TODO(GG):
 
 constexpr int sendStatusPeriodMilli = 0;  // if 0, this value is taken from config
 
+constexpr int commitReportMilli = 1000;
+
 ///////////////////////////////////////////////////////////////////////////////
 // Retransmission Logic
 ///////////////////////////////////////////////////////////////////////////////
