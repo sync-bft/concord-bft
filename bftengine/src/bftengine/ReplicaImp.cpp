@@ -504,7 +504,7 @@ void ReplicaImp::onMessage<PrePrepareMsg>(PrePrepareMsg *msg) {
     if (seqNumInfo.addMsg(msg)) {
       {
         LOG_INFO(CNSUS,
-                 "PrePrepare witLOG_INFOh the following correlation IDs [" << msg->getBatchCorrelationIdAsString() << "]");
+                 "PrePrepare with the following correlation IDs [" << msg->getBatchCorrelationIdAsString() << "]");
       }
       msgAdded = true;
 
@@ -528,7 +528,10 @@ void ReplicaImp::onMessage<PrePrepareMsg>(PrePrepareMsg *msg) {
     }
   }
 
-  commitReportTimer_ = timers_.add(milliseconds(1000),
+  LOG_INFO(CNSUS,
+           "Triggering timer...");
+
+  commitReportTimer_ = timers_.add(milliseconds(commitReportMilli),
                                    Timers::Timer::ONESHOT,
                                    [this](Timers::Handle h) { onStartCommitTimer(h); });
 
@@ -2773,7 +2776,7 @@ void ReplicaImp::onStatusReportTimer(Timers::Handle timer) {
 }
 
 void ReplicaImp::onStartCommitTimer(Timers::Handle timer) {
-  LOG_INFO(GL, "Timer Triggered by PreprepareMsg");
+  LOG_INFO(CNSUS, "Timer Triggered by PreprepareMsg");
 }
 
 void ReplicaImp::onSlowPathTimer(Timers::Handle timer) {
