@@ -96,12 +96,8 @@ class VoteMsg : public SignedShareBase {
   friend size_t sizeOfHeader();
 
  public:
-  static VoteMsg* create(ViewNum v,
-                         SeqNum s,
-                         ReplicaId senderId,
-                         Digest& ppDigest,
-                         IThresholdSigner* thresholdSigner,
-                         const std::string& spanContext = "");
+  static VoteMsg* create(
+      ViewNum v, SeqNum s, ReplicaId senderId, const char* sig, uint16_t sigLen, const std::string& spanContext = "");
   void validate(const ReplicasInfo&) const override;
 };
 
