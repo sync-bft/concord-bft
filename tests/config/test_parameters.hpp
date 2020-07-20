@@ -16,7 +16,7 @@
 
 struct ClientParams {
   uint32_t numOfOperations = 4600;
-  uint16_t clientId = 4;
+  uint16_t clientId = 3;
   uint16_t numOfReplicas = 3;
   uint16_t numOfClients = 1;
   uint16_t numOfFaulty = 1;
