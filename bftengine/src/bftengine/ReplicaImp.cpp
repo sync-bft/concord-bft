@@ -508,6 +508,12 @@ void ReplicaImp::onMessage<PrePrepareMsg>(PrePrepareMsg *msg) {
       }
       msgAdded = true;
 
+      LOG_INFO(CNSUS, "Triggering timer...");
+
+      commitReportTimer_ = timers_.add(milliseconds(commitReportMilli),
+                                       Timers::Timer::ONESHOT,
+                                       [this](Timers::Handle h) { onStartCommitTimer(h); });
+
       if (ps_) {
         ps_->beginWriteTran();
         ps_->setPrePrepareMsgInSeqNumWindow(msgSeqNum, msg);
@@ -527,13 +533,6 @@ void ReplicaImp::onMessage<PrePrepareMsg>(PrePrepareMsg *msg) {
       }
     }
   }
-
-  LOG_INFO(CNSUS,
-           "Triggering timer...");
-
-  commitReportTimer_ = timers_.add(milliseconds(commitReportMilli),
-                                   Timers::Timer::ONESHOT,
-                                   [this](Timers::Handle h) { onStartCommitTimer(h); });
 
   if (!msgAdded) delete msg;
 }
