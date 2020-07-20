@@ -51,6 +51,18 @@ class CollectorOfThresholdSignatures {
     return true;
   }
 
+  /* bool addMsgWithVoteSignature(PART* voteSigMsg, ReplicaId repId) {
+    Assert(voteSigMsg != nullptr);
+    if ((combinedValidSignatureMsg != nullptr) || (replicasInfo.count(repId) > 0)) return false;
+    // add voteSigMsg to replicasInfo
+    RepInfo info = {voteSigMsg, SigState::Unknown};
+    replicasInfo[repId] = info;
+    numberOfUnknownSignatures++;
+    trySendToBkThread();
+    return true;
+  }
+  */
+
   bool addMsgWithCombinedSignature(FULL* combinedSigMsg) {
     if (combinedValidSignatureMsg != nullptr || candidateCombinedSignatureMsg != nullptr) return false;
 
@@ -96,6 +108,15 @@ class CollectorOfThresholdSignatures {
   bool hasPartialMsgFromReplica(ReplicaId repId) const { return (replicasInfo.count(repId) > 0); }
 
   PART* getPartialMsgFromReplica(ReplicaId repId) const {
+    if (replicasInfo.count(repId) == 0) return nullptr;
+
+    const RepInfo& r = replicasInfo.at(repId);
+    return r.partialSigMsg;
+  }
+
+  bool hasVoteMsgFromReplica(ReplicaId repId) const { return (replicasInfo.count(repId) > 0); }
+
+  PART* getVoteMsgFromReplica(ReplicaId repId) const {
     if (replicasInfo.count(repId) == 0) return nullptr;
 
     const RepInfo& r = replicasInfo.at(repId);
@@ -202,6 +223,33 @@ class CollectorOfThresholdSignatures {
       numOfRequiredSigs = ExternalFunc::numberOfRequiredSignatures(context);
 
     Assert(numberOfUnknownSignatures < numOfRequiredSigs);  // because numOfRequiredSigs > 1
+
+    return true;
+  }
+
+  // init the PART message directly (without sending to a background thread)
+  bool initMsgWithVoteSignature(PART* voteSigMsg, ReplicaId repId) {
+    Assert(voteSigMsg != nullptr);
+
+    Assert(!processingSignaturesInTheBackground);
+    Assert(expectedSeqNumber != 0);
+    Assert(combinedValidSignatureMsg == nullptr);
+    Assert(candidateCombinedSignatureMsg == nullptr);
+    Assert(replicasInfo.count(repId) == 0);
+    Assert(numberOfUnknownSignatures == 0);  // we can use this method to add at most one PART message
+
+    // add voteSigMsg to replicasInfo
+    // RepInfo info = {voteSigMsg, SigState::Unknown};
+    // replicasInfo[repId] = info;
+
+    // TODO(GG): do we want to verify the partial signature here?
+
+    // numberOfUnknownSignatures++;
+
+    // if (numOfRequiredSigs == 0)  // init numOfRequiredSigs
+      // numOfRequiredSigs = ExternalFunc::numberOfRequiredSignatures(context);
+
+    // Assert(numberOfUnknownSignatures < numOfRequiredSigs);  // because numOfRequiredSigs > 1
 
     return true;
   }
@@ -463,6 +511,7 @@ class CollectorOfThresholdSignatures {
     for (auto&& m : replicasInfo) {
       RepInfo& repInfo = m.second;
       delete repInfo.partialSigMsg;
+      // delete repInfo.voteSigMsg;
     }
     replicasInfo.clear();
 
@@ -484,6 +533,7 @@ class CollectorOfThresholdSignatures {
 
   struct RepInfo {
     PART* partialSigMsg;
+    // PART* voteSigMsg;
     SigState state;
   };
 

@@ -22,8 +22,10 @@ class MsgCode {
 
     PrePrepare = 100,
     PreparePartial,
+    Vote,
     PrepareFull,
     CommitPartial,
+    CommitVote,
     CommitFull,
     StartSlowCommit,
     PartialCommitProof,
@@ -45,9 +47,6 @@ class MsgCode {
 
     ClientRequest = 700,
     ClientReply = 800,
-
-    Vote,
-
   };
 };
 

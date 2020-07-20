@@ -155,11 +155,11 @@ class CommitVoteMsg : public SignedShareBase {
 
  public:
   static CommitVoteMsg* create(ViewNum v,
-                                  SeqNum s,
-                                  ReplicaId senderId,
-                                  Digest& ppDoubleDigest,
-                                  IThresholdSigner* thresholdSigner,
-                                  const std::string& spanContext = "");
+                               SeqNum s,
+                               ReplicaId senderId,
+                               Digest& ppDoubleDigest,
+                               IThresholdSigner* thresholdSigner,
+                               const std::string& spanContext = "");
   void validate(const ReplicasInfo&) const override;
 };
 

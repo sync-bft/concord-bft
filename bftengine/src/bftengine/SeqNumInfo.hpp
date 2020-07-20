@@ -42,13 +42,17 @@ class SeqNumInfo {
 
   bool addMsg(PreparePartialMsg* m);
   bool addSelfMsg(PreparePartialMsg* m, bool directAdd = false);
+
+  bool addMsg(VoteMsg* m);
+  bool addSelfMsg(VoteMsg* m, bool directAdd = false);
   
   bool addMsg(PrepareFullMsg* m, bool directAdd = false);
-  
-  bool addMsg(VoteMsg* m, bool directAdd = false);
 
   bool addMsg(CommitPartialMsg* m);
   bool addSelfCommitPartialMsgAndDigest(CommitPartialMsg* m, Digest& commitDigest, bool directAdd = false);
+
+  bool addMsg(CommitVoteMsg* m);
+  bool addSelfCommitVoteMsgAndDigest(CommitVoteMsg* m, Digest& commitDigest, bool directAdd = false);
 
   bool addMsg(CommitFullMsg* m, bool directAdd = false);
 
@@ -60,16 +64,23 @@ class SeqNumInfo {
   PreparePartialMsg* getSelfPreparePartialMsg() const;
   PrepareFullMsg* getValidPrepareFullMsg() const;
 
+  VoteMsg* getSelfVoteMsg() const;
+  CommitVoteMsg* getSelfCommitVoteMsg() const;
+
   CommitPartialMsg* getSelfCommitPartialMsg() const;
   CommitFullMsg* getValidCommitFullMsg() const;
 
   bool hasPrePrepareMsg() const;
 
   bool isPrepared() const;
+  bool hasVoted() const;
   bool isCommitted__gg() const;  // TODO(GG): beware this name may mislead (not sure...). rename ??
+  bool hasCommitVoted() const;
 
   bool preparedOrHasPreparePartialFromReplica(ReplicaId repId) const;
+  bool votedOrHasVoteFromReplica(ReplicaId repId) const;
   bool committedOrHasCommitPartialFromReplica(ReplicaId repId) const;
+  bool commitVotedOrHasCommitVoteFromReplica(ReplicaId repId) const;
 
   Time getTimeOfFisrtRelevantInfoFromPrimary() const;
   Time getTimeOfLastInfoRequest() const;
@@ -110,7 +121,7 @@ class SeqNumInfo {
     commitMsgsCollector->onCompletionOfCombinedSigVerification(seqNumber, viewNumber, isValid);
   }
 
- protected:
+ // protected:
   class ExFuncForPrepareCollector {
    public:
     // external messages
@@ -121,6 +132,33 @@ class SeqNumInfo {
                                                       uint16_t combinedSigLen,
                                                       const std::string& span_context);
 
+    // internal messages
+    static InternalMessage createInterCombinedSigFailed(SeqNum seqNumber,
+                                                        ViewNum viewNumber,
+                                                        std::set<uint16_t> replicasWithBadSigs);
+    static InternalMessage createInterCombinedSigSucceeded(SeqNum seqNumber,
+                                                           ViewNum viewNumber,
+                                                           const char* combinedSig,
+                                                           uint16_t combinedSigLen,
+                                                           const std::string& span_context);
+    static InternalMessage createInterVerifyCombinedSigResult(SeqNum seqNumber, ViewNum viewNumber, bool isValid);
+
+    // from the Replica object
+    static uint16_t numberOfRequiredSignatures(void* context);
+    static IThresholdVerifier* thresholdVerifier(void* context);
+    static util::SimpleThreadPool& threadPool(void* context);
+    static IncomingMsgsStorage& incomingMsgsStorage(void* context);
+  };
+
+  class ExFuncForVoteCollector {
+   public:
+    // external messages
+    static VoteMsg* createCombinedSignatureMsg(void* context,
+                                                    SeqNum seqNumber,
+                                                    ViewNum viewNumber,
+                                                    const char* const combinedSig,
+                                                    uint16_t combinedSigLen,
+                                                    const std::string& span_context);
     // internal messages
     static InternalMessage createInterCombinedSigFailed(SeqNum seqNumber,
                                                         ViewNum viewNumber,
@@ -172,6 +210,7 @@ class SeqNumInfo {
   PrePrepareMsg* prePrepareMsg;
 
   CollectorOfThresholdSignatures<PreparePartialMsg, PrepareFullMsg, ExFuncForPrepareCollector>* prepareSigCollector;
+  CollectorOfThresholdSignatures<VoteMsg, CommitVoteMsg, ExFuncForVoteCollector>* voteSigCollector; 
   CollectorOfThresholdSignatures<CommitPartialMsg, CommitFullMsg, ExFuncForCommitCollector>* commitMsgsCollector;
 
   PartialProofsSet* partialProofsSet;  // TODO(GG): replace with an instance of CollectorOfThresholdSignatures
