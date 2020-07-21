@@ -51,18 +51,17 @@ class CollectorOfThresholdSignatures {
     return true;
   }
 
-  /* bool addMsgWithVoteSignature(PART* voteSigMsg, ReplicaId repId) {
+  bool addMsgWithVoteSignature(PART* voteSigMsg, ReplicaId repId) {
     Assert(voteSigMsg != nullptr);
     if ((combinedValidSignatureMsg != nullptr) || (replicasInfo.count(repId) > 0)) return false;
     // add voteSigMsg to replicasInfo
-    RepInfo info = {voteSigMsg, SigState::Unknown};
-    replicasInfo[repId] = info;
-    numberOfUnknownSignatures++;
-    trySendToBkThread();
+    VoteInfo info = {voteSigMsg, SigState::Unknown};
+    votersInfo[repId] = info;
+    // numberOfUnknownSignatures++;
+    // trySendToBkThread();
     return true;
   }
-  */
-
+  
   bool addMsgWithCombinedSignature(FULL* combinedSigMsg) {
     if (combinedValidSignatureMsg != nullptr || candidateCombinedSignatureMsg != nullptr) return false;
 
@@ -548,6 +547,22 @@ class CollectorOfThresholdSignatures {
   SeqNum expectedSeqNumber = 0;
   ViewNum expectedView = 0;
   Digest expectedDigest;
+
+  struct VoteInfo {
+    PART* voteSigMsg;
+    SigState state;
+  };
+
+  // bool processingSignaturesInTheBackground = false;
+
+  // uint16_t numberOfUnknownSignatures = 0;
+  std::unordered_map<ReplicaId, VoteInfo> votersInfo;
+
+  FULL* combinedVoteSignatureMsg = nullptr;
+
+  // SeqNum expectedSeqNumber = 0;
+  // ViewNum expectedView = 0;
+  // Digest expectedDigest;
 };
 
 }  // namespace impl

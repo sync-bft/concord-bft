@@ -108,9 +108,14 @@ void PreparePartialMsg::validate(const ReplicasInfo& repInfo) const {
 // VoteMsg
 ///////////////////////////////////////////////////////////////////////////////
 
-VoteMsg* VoteMsg::create(
-    ViewNum v, SeqNum s, ReplicaId senderId, const char* sig, uint16_t sigLen, const std::string& spanContext) {
-  return (VoteMsg*)SignedShareBase::create(MsgCode::Vote, v, s, senderId, sig, sigLen, spanContext);
+VoteMsg* VoteMsg::create(ViewNum v,
+                         SeqNum s,
+                         ReplicaId senderId,
+                         Digest& ppDigest,
+                         IThresholdSigner* thresholdSigner,
+                         const std::string& spanContext) {
+  return (VoteMsg*)SignedShareBase::create(
+      MsgCode::Vote, v, s, senderId, ppDigest, thresholdSigner, spanContext);
 }
 
 void VoteMsg::validate(const ReplicasInfo& repInfo) const {
@@ -155,15 +160,12 @@ void CommitPartialMsg::validate(const ReplicasInfo& repInfo) const {
 // CommitVoteMsg
 ///////////////////////////////////////////////////////////////////////////////
 
-CommitVoteMsg* CommitVoteMsg::create(ViewNum v,
-                                     SeqNum s,
-                                     ReplicaId senderId,
-                                     Digest& ppDoubleDigest,
-                                     IThresholdSigner* thresholdSigner,
-                                     const std::string& spanContext) {
-  return (CommitVoteMsg*)SignedShareBase::create(
-      MsgCode::CommitVote, v, s, senderId, ppDoubleDigest, thresholdSigner, spanContext);
+
+CommitVoteMsg* CommitVoteMsg::create(
+    ViewNum v, SeqNum s, ReplicaId senderId, const char* sig, uint16_t sigLen, const std::string& spanContext) {
+  return (CommitVoteMsg*)SignedShareBase::create(MsgCode::CommitVote, v, s, senderId, sig, sigLen, spanContext);
 }
+
 
 void CommitVoteMsg::validate(const ReplicasInfo& repInfo) const {
   SignedShareBase::_validate(repInfo, MsgCode::CommitVote);

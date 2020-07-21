@@ -33,7 +33,7 @@ SeqNumInfo::~SeqNumInfo() {
   resetAndFree();
 
   delete prepareSigCollector;
-  // delete voteSigCollector;
+  delete voteSigCollector;
   delete commitMsgsCollector;
   delete partialProofsSet;
 }
@@ -43,7 +43,7 @@ void SeqNumInfo::resetAndFree() {
   prePrepareMsg = nullptr;
 
   prepareSigCollector->resetAndFree();
-  // voteSigCollector->resetAndFree();
+  voteSigCollector->resetAndFree();
   commitMsgsCollector->resetAndFree();
   partialProofsSet->resetAndFree();
 
@@ -227,6 +227,11 @@ PrepareFullMsg* SeqNumInfo::getValidPrepareFullMsg() const {
   return prepareSigCollector->getMsgWithValidCombinedSignature();
 }
 
+VoteMsg* SeqNumInfo::getSelfVoteMsg() const {
+  VoteMsg* p = voteSigCollector->getVoteMsgFromReplica(replica->getReplicasInfo().myId());
+  return p;
+}
+
 CommitPartialMsg* SeqNumInfo::getSelfCommitPartialMsg() const {
   CommitPartialMsg* p = commitMsgsCollector->getPartialMsgFromReplica(replica->getReplicasInfo().myId());
   return p;
@@ -326,7 +331,7 @@ InternalMessage SeqNumInfo::ExFuncForPrepareCollector::createInterVerifyCombined
 uint16_t SeqNumInfo::ExFuncForPrepareCollector::numberOfRequiredSignatures(void* context) {
   InternalReplicaApi* r = (InternalReplicaApi*)context;
   const ReplicasInfo& info = r->getReplicasInfo();
-  return (uint16_t)((info.fVal()) + info.cVal() + 1);
+  return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
 }
 
 IThresholdVerifier* SeqNumInfo::ExFuncForPrepareCollector::thresholdVerifier(void* context) {
@@ -348,14 +353,14 @@ IncomingMsgsStorage& SeqNumInfo::ExFuncForPrepareCollector::incomingMsgsStorage(
 // class SeqNumInfo::ExFuncForVoteCollector
 ///////////////////////////////////////////////////////////////////////////////
 
-VoteMsg* SeqNumInfo::ExFuncForVoteCollector::createCombinedSignatureMsg(void* context,
+CommitVoteMsg* SeqNumInfo::ExFuncForVoteCollector::createCombinedSignatureMsg(void* context,
                                                                         SeqNum seqNumber,
                                                                         ViewNum viewNumber,
                                                                         const char* const combinedSig,
                                                                         uint16_t combinedSigLen,
                                                                         const std::string& span_context) {
   InternalReplicaApi* r = (InternalReplicaApi*)context;
-  return VoteMsg::create(
+  return CommitVoteMsg::create(
       viewNumber, seqNumber, r->getReplicasInfo().myId(), combinedSig, combinedSigLen, span_context);
 }
 
@@ -382,7 +387,7 @@ InternalMessage SeqNumInfo::ExFuncForVoteCollector::createInterVerifyCombinedSig
 uint16_t SeqNumInfo::ExFuncForVoteCollector::numberOfRequiredSignatures(void* context) {
   InternalReplicaApi* r = (InternalReplicaApi*)context;
   const ReplicasInfo& info = r->getReplicasInfo();
-  return (uint16_t)((info.fVal()) + info.cVal() + 1);
+  return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
 }
 
 IThresholdVerifier* SeqNumInfo::ExFuncForVoteCollector::thresholdVerifier(void* context) {

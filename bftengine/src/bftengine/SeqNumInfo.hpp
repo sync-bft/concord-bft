@@ -153,7 +153,7 @@ class SeqNumInfo {
   class ExFuncForVoteCollector {
    public:
     // external messages
-    static VoteMsg* createCombinedSignatureMsg(void* context,
+    static CommitVoteMsg* createCombinedSignatureMsg(void* context,
                                                     SeqNum seqNumber,
                                                     ViewNum viewNumber,
                                                     const char* const combinedSig,

@@ -315,6 +315,7 @@ class ReplicaImp : public InternalReplicaApi, public ReplicaForStateTransfer {
   void tryToAskForMissingInfo();
 
   void sendPreparePartial(SeqNumInfo&);
+  void sendVote(SeqNumInfo&);
   void sendCommitPartial(SeqNum);  // TODO(GG): the argument should be a ref to SeqNumInfo
 
   void executeReadOnlyRequest(concordUtils::SpanWrapper& parent_span, ClientRequestMsg* m);

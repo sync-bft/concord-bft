@@ -515,12 +515,18 @@ void ReplicaImp::onMessage<PrePrepareMsg>(PrePrepareMsg *msg) {
                          // before PrePrepareMsg
       {
         sendPartialProof(seqNumInfo);
+        LOG_INFO(CNSUS, 
+                  "Sending PartialProof");
       } else {
         seqNumInfo.startSlowPath();
         metric_slow_path_count_.Get().Inc();
     
         sendPreparePartial(seqNumInfo);
-        // sendVote(seqNumInfo);
+        LOG_INFO(CNSUS,
+                  "Sending PreparePartial");
+        sendVote(seqNumInfo);
+        LOG_INFO(CNSUS,
+                  "Sending Vote");
       }
     }
   }
@@ -775,7 +781,7 @@ void ReplicaImp::sendPreparePartial(SeqNumInfo &seqNumInfo) {
   }
 }
 
-/*
+
 void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
   Assert(currentViewIsActive());
 
@@ -801,9 +807,8 @@ void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
         LOG_INFO(CNSUS, "Vote sent to replica ");
       }
     }
-  // }
 }
-*/
+
 
 void ReplicaImp::sendCommitPartial(const SeqNum s) {
   Assert(currentViewIsActive());
@@ -1701,16 +1706,16 @@ void ReplicaImp::onRetransmissionsProcessingResults(SeqNum relatedLastStableSeqN
                              << " PreparePartialMsg with seqNumber " << s.msgSeqNum);
       } break;
       
-      /* case MsgCode::Vote: {
+      case MsgCode::Vote: {
         SeqNumInfo &seqNumInfo = mainLog->get(s.msgSeqNum);
-        VoteMsg *msgToSend = seqNumInfo.getVoteMsg();
+        VoteMsg *msgToSend = seqNumInfo.getSelfVoteMsg();
         AssertNE(msgToSend, nullptr);
         sendRetransmittableMsgToReplica(msgToSend, s.replicaId, s.msgSeqNum);
         LOG_DEBUG(GL,
                   "Replica " << myId << " retransmits to replica " << s.replicaId
                              << " VoteMsg with seqNumber " << s.msgSeqNum);
       } break;
-      */
+      
       case MsgCode::PrepareFull: {
         SeqNumInfo &seqNumInfo = mainLog->get(s.msgSeqNum);
         PrepareFullMsg *msgToSend = seqNumInfo.getValidPrepareFullMsg();
