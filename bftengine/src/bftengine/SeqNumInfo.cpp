@@ -154,6 +154,19 @@ bool SeqNumInfo::addMsg(PrepareFullMsg* m, bool directAdd) {
   return retVal;
 }
 
+bool SeqNumInfo::addMsg(VoteMsg* m, bool directAdd) {
+  Assert(directAdd || replica->getReplicasInfo().myId() != m->senderId());
+  Assert(!forcedCompleted);
+
+  bool retVal;
+  if (!directAdd)
+    retVal = voteSigCollector->addMsgWithVoteSignature(m, replica->getReplicasInfo().myId());
+  else
+    retVal = voteSigCollector->initMsgWithVoteSignature(m, replica->getReplicasInfo().myId());
+  
+  return retVal;
+}
+
 bool SeqNumInfo::addMsg(CommitPartialMsg* m) {
   Assert(replica->getReplicasInfo().myId() != m->senderId());  // TODO(GG): TBD
   Assert(!forcedCompleted);

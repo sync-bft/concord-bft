@@ -43,7 +43,7 @@ class SeqNumInfo {
   bool addMsg(PreparePartialMsg* m);
   bool addSelfMsg(PreparePartialMsg* m, bool directAdd = false);
 
-  bool addMsg(VoteMsg* m);
+  bool addMsg(VoteMsg* m, bool directAdd = false);
   bool addSelfMsg(VoteMsg* m, bool directAdd = false);
   
   bool addMsg(PrepareFullMsg* m, bool directAdd = false);

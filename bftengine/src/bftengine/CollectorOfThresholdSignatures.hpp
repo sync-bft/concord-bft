@@ -238,8 +238,8 @@ class CollectorOfThresholdSignatures {
     Assert(numberOfUnknownSignatures == 0);  // we can use this method to add at most one PART message
 
     // add voteSigMsg to replicasInfo
-    // RepInfo info = {voteSigMsg, SigState::Unknown};
-    // replicasInfo[repId] = info;
+    VoteInfo info = {voteSigMsg, SigState::Unknown};
+    votersInfo[repId] = info;
 
     // TODO(GG): do we want to verify the partial signature here?
 
