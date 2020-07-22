@@ -27,7 +27,7 @@ void ProposalMsg::validate(const ReplicasInfo& repInfo) const{
     // check digest of client request buffer
     Digest d;
     const char* buffer = (char*)&(b()->seqNumDigestFill);
-    const uint32_t bufferSize = (b()->endLocationOfLastRequest - proposaleHeaderPrefixSig);
+    const uint32_t bufferSize = (b()->endLocationOfLastRequest - proposalHeaderPrefix);
 
     DigestUtil::compute(buffer, bufferSize, (char*)&d, sizeof(Digest));
 
@@ -37,10 +37,10 @@ void ProposalMsg::validate(const ReplicasInfo& repInfo) const{
 
 }
 
-ProposalMsg::ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, size_t size)
-    : ProposalMsg(sender, v, s, "", size){}
+ProposalMsg::ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, char* combinedSigBody, size_t combinedSigLength, size_t size)
+    : ProposalMsg(sender, v, s, combinedSigBody, combinedSigLength, "", size){}
 
-ProposalMsg::ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const std::string& spanContext, size_t size)
+ProposalMsg::ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, char* combinedSigBody, size_t combinedSigLength, const std::string& spanContext, size_t size)
     : MessageBase(sender,
                   MsgCode::Proposal,
                   spanContext.size(),
@@ -56,20 +56,20 @@ ProposalMsg::ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const std::strin
     }
 
     b()->endLocationOfLastRequest = requestsPayloadShift();
-    b()->endLocationOfLastSignature = signaturesPayloadShift();
     b()->flags = computeFlagsForProposalMsg(ready, ready);
     b()->numberOfRequests = 0;
-    b()->numberOfSignatures = 0;
     b()->seqNum = s;
     b()->viewNum = v;
     b()->seqNumDigestFill = s;
+    b()->combinedSigLength = combinedSigLength;
 
     char* position = body() + sizeof(Header);
     memcpy(position, spanContext.data(), b()->header.spanContextSize);
+    position = body() + sizeof(Header) +  b()->header.spanContextSize;
+    memcpy(position, combinedSigBody, b()->combinedSigLength);
 }
 
 int32_t ProposalMsg::remainingSizeForRequests() const {
-  Assert(signaturesFilled);
   Assert(!isReady());
   Assert(!isNull());
   Assert(b()->endLocationOfLastRequest >= requestSPayloadShift());
@@ -78,7 +78,6 @@ int32_t ProposalMsg::remainingSizeForRequests() const {
 }
 
 void ProposalMsg::addRequest(const char* pRequest, uint32_t requestSize) {
-  Assert(signaturesFilled);
   Assert(getRequestSizeTemp(pRequest) == requestSize);
   Assert(!isNull());
   Assert(!isReady());
@@ -93,7 +92,6 @@ void ProposalMsg::addRequest(const char* pRequest, uint32_t requestSize) {
 }
 
 void ProposalMsg::finishAddingRequests() {
-  Assert(signaturesFilled);
   Assert(!isNull());
   Assert(!isReady());
   Assert(b()->numberOfRequests > 0);
@@ -110,51 +108,13 @@ void ProposalMsg::finishAddingRequests() {
   // compute and set digest
   Digest d;
   const char* buffer = (char*)&(b()->seqNumDigestFill);
-  const uint32_t bufferSize = (b()->endLocationOfLastRequest - proposalHeaderPrefixSig;
-  DigestUtil::compute(requestBuffer, requestSize, (char*)&d, sizeof(Digest));
+  const uint32_t bufferSize = (b()->endLocationOfLastRequest - proposalHeaderPrefix);
+  DigestUtil::compute(buffer, bufferSize, (char*)&d, sizeof(Digest));
   b()->digestOfRequestsSeqNum = d;
 
   // size
   setMsgSize(b()->endLocationOfLastRequest);
   shrinkToFit();
-}
-
-int32_t ProposalMsg::remainingSizeForSignatures() const {
-  // TODO: need to consider storage capacity of client requests
-  Assert(!isReady());
-  Assert(!isNull());
-  Assert(b()->endLocationOfLastSignature >= signaturesPayloadShift());
-
-  return (internalStorageSize() - b()->endLocationOfLastSignature);
-}
-
-void ProposalMsg::addSignature(const char* pSignature, uint32_t size) {
-  Assert(!signaturesFilled);
-  // Assert(getRequestSizeTemp(pRequest) == signatureSize);
-  Assert(!isNull());
-  Assert(!isReady());
-  Assert(remainingSizeForSignatures() >= size);
-
-  char* insertPtr = body() + b()->endLocationOfLastSignature;
-
-  memcpy(insertPtr, pSignature, size);
-
-  b()->endLocationOfLastSignature += size;
-  b()->numberOfSignatures++;
-
-  signatureSize = size;
-}
-
-void ProposalMsg::finishAddingSignatures() {
-  Assert(!signaturesFilled);
-  Assert(!isNull());
-  Assert(!isReady());
-  Assert(b()->numberOfSignatures > 0);
-  Assert(b()->numberOfSignatures == ReplicaConfig::numReplicas);
-  Assert(b()->endLocationOfLastSignature > signaturesPayloadShift());
-
-
-  signaturesFilled = !signaturesFilled;
 }
 
 int16_t ProposalMsg::computeFlagsForProposalMsg(bool isNull, bool isReady) {
@@ -194,19 +154,7 @@ const std::string ProposalMsg::getBatchCorrelationIdAsString() const {
   return ret;
 }
 
-const char* ProposalMsg::getCorrelationSigByIndex(int index) const {
-  bool isRequest = false;
-  auto it = ContentsIterator(this, isRequest);
-  int req_num = 0;
-  while (!it.end() && req_num < index) {
-    it.gotoNext();
-    req_num++;
-  }
-  if (it.end()) return nullptr;
-  const char* signatureBody = nullptr;
-  it.getCurrent(signatureBody);
-  return signatureBody;
-}
+uint32_t ProposalMsg::requestPayloadShift() const { return sizeof(Header) + b()->header.spanContextSize + b()->combinedSigLength; }
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -218,10 +166,10 @@ ContentIterator::ContentIterator(const ProposalMsg* const m, bool isR) : isReque
   Assert(msg->isReady());
 }
 
-void RequestsIterator::restart() { currLoc = isRequest?msg->requestsPayloadShift()
+void ContentIterator::restart() { currLoc = isRequest?msg->requestsPayloadShift()
                                                       :msg->signaturesPayloadShift();}
 
-bool RequestsIterator::getCurrent(char*& pContent) const {
+bool ContentIterator::getCurrent(char*& pContent) const {
   if (end()) return false;
 
   char* p = msg->body() + currLoc;

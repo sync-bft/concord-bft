@@ -1,6 +1,10 @@
 #pragma once
 
+#include <cstdint>
+
 #include "MessageBase.hpp"
+#include "PrimitiveTypes.hpp"
+#include "assertUtils.hpp"
 // #include "SignedShareMsgs.hpp"
 #include "Digest.hpp"
 #include "ReplicaConfig.hpp"
@@ -23,8 +27,7 @@ class ProposalMsg : public MessageBase{
             uint16_t flags;
             Digest digestOfRequestsSeqNum;
 
-            uint16_t numberOfSignatures;
-            uint32_t endLocationOfLastSignature;
+            uint16_t combinedSigLength;
 
             SeqNum seqNumDigestFill;  // used to calculate digest
             uint16_t numberOfRequests;
@@ -37,30 +40,25 @@ class ProposalMsg : public MessageBase{
         };
 
     #pragma pack(pop)
-      static_assert(sizeof(Header) == (6 + 8 + 8 + 2 + DIGEST_SIZE + 8 + 2 + 4 + 2 + 4), "Header is 68B");
+      static_assert(sizeof(Header) == (6 + 8 + 8 + 2 + DIGEST_SIZE + 2 + 4 + 2 + 4), "Header is 68B");
 
-      static const size_t proprosalHeaderPrefix =
-        sizeof(Header) - sizeof(Header::seqNumDigestFill) - sizeof(Header::numberOfRequests) - sizeof(Header::endLocationOfLastRequest) 
-                       - sizeof(Header::numberOfSignatures) - sizeof(Header::endLocationOfLastSignature);
+      static const size_t proposalHeaderPrefix =
+        sizeof(Header) - sizeof(Header::seqNumDigestFill) - sizeof(Header::numberOfRequests) - sizeof(Header::endLocationOfLastRequest);
 
-      static const size_t proposalHeaderPrefixSig =
-        sizeof(Header) - sizeof(Header::numberOfSignatures) - sizeof(Header::endLocationOfLastSignature);
     
     public:
 
         void validate(const ReplicasInfo&) const override;
+
+        ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, char* combinedSigBody, size_t combinedSigLength, size_t size);
+
+        ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, char* combinedSigBody, size_t combinedSigLength, const std::string& spanContext, size_t size);
 
         uint32_t remainingSizeForRequests() const;
 
         void addRequest(const char* pRequest, uint32_t requestSize);
 
         void finishAddingRequests();
-
-        uint32_t remainingSizeForSignatures() const;
-
-        void addSignature(const char* pSignature, uint32_t signatreSize);
-
-        void finishAddingSignatures();
 
         bool isNull() const { return ((b()->flags & 0x1) == 0); }
 
@@ -82,16 +80,16 @@ class ProposalMsg : public MessageBase{
 
         Digest& digestOfRequestsSeqNum() const {return b()->digestOfRequestsSeqNum;}
     
-        size_t signatureSize() const {return signatureSize;}
+        size_t combinedSigLength() const {return combinedSigLength;}
+
+        char* combinedSigBody() const { return body() + sizeof(Header) +  b()->header.spanContextSize; }
     
     protected:
 
-        size_t signatureSize;
-
-        bool signaturesFilled = false;
+        size_t combinedSigLength;
 
         static int16_t computeFlagsForProposalMsg(bool isNull, bool isReady);
-,
+
         bool isReady() const { return (((b()->flags >> 1) & 0x1) == 1); }
 
         // bool checkRequests() const;
@@ -99,8 +97,6 @@ class ProposalMsg : public MessageBase{
         Header* b() const { return (Header*)msgBody_; }
 
         uint32_t requestsPayloadShift() const;
-
-        uint32_t signaturesPayloadShift() const;
 
         friend class ContentIterator;
 
