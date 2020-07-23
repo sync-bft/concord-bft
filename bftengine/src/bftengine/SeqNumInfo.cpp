@@ -19,6 +19,7 @@ namespace impl {
 SeqNumInfo::SeqNumInfo()
     : replica(nullptr),
       prePrepareMsg(nullptr),
+      proposalMsg(nullptr),
       prepareSigCollector(nullptr),
       commitMsgsCollector(nullptr),
       partialProofsSet(nullptr),
@@ -501,7 +502,21 @@ void SeqNumInfo::init(SeqNumInfo& i, void* d) {
 // Sync-HotStuff
 //////////////////////////////////////////////////////////////////////
 
-bool SeqNumInfo::addSelfMsg(ProposalMsg* proposalMsg, bool directAdd) {
+ProposalMsg* SeqNumInfo::getProposalMsg() const { return proposalMsg; }
+
+bool SeqNumInfo::addMsg(ProposalMsg* m, bool directAdd) {
+  if (proposalMsg != nullptr) return false;
+
+  Assert(primary == false);
+  Assert(!forcedCompleted);
+  Assert(!prepareSigCollector->hasPartialMsgFromReplica(replica->getReplicasInfo().myId()));
+
+  proposalMsg = m;
+
+  return true;
+}
+
+bool SeqNumInfo::addSelfMsg(ProposalMsg* m, bool directAdd) {
   Assert(primary == true);  // TODO(QF): in view change: could be the leader primary's first proposal before set to primary 
   Assert(proposalMsg == nullptr);
 

@@ -57,12 +57,15 @@ class SeqNumInfo {
 
   bool addMsg(CommitFullMsg* m, bool directAdd = false);
 
-  bool addSelfMsg(ProposalMsg* proposalMsg, bool directAdd = false);
+  bool addMsg(ProposalMsg* m);
+  bool addSelfMsg(ProposalMsg* m, bool directAdd = false);
 
   void forceComplete();
 
   PrePrepareMsg* getPrePrepareMsg() const;
   PrePrepareMsg* getSelfPrePrepareMsg() const;
+
+  ProposalMsg* getProposalMsg() const;
 
   PreparePartialMsg* getSelfPreparePartialMsg() const;
   PrepareFullMsg* getValidPrepareFullMsg() const;
