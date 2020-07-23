@@ -1126,35 +1126,10 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     } else {
       msgAdded = seqNumInfo.addMsg(msg);
     }
-<<<<<<< HEAD
-=======
 
-    const SeqNum minSeqNum = lastExecutedSeqNum + 1;
-
-    const SeqNum maxSeqNum = primaryLastUsedSeqNum;
-
-    AssertLE(minSeqNum, maxSeqNum + 1);
-
-    if (minSeqNum > maxSeqNum) return;
-
-    const Time currTime = getMonotonicTime();
-
-    // I don't think we need this for now
-    for (SeqNum i = minSeqNum; i <= maxSeqNum; i++) {
-      SeqNumInfo &seqNumInfo = mainLog->get(i);
-
-      if(seqNumInfo.partialProofs().hasFullProof()||//we may need to alter hasFullProof in the future
-          (!seqNumInfo.hasProposalMsg()))
-        continue;
-        
-    const Time timeOfPartProof = seqNumInfo.partialProofs().getTimeOfSelfPartialProof();
-
-    while (currTime - timeOfPartProof > milliseconds(controller->timeToStartCommitMilli())){
-      continue;//Since our window is 1, the only thing we need to do is wait?
-    }
-
-    controller->onStartingSlowCommit(msgSeqNum);// we may need to alter this once finishing writing commit
->>>>>>> 3a6cc5d24353753839207b000586a5e885e9712c
+    commitReportTimer_ = timers_.add(milliseconds(commitReportMilli),
+                                       Timers::Timer::ONESHOT,
+                                       [this](Timers::Handle h) { onStartCommitTimer(h); });
   
     if (ps_) {
       ps_->beginWriteTran();
