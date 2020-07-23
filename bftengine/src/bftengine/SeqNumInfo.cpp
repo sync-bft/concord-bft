@@ -200,6 +200,24 @@ bool SeqNumInfo::addMsg(CommitFullMsg* m, bool directAdd) {
   return r;
 }
 
+bool SeqNumInfo::addMsg(VoteMsg* m, bool directAdd) {
+  // Assert(directAdd || replica->getReplicasInfo().myId() != m->senderId());
+  Assert(!forcedCompleted);
+
+  bool retVal;
+  if (!directAdd)
+    retVal = voteSigCollector->addMsgWithVoteSignature(m, replica->getReplicasInfo().myId());
+  else
+    retVal = voteSigCollector->initMsgWithVoteSignature(m, replica->getReplicasInfo().myId());
+  
+  return retVal;
+}
+
+bool SeqNumInfo::canCommit() const {
+  // return forcedCompleted || ((prePrepareMsg != nullptr) && voteSigCollector->isComplete());
+  return voteSigCollector->votesCollected();
+}
+
 void SeqNumInfo::forceComplete() {
   Assert(!forcedCompleted);
   Assert(hasPrePrepareMsg());
@@ -477,6 +495,25 @@ void SeqNumInfo::init(SeqNumInfo& i, void* d) {
   i.commitMsgsCollector =
       new CollectorOfThresholdSignatures<CommitPartialMsg, CommitFullMsg, ExFuncForCommitCollector>(context);
   i.partialProofsSet = new PartialProofsSet((InternalReplicaApi*)r);
+}
+
+//////////////////////////////////////////////////////////////////////
+// Sync-HotStuff
+//////////////////////////////////////////////////////////////////////
+
+bool SeqNumInfo::addSelfMsg(ProposalMsg* proposalMsg, bool directAdd) {
+  Assert(primary == true);  // TODO(QF): in view change: could be the leader primary's first proposal before set to primary 
+  Assert(proposalMsg == nullptr);
+
+  // Assert(me->id() == m->senderId()); // GG: incorrect assert - because after a view change it may has been sent by
+  // another replica
+
+  proposalMsg = m;
+  primary = true;
+
+  // TODO(QF): store sigs?
+
+  return true;
 }
 
 }  // namespace impl

@@ -96,6 +96,12 @@ class ControllerWithSimpleHistory : public ControllerBase {
     return ((1 + factor) * val);
   }
 
+  int durationSinceProposal(SeqNum n); // Sync-HotStuff
+
+  void onSendingProposal(SeqNum n); // Sync-HotStuff
+
+  void onSendingProposal(SeqNum n, const Time& timePoint); // Sync-HotStuff
+
   // Holds essential data about a request -
   //  - Timepoint of PrePrepare sending.
   //  - Request execution duration.
@@ -116,6 +122,8 @@ class ControllerWithSimpleHistory : public ControllerBase {
     bool switchToSlowPath;
 
     Time prePrepareTime;
+
+    Time proposalTime;  // Sync-HotStuff
     std::chrono::microseconds durationMicro_;
 
     // used when currentFirstPath == SLOW

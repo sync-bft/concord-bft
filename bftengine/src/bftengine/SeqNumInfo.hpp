@@ -16,6 +16,7 @@
 // TODO(GG): clean/move 'include' statements
 #include "PrimitiveTypes.hpp"
 #include "SysConsts.hpp"
+#include "messages/ProposalMsg.hpp"
 #include "messages/PrePrepareMsg.hpp"
 #include "messages/SignedShareMsgs.hpp"
 #include "messages/PartialProofsSet.hpp"
@@ -56,6 +57,8 @@ class SeqNumInfo {
 
   bool addMsg(CommitFullMsg* m, bool directAdd = false);
 
+  bool addSelfMsg(ProposalMsg* proposalMsg, bool directAdd = false);
+
   void forceComplete();
 
   PrePrepareMsg* getPrePrepareMsg() const;
@@ -76,6 +79,7 @@ class SeqNumInfo {
   bool hasVoted() const;
   bool isCommitted__gg() const;  // TODO(GG): beware this name may mislead (not sure...). rename ??
   bool hasCommitVoted() const;
+  bool canCommit() const;
 
   bool preparedOrHasPreparePartialFromReplica(ReplicaId repId) const;
   bool votedOrHasVoteFromReplica(ReplicaId repId) const;

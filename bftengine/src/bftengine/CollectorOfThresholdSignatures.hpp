@@ -51,6 +51,12 @@ class CollectorOfThresholdSignatures {
     return true;
   }
 
+  bool votesCollected() const {
+    InternalReplicaApi* r = (InternalReplicaApi*)context;
+    const ReplicasInfo& info = r->getReplicasInfo();
+    return (numberOfVoteSignatures > info.fVal());
+  }
+
   bool addMsgWithVoteSignature(PART* voteSigMsg, ReplicaId repId) {
     Assert(voteSigMsg != nullptr);
     if ((combinedValidSignatureMsg != nullptr) || (replicasInfo.count(repId) > 0)) return false;
@@ -59,6 +65,7 @@ class CollectorOfThresholdSignatures {
     votersInfo[repId] = info;
     // numberOfUnknownSignatures++;
     // trySendToBkThread();
+    numberOfVoteSignatures++;
     return true;
   }
   
@@ -539,6 +546,7 @@ class CollectorOfThresholdSignatures {
   bool processingSignaturesInTheBackground = false;
 
   uint16_t numberOfUnknownSignatures = 0;
+  uint16_t numberOfVoteSignatures = 0;
   std::unordered_map<ReplicaId, RepInfo> replicasInfo;  // map from replica Id to RepInfo
 
   FULL* combinedValidSignatureMsg = nullptr;

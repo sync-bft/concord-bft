@@ -49,6 +49,7 @@ class ReplicaStatusMsg;
 class ReplicaImp;
 struct LoadedReplicaData;
 class PersistentStorage;
+class ProposalMsg;
 
 using bftEngine::ReplicaConfig;
 using std::shared_ptr;
@@ -315,7 +316,6 @@ class ReplicaImp : public InternalReplicaApi, public ReplicaForStateTransfer {
   void tryToAskForMissingInfo();
 
   void sendPreparePartial(SeqNumInfo&);
-  void sendVote(SeqNumInfo&);
   void sendCommitPartial(SeqNum);  // TODO(GG): the argument should be a ref to SeqNumInfo
 
   void executeReadOnlyRequest(concordUtils::SpanWrapper& parent_span, ClientRequestMsg* m);
@@ -396,6 +396,14 @@ class ReplicaImp : public InternalReplicaApi, public ReplicaForStateTransfer {
                                           const ViewNum relatedViewNumber,
                                           const std::forward_list<RetSuggestion>& suggestedRetransmissions);
 
+  void tryToSendProposalMsg(bool batchingLogic);
+
+  void sendVote(SeqNumInfo &seqNumInfo);
+
+  void executeRequestsInProposalMsg(concordUtils::SpanWrapper &parent_span,
+                                    ProposalMsg *pMsg,
+                                    bool recoverFromErrorInRequestsExecution);
+ 
  private:
   void addTimers();
 };
