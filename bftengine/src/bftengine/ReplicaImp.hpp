@@ -147,6 +147,7 @@ class ReplicaImp : public InternalReplicaApi, public ReplicaForStateTransfer {
   concordUtil::Timers::Handle slowPathTimer_;
   concordUtil::Timers::Handle infoReqTimer_;
   concordUtil::Timers::Handle statusReportTimer_;
+  concordUtil::Timers::Handle commitReportTimer_;
   concordUtil::Timers::Handle viewChangeTimer_;
 
   int viewChangeTimerMilli = 0;
@@ -371,6 +372,7 @@ class ReplicaImp : public InternalReplicaApi, public ReplicaForStateTransfer {
   void onViewsChangeTimer(concordUtil::Timers::Handle);
   void onRetransmissionsTimer(concordUtil::Timers::Handle);
   void onStatusReportTimer(concordUtil::Timers::Handle);
+  void onStartCommitTimer(concordUtil::Timers::Handle);
   void onSlowPathTimer(concordUtil::Timers::Handle);
   void onInfoRequestTimer(concordUtil::Timers::Handle);
 

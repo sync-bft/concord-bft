@@ -3668,23 +3668,6 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     } else {
       msgAdded = seqNumInfo.addMsg(msg);
     }
-    const SeqNum minSeqNum = lastExecutedSeqNum + 1;
-    const SeqNum maxSeqNum = primaryLastUsedSeqNum;
-    AssertLE(minSeqNum, maxSeqNum + 1);
-    if (minSeqNum > maxSeqNum) return;
-    const Time currTime = getMonotonicTime();
-    // I don't think we need this for now
-    for (SeqNum i = minSeqNum; i <= maxSeqNum; i++) {
-      SeqNumInfo &seqNumInfo = mainLog->get(i);
-      if(seqNumInfo.partialProofs().hasFullProof()||//we may need to alter hasFullProof in the future
-          (!seqNumInfo.hasProposalMsg()))
-        continue;
-        
-    const Time timeOfPartProof = seqNumInfo.partialProofs().getTimeOfSelfPartialProof();
-    while (currTime - timeOfPartProof > milliseconds(controller->timeToStartCommitMilli())){
-      continue;//Since our window is 1, the only thing we need to do is wait?
-    }
-    controller->onStartingSlowCommit(msgSeqNum);// we may need to alter this once finishing writing commit
   
     if (ps_) {
       ps_->beginWriteTran();
@@ -3692,7 +3675,10 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
       ps_->endWriteTran();
     }
   }
-  
+
+  commitReportTimer_ = timers_.add(milliseconds(commitReportMilli),
+                                   Timers::Timer::ONESHOT,
+                                   [this](Timers::Handle h) { onStartCommitTimer(h); });
   
   if (!msgAdded) {
     LOG_DEBUG(GL,
@@ -3701,6 +3687,14 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     delete msg;
   }
 }
+}
+
+void ReplicaImp::onStartCommitTimer(Timers::Handle timer) {
+  LOG_INFO(CNSUS, "Start commit Timer");
+  SeqNumInfo &seqNumInfo = mainLog->get(lastExecutedSeqNum + 1);
+  ProposalMsg *proposal = seqNumInfo.getProposalMsg();
+  auto span = concordUtils::startSpan("bft_execute_requests_in_proposal");
+  executeRequestsInProposalMsg(span, *proposal, recoverFromErrorInRequestsExecution);
 }
 
 void ReplicaImp::executeRequestsInProposalMsg(concordUtils::SpanWrapper &parent_span,
