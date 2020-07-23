@@ -22,6 +22,7 @@
 #include "IncomingMsgsStorage.hpp"
 #include "assertUtils.hpp"
 #include "messages/SignedShareMsgs.hpp"
+#include "InternalReplicaApi.hpp"
 
 namespace bftEngine {
 namespace impl {
@@ -57,7 +58,7 @@ class CollectorOfThresholdSignatures {
     // add voteSigMsg to replicasInfo
     VoteInfo info = {voteSigMsg, SigState::Unknown};
     votersInfo[repId] = info;
-    // numberOfUnknownSignatures++;
+    numberOfVoteSignatures++;
     // trySendToBkThread();
     return true;
   }
@@ -125,6 +126,11 @@ class CollectorOfThresholdSignatures {
   FULL* getMsgWithValidCombinedSignature() const { return combinedValidSignatureMsg; }
 
   bool isComplete() const { return (combinedValidSignatureMsg != nullptr); }
+  bool votesCollected() const {
+    InternalReplicaApi* r = (InternalReplicaApi*)context;
+    const ReplicasInfo& info = r->getReplicasInfo();
+    return (numberOfVoteSignatures > info.fVal());
+  }
 
   void onCompletionOfSignaturesProcessing(SeqNum seqNumber,
                                           ViewNum view,
@@ -235,7 +241,7 @@ class CollectorOfThresholdSignatures {
     Assert(combinedValidSignatureMsg == nullptr);
     Assert(candidateCombinedSignatureMsg == nullptr);
     Assert(replicasInfo.count(repId) == 0);
-    Assert(numberOfUnknownSignatures == 0);  // we can use this method to add at most one PART message
+    // Assert(numberOfUnknownSignatures == 0);  // we can use this method to add at most one PART message
 
     // add voteSigMsg to replicasInfo
     VoteInfo info = {voteSigMsg, SigState::Unknown};
@@ -539,6 +545,7 @@ class CollectorOfThresholdSignatures {
   bool processingSignaturesInTheBackground = false;
 
   uint16_t numberOfUnknownSignatures = 0;
+  uint16_t numberOfVoteSignatures = 0;
   std::unordered_map<ReplicaId, RepInfo> replicasInfo;  // map from replica Id to RepInfo
 
   FULL* combinedValidSignatureMsg = nullptr;

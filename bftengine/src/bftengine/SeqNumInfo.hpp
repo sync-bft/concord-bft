@@ -73,9 +73,10 @@ class SeqNumInfo {
   bool hasPrePrepareMsg() const;
 
   bool isPrepared() const;
-  bool hasVoted() const;
+  // bool hasVoted() const;
+  bool canCommit() const;
   bool isCommitted__gg() const;  // TODO(GG): beware this name may mislead (not sure...). rename ??
-  bool hasCommitVoted() const;
+  // bool hasCommitVoted() const;
 
   bool preparedOrHasPreparePartialFromReplica(ReplicaId repId) const;
   bool votedOrHasVoteFromReplica(ReplicaId repId) const;

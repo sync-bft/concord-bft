@@ -537,6 +537,17 @@ void ReplicaImp::onMessage<PrePrepareMsg>(PrePrepareMsg *msg) {
 template<>
 void ReplicaImp::onMessage<VoteMsg>(VoteMsg *msg) {
   LOG_INFO(CNSUS, "Received VoteMsg");
+
+  const SeqNum msgSeqNum = msg->seqNumber();
+  SeqNumInfo &seqNumInfo = mainLog->get(msgSeqNum);
+
+  seqNumInfo.addMsg(msg, false);
+  if (seqNumInfo.canCommit()) {
+    LOG_INFO(CNSUS, "Replica can commit");
+  }
+  else {
+    LOG_INFO(CNSUS, "Replica cannot commit");
+  }
 }
 
 void ReplicaImp::tryToStartSlowPaths() {
@@ -790,8 +801,6 @@ void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
 
     AssertNE(pp, nullptr);
 
-    LOG_INFO(GL, "Sending Vote." << KVLOG(pp->seqNumber()));
-
     const auto &span_context = pp->spanContext<std::remove_pointer<decltype(pp)>::type>();
     VoteMsg *v = VoteMsg::create(curView,
                               pp->seqNumber(),
@@ -799,7 +808,7 @@ void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
                               pp->digestOfRequests(),
                               config_.thresholdSignerForSlowPathCommit,
                               span_context);
-    // seqNumInfo.addSelfMsg(p);
+    seqNumInfo.addMsg(v);
 
     if (!isCurrentPrimary()) {
       for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
@@ -1078,6 +1087,12 @@ void ReplicaImp::onMessage<PreparePartialMsg>(PreparePartialMsg *msg) {
       send(preFull, msgSender);
     } else {
       msgAdded = seqNumInfo.addMsg(msg);
+    }
+    if (seqNumInfo.isPrepared()) {
+      LOG_INFO(CNSUS, "Primary is prepared");
+    }
+    else {
+      LOG_INFO(CNSUS, "Primary is not prepared");
     }
   }
 
