@@ -3466,9 +3466,7 @@ IncomingMsgsStorage &ReplicaImp::getIncomingMsgsStorage() { return *msgsCommunic
 
 /*
 TODO:
-1. add timer in onMessage<ProposalMsg>
 3. sendproposal need to have the combined sig
-
 */
 void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
 
@@ -3650,9 +3648,21 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   const SeqNum msgSeqNum = msg->seqNumber();
   const ReplicaId msgSender = msg->senderId();
   const ViewNum msgViewNum = msg->viewNum();
-  for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
-    sendRetransmittableMsgToReplica(v, x, primaryLastUsedSeqNum);
+  const SeqNumInfo &seqNumInfo = mainLog->get(msgSeqNum);
+
+  char* msgCombinedSig = msg->combinedSigBody();
+  char* logCombinedSig = seqNumInfo.getCombinedSig();
+
+  if (msgCombinedSig != logCombinedSig) return;//blame
+
+  AssertEQ(msgCombinedSig, logCombinedSig);
+
+  if (msgSender == currentPrimary()) {
+    for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
+      sendRetransmittableMsgToReplica(msg, x, primaryLastUsedSeqNum);
+    }
   }
+
   //SCOPED_MDC_PRIMARY(std::to_string(currentPrimary()));
   //SCOPED_MDC_SEQ_NUM(std::to_string(msgSeqNum));
   //SCOPED_MDC_PATH(CommitPathToMDCString(CommitPath::SLOW)); Do we care aboutr scope?
@@ -3667,7 +3677,6 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     sendAckIfNeeded(msg, msgSender, msgSeqNum);
     LOG_DEBUG(GL, "Received relevant VoteMsg." << KVLOG(msgSender));
     //controller->onMessage(msg);
-    SeqNumInfo &seqNumInfo = mainLog->get(msgSeqNum);
     VoteMsg *vote = SeqNumInfo.getVoteMsg()
     if (vote != nullptr) {
       sendVote(seqNumInfo)
