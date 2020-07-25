@@ -50,6 +50,8 @@ class ReplicaImp;
 struct LoadedReplicaData;
 class PersistentStorage;
 class ProposalMsg;
+class VoteMsg;
+class VoteFullMsg;
 
 using bftEngine::ReplicaConfig;
 using std::shared_ptr;
@@ -398,6 +400,10 @@ class ReplicaImp : public InternalReplicaApi, public ReplicaForStateTransfer {
                                           const ViewNum relatedViewNumber,
                                           const std::forward_list<RetSuggestion>& suggestedRetransmissions);
 
+  //////////////////////////////////////////////////////////////////////
+  // Sync-HotStuff
+  //////////////////////////////////////////////////////////////////////
+  
   void tryToSendProposalMsg(bool batchingLogic);
 
   void sendVote(SeqNumInfo &seqNumInfo);
@@ -406,6 +412,16 @@ class ReplicaImp : public InternalReplicaApi, public ReplicaForStateTransfer {
                                     ProposalMsg *pMsg,
                                     bool recoverFromErrorInRequestsExecution);
  
+  
+  void onVoteCombinedSigFailed(SeqNum seqNumber, ViewNum view, const std::set<uint16_t>& replicasWithBadSigs);
+  void onVoteCombinedSigSucceeded(SeqNum seqNumber,
+                                  ViewNum view,
+                                  const char* combinedSig,
+                                  uint16_t combinedSigLen,
+                                  const std::string& span_context);
+  void onVoteVerifyCombinedSigResult(SeqNum seqNumber, ViewNum view, bool isValid);
+
+
  private:
   void addTimers();
 };

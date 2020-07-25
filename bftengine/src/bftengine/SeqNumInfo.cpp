@@ -369,63 +369,6 @@ IncomingMsgsStorage& SeqNumInfo::ExFuncForPrepareCollector::incomingMsgsStorage(
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// class SeqNumInfo::ExFuncForVoteCollector
-///////////////////////////////////////////////////////////////////////////////
-
-CommitVoteMsg* SeqNumInfo::ExFuncForVoteCollector::createCombinedSignatureMsg(void* context,
-                                                                        SeqNum seqNumber,
-                                                                        ViewNum viewNumber,
-                                                                        const char* const combinedSig,
-                                                                        uint16_t combinedSigLen,
-                                                                        const std::string& span_context) {
-  InternalReplicaApi* r = (InternalReplicaApi*)context;
-  return CommitVoteMsg::create(
-      viewNumber, seqNumber, r->getReplicasInfo().myId(), combinedSig, combinedSigLen, span_context);
-}
-
-InternalMessage SeqNumInfo::ExFuncForVoteCollector::createInterCombinedSigFailed(
-    SeqNum seqNumber, ViewNum viewNumber, std::set<uint16_t> replicasWithBadSigs) {
-  return CombinedSigFailedInternalMsg(seqNumber, viewNumber, replicasWithBadSigs);
-}
-
-InternalMessage SeqNumInfo::ExFuncForVoteCollector::createInterCombinedSigSucceeded(
-    SeqNum seqNumber,
-    ViewNum viewNumber,
-    const char* combinedSig,
-    uint16_t combinedSigLen,
-    const std::string& span_context) {
-  return CombinedSigSucceededInternalMsg(seqNumber, viewNumber, combinedSig, combinedSigLen, span_context);
-}
-
-InternalMessage SeqNumInfo::ExFuncForVoteCollector::createInterVerifyCombinedSigResult(SeqNum seqNumber,
-                                                                                          ViewNum viewNumber,
-                                                                                          bool isValid) {
-  return VerifyCombinedSigResultInternalMsg(seqNumber, viewNumber, isValid);
-}
-
-uint16_t SeqNumInfo::ExFuncForVoteCollector::numberOfRequiredSignatures(void* context) {
-  InternalReplicaApi* r = (InternalReplicaApi*)context;
-  const ReplicasInfo& info = r->getReplicasInfo();
-  return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
-}
-
-IThresholdVerifier* SeqNumInfo::ExFuncForVoteCollector::thresholdVerifier(void* context) {
-  InternalReplicaApi* r = (InternalReplicaApi*)context;
-  return r->getThresholdVerifierForSlowPathCommit();
-}
-
-util::SimpleThreadPool& SeqNumInfo::ExFuncForVoteCollector::threadPool(void* context) {
-  InternalReplicaApi* r = (InternalReplicaApi*)context;
-  return r->getInternalThreadPool();
-}
-
-IncomingMsgsStorage& SeqNumInfo::ExFuncForVoteCollector::incomingMsgsStorage(void* context) {
-  InternalReplicaApi* r = (InternalReplicaApi*)context;
-  return r->getIncomingMsgsStorage();
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
 // class SeqNumInfo::ExFuncForCommitCollector
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -530,6 +473,89 @@ bool SeqNumInfo::addSelfMsg(ProposalMsg* m, bool directAdd) {
 
   return true;
 }
+
+bool SeqNumInfo::addCombinedSig(const char* sig, uint16_t len){
+  combinedSig = sig;
+  combinedSigLen = len;
+  return true;
+}
+
+void SeqNumInfo::onCompletionOfVoteSignaturesProcessing(SeqNum seqNumber,
+                                                           ViewNum viewNumber,
+                                                           const std::set<ReplicaId>& replicasWithBadSigs) {
+  voteSigCollector->onCompletionOfSignaturesProcessing(seqNumber, viewNumber, replicasWithBadSigs);
+}
+
+void SeqNumInfo::onCompletionOfPrepareSignaturesProcessing(SeqNum seqNumber,
+                                                           ViewNum viewNumber,
+                                                           const char* combinedSig,
+                                                           uint16_t combinedSigLen,
+                                                           const std::string& span_context) {
+  voteSigCollector->onCompletionOfSignaturesProcessing(
+      seqNumber, viewNumber, combinedSig, combinedSigLen, span_context);
+}
+
+void SeqNumInfo::onCompletionOfCombinedPrepareSigVerification(SeqNum seqNumber, ViewNum viewNumber, bool isValid) {
+  voteSigCollector->onCompletionOfCombinedSigVerification(seqNumber, viewNumber, isValid);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// class SeqNumInfo::ExFuncForVoteCollector
+///////////////////////////////////////////////////////////////////////////////
+
+CommitVoteMsg* SeqNumInfo::ExFuncForVoteCollector::createCombinedSignatureMsg(void* context,
+                                                                        SeqNum seqNumber,
+                                                                        ViewNum viewNumber,
+                                                                        const char* const combinedSig,
+                                                                        uint16_t combinedSigLen,
+                                                                        const std::string& span_context) {
+  InternalReplicaApi* r = (InternalReplicaApi*)context;
+  return CommitVoteMsg::create(
+      viewNumber, seqNumber, r->getReplicasInfo().myId(), combinedSig, combinedSigLen, span_context);
+}
+
+InternalMessage SeqNumInfo::ExFuncForVoteCollector::createInterCombinedSigFailed(
+    SeqNum seqNumber, ViewNum viewNumber, std::set<uint16_t> replicasWithBadSigs) {
+  return CombinedSigFailedInternalMsg(seqNumber, viewNumber, replicasWithBadSigs);
+}
+
+InternalMessage SeqNumInfo::ExFuncForVoteCollector::createInterCombinedSigSucceeded(
+    SeqNum seqNumber,
+    ViewNum viewNumber,
+    const char* combinedSig,
+    uint16_t combinedSigLen,
+    const std::string& span_context) {
+  return CombinedSigSucceededInternalMsg(seqNumber, viewNumber, combinedSig, combinedSigLen, span_context);
+}
+
+InternalMessage SeqNumInfo::ExFuncForVoteCollector::createInterVerifyCombinedSigResult(SeqNum seqNumber,
+                                                                                          ViewNum viewNumber,
+                                                                                          bool isValid) {
+  return VerifyCombinedSigResultInternalMsg(seqNumber, viewNumber, isValid);
+}
+
+uint16_t SeqNumInfo::ExFuncForVoteCollector::numberOfRequiredSignatures(void* context) {
+  InternalReplicaApi* r = (InternalReplicaApi*)context;
+  const ReplicasInfo& info = r->getReplicasInfo();
+  return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
+}
+
+IThresholdVerifier* SeqNumInfo::ExFuncForVoteCollector::thresholdVerifier(void* context) {
+  InternalReplicaApi* r = (InternalReplicaApi*)context;
+  return r->getThresholdVerifierForSlowPathCommit();
+}
+
+util::SimpleThreadPool& SeqNumInfo::ExFuncForVoteCollector::threadPool(void* context) {
+  InternalReplicaApi* r = (InternalReplicaApi*)context;
+  return r->getInternalThreadPool();
+}
+
+IncomingMsgsStorage& SeqNumInfo::ExFuncForVoteCollector::incomingMsgsStorage(void* context) {
+  InternalReplicaApi* r = (InternalReplicaApi*)context;
+  return r->getIncomingMsgsStorage();
+}
+
+
 
 }  // namespace impl
 }  // namespace bftEngine

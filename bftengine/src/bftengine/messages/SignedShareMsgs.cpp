@@ -105,24 +105,6 @@ void PreparePartialMsg::validate(const ReplicasInfo& repInfo) const {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// VoteMsg
-///////////////////////////////////////////////////////////////////////////////
-
-VoteMsg* VoteMsg::create(ViewNum v,
-                         SeqNum s,
-                         ReplicaId senderId,
-                         Digest& ppDigest,
-                         IThresholdSigner* thresholdSigner,
-                         const std::string& spanContext) {
-  return (VoteMsg*)SignedShareBase::create(
-      MsgCode::Vote, v, s, senderId, ppDigest, thresholdSigner, spanContext);
-}
-
-void VoteMsg::validate(const ReplicasInfo& repInfo) const {
-  SignedShareBase::_validate(repInfo, MsgCode::Vote);
-}
-
-///////////////////////////////////////////////////////////////////////////////
 // PrepareFullMsg
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -157,24 +139,6 @@ void CommitPartialMsg::validate(const ReplicasInfo& repInfo) const {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// CommitVoteMsg
-///////////////////////////////////////////////////////////////////////////////
-
-
-CommitVoteMsg* CommitVoteMsg::create(
-    ViewNum v, SeqNum s, ReplicaId senderId, const char* sig, uint16_t sigLen, const std::string& spanContext) {
-  return (CommitVoteMsg*)SignedShareBase::create(MsgCode::CommitVote, v, s, senderId, sig, sigLen, spanContext);
-}
-
-
-void CommitVoteMsg::validate(const ReplicasInfo& repInfo) const {
-  SignedShareBase::_validate(repInfo, MsgCode::CommitVote);
-
-  if (repInfo.myId() != repInfo.primaryOfView(viewNumber()))
-    throw std::runtime_error(__PRETTY_FUNCTION__ + std::string(": the primary is the collector of CommitVoteMsg"));
-}
-
-///////////////////////////////////////////////////////////////////////////////
 // CommitFullMsg
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -186,6 +150,39 @@ CommitFullMsg* CommitFullMsg::create(
 void CommitFullMsg::validate(const ReplicasInfo& repInfo) const {
   SignedShareBase::_validate(repInfo, MsgCode::CommitFull);
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// VoteMsg
+///////////////////////////////////////////////////////////////////////////////
+
+VoteMsg* VoteMsg::create(ViewNum v,
+                         SeqNum s,
+                         ReplicaId senderId,
+                         Digest& ppDigest,
+                         IThresholdSigner* thresholdSigner,
+                         const std::string& spanContext) {
+  return (VoteMsg*)SignedShareBase::create(
+      MsgCode::Vote, v, s, senderId, ppDigest, thresholdSigner, spanContext);
+}
+
+void VoteMsg::validate(const ReplicasInfo& repInfo) const {
+  SignedShareBase::_validate(repInfo, MsgCode::Vote);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// VoteFullMsg
+///////////////////////////////////////////////////////////////////////////////
+
+
+VoteFullMsg* VoteFullMsg::create(
+    ViewNum v, SeqNum s, ReplicaId senderId, const char* sig, uint16_t sigLen, const std::string& spanContext) {
+  return (VoteFullMsg*)SignedShareBase::create(MsgCode::VoteFull, v, s, senderId, sig, sigLen, spanContext);
+}
+
+void VoteFullMsg::validate(const ReplicasInfo& repInfo) const {
+  SignedShareBase::_validate(repInfo, MsgCode::VoteFull);
+}
+
 
 }  // namespace impl
 }  // namespace bftEngine

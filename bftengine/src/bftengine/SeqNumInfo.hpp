@@ -60,6 +60,8 @@ class SeqNumInfo {
   bool addMsg(ProposalMsg* m);
   bool addSelfMsg(ProposalMsg* m, bool directAdd = false);
 
+  bool addCombinedSig(const char* sig, uint16_t len);
+
   void forceComplete();
 
   PrePrepareMsg* getPrePrepareMsg() const;
@@ -71,10 +73,14 @@ class SeqNumInfo {
   PrepareFullMsg* getValidPrepareFullMsg() const;
 
   VoteMsg* getSelfVoteMsg() const;
-  CommitVoteMsg* getSelfCommitVoteMsg() const;
+  VoteFullMsg* getSelfVoteFullMsg() const;
 
   CommitPartialMsg* getSelfCommitPartialMsg() const;
   CommitFullMsg* getValidCommitFullMsg() const;
+
+  char* getCombinedSig() const { return combinedSig;}
+
+  uint16_t getCombinedSigLen() const { return combinedSigLen;}
 
   bool hasPrePrepareMsg() const;
 
@@ -128,7 +134,7 @@ class SeqNumInfo {
     commitMsgsCollector->onCompletionOfCombinedSigVerification(seqNumber, viewNumber, isValid);
   }
 
- // protected:
+ protected:
   class ExFuncForPrepareCollector {
    public:
     // external messages
@@ -160,7 +166,7 @@ class SeqNumInfo {
   class ExFuncForVoteCollector {
    public:
     // external messages
-    static CommitVoteMsg* createCombinedSignatureMsg(void* context,
+    static VoteFullMsg* createCombinedSignatureMsg(void* context,
                                                     SeqNum seqNumber,
                                                     ViewNum viewNumber,
                                                     const char* const combinedSig,
@@ -170,6 +176,7 @@ class SeqNumInfo {
     static InternalMessage createInterCombinedSigFailed(SeqNum seqNumber,
                                                         ViewNum viewNumber,
                                                         std::set<uint16_t> replicasWithBadSigs);
+
     static InternalMessage createInterCombinedSigSucceeded(SeqNum seqNumber,
                                                            ViewNum viewNumber,
                                                            const char* combinedSig,
@@ -217,7 +224,7 @@ class SeqNumInfo {
   PrePrepareMsg* prePrepareMsg;
 
   CollectorOfThresholdSignatures<PreparePartialMsg, PrepareFullMsg, ExFuncForPrepareCollector>* prepareSigCollector;
-  CollectorOfThresholdSignatures<VoteMsg, CommitVoteMsg, ExFuncForVoteCollector>* voteSigCollector; 
+  CollectorOfThresholdSignatures<VoteMsg, VoteFullMsg, ExFuncForVoteCollector>* voteSigCollector; 
   CollectorOfThresholdSignatures<CommitPartialMsg, CommitFullMsg, ExFuncForCommitCollector>* commitMsgsCollector;
 
   PartialProofsSet* partialProofsSet;  // TODO(GG): replace with an instance of CollectorOfThresholdSignatures
@@ -231,6 +238,12 @@ class SeqNumInfo {
   Time firstSeenFromPrimary;
   Time timeOfLastInfoRequest;
   Time commitUpdateTime;
+
+  ProposalMsg* proposalMsg;
+
+  const char *combinedSig;
+  
+  uint16_t combinedSigLen;
 
  public:
   // methods for SequenceWithActiveWindow

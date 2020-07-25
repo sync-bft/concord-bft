@@ -121,6 +121,8 @@ void ReplicaImp::registerMsgHandlers() {
   msgHandlers_->registerMsgHandler(MsgCode::Vote,
                                    bind(&ReplicaImp::messageHandler<VoteMsg>, this, _1));
 
+    msgHandlers_->registerMsgHandler(MsgCode::VoteFull,
+                                   bind(&ReplicaImp::messageHandler<VoteFullMsg>, this, _1));
 }
 
 template <typename T>
@@ -893,6 +895,7 @@ void ReplicaImp::onMessage<FullCommitProofMsg>(FullCommitProofMsg *msg) {
   return;
 }
 
+/*
 void ReplicaImp::onInternalMsg(InternalMessage &&msg) {
   metric_received_internal_msgs_.Get().Inc();
 
@@ -938,6 +941,7 @@ void ReplicaImp::onInternalMsg(InternalMessage &&msg) {
 
   assert(false);
 }
+*/
 
 std::string ReplicaImp::getReplicaState() const {
   auto primary = getReplicasInfo().primaryOfView(curView);
@@ -3463,11 +3467,11 @@ IncomingMsgsStorage &ReplicaImp::getIncomingMsgsStorage() { return *msgsCommunic
 /*
 TODO:
 1. add timer in onMessage<ProposalMsg>
-2. complete hpp
 3. sendproposal need to have the combined sig
 
 */
 void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
+
   Assert(isCurrentPrimary());
   Assert(currentViewIsActive());
 
@@ -3546,10 +3550,11 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
   ClientRequestMsg *nextRequest = (!requestsQueueOfPrimary.empty() ? requestsQueueOfPrimary.front() : nullptr);
   const auto &span_context = nextRequest ? nextRequest->spanContext<ClientRequestMsg>() : std::string{};
 
-  // TODO(QF): calculated the total size of sig and updated primaryCombinedReqSize
+  SeqNumInfo seqNumInfo =  mainLog->get(primaryLastUsedSeqNum);
+  
 
   ProposalMsg *proposal = new ProposalMsg(
-      config_.replicaId, curView, (primaryLastUsedSeqNum + 1), span_context, primaryCombinedReqSize);
+      config_.replicaId, curView, (primaryLastUsedSeqNum + 1), seqNumInfo.getCombinedSig(), seqNumInfo.getCombinedSigLen(), span_context, primaryCombinedReqSize);
   
   // TODO(QF): added the sigs
 
@@ -3600,25 +3605,26 @@ void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
   Assert(currentViewIsActive());
 
   // if (seqNumInfo.getSelfVoteMsg() == nullptr && seqNumInfo.hasPrePrepareMsg() && !seqNumInfo.isPrepared()) {
-    PrePrepareMsg *pp = seqNumInfo.getPrePrepareMsg();
+  ProposalMsg *pMsg = seqNumInfo.getProposalMsg();
 
-    AssertNE(pp, nullptr);
+  AssertNE(pMsg, nullptr);
 
-    const auto &span_context = pp->spanContext<std::remove_pointer<decltype(pp)>::type>();
-    VoteMsg *v = VoteMsg::create(curView,
-                              pp->seqNumber(),
+  const auto &span_context = pMsg->spanContext<std::remove_pointer<decltype(pMsg)>::type>();
+  VoteMsg *v = VoteMsg::create(curView,
+                              pMsg->seqNumber(),
                               config_.replicaId,
-                              pp->digestOfRequests(),
+                              pMsg->digestOfRequests(),
                               config_.thresholdSignerForSlowPathCommit,
                               span_context);
-    seqNumInfo.addMsg(v);
+  seqNumInfo.addMsg(v);
 
-    if (!isCurrentPrimary()) {
-      for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
-        sendRetransmittableMsgToReplica(v, x, primaryLastUsedSeqNum);
-        LOG_INFO(CNSUS, "Vote sent to replica ");
-      }
+  if (!isCurrentPrimary()) {
+    for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
+      sendRetransmittableMsgToReplica(v, x, primaryLastUsedSeqNum);
+      LOG_INFO(CNSUS, "Vote sent to replica ");
     }
+  }
+
 }
 
 template<>
@@ -3836,5 +3842,95 @@ void ReplicaImp::executeRequestsInProposalMsg(concordUtils::SpanWrapper &parent_
     }
   }
 }
+
+void ReplicaImp::onInternalMsg(InternalMessage &&msg) {
+  metric_received_internal_msgs_.Get().Inc();
+
+  // vote collector in Sync-HotStuff currently share the same exfunc with prepare collector
+  if (auto *csf = std::get_if<CombinedSigFailedInternalMsg>(&msg)) {
+    return onVoteCombinedSigFailed(csf->seqNumber, csf->view, csf->replicasWithBadSigs);
+  }
+  if (auto *css = std::get_if<CombinedSigSucceededInternalMsg>(&msg)) {
+    return onVoteCombinedSigSucceeded(
+        css->seqNumber, css->view, css->combinedSig.data(), css->combinedSig.size(), css->span_context_);
+  }
+  if (auto *vcs = std::get_if<VerifyCombinedSigResultInternalMsg>(&msg)) {
+    return onVoteVerifyCombinedSigResult(vcs->seqNumber, vcs->view, vcs->isValid);
+  }
+
+  // Handle a response from a RetransmissionManagerJob
+  if (auto *rpr = std::get_if<RetranProcResultInternalMsg>(&msg)) {
+    onRetransmissionsProcessingResults(rpr->lastStableSeqNum, rpr->view, rpr->suggestedRetransmissions);
+    return retransmissionsManager->OnProcessingComplete();
+  }
+
+  // Handle a status request for the diagnostics subsystem
+  if (auto *get_status = std::get_if<GetStatus>(&msg)) {
+    return onInternalMsg(*get_status);
+  }
+
+  assert(false);
+}
+
+void ReplicaImp::onVoteCombinedSigFailed(SeqNum seqNumber,
+                                            ViewNum view,
+                                            const std::set<uint16_t> &replicasWithBadSigs) {
+  LOG_DEBUG(GL, KVLOG(seqNumber, view));
+
+  if ((isCollectingState()) || (!currentViewIsActive()) || (curView != view) ||
+      (!mainLog->insideActiveWindow(seqNumber))) {
+    LOG_DEBUG(GL, "Dropping irrelevant signature." << KVLOG(seqNumber, view));
+
+    return;
+  }
+
+  SeqNumInfo &seqNumInfo = mainLog->get(seqNumber);
+
+  seqNumInfo.onCompletionOfVoteSignaturesProcessing(seqNumber, view, replicasWithBadSigs);
+
+  // TODO(GG): add logic that handles bad replicas ...
+}
+
+void ReplicaImp::onVoteCombinedSigSucceeded(
+    SeqNum seqNumber, ViewNum view, const char *combinedSig, uint16_t combinedSigLen, const std::string &span_context) {
+  //SCOPED_MDC_PRIMARY(std::to_string(currentPrimary()));
+  //SCOPED_MDC_SEQ_NUM(std::to_string(seqNumber));
+  //SCOPED_MDC_PATH(CommitPathToMDCString(CommitPath::SLOW));
+  LOG_DEBUG(GL, KVLOG(view));
+  AssertNE(combinedSig, nullptr);
+
+  if ((isCollectingState()) || (!currentViewIsActive()) || (curView != view) ||
+      (!mainLog->insideActiveWindow(seqNumber))) {
+    LOG_INFO(GL, "onVoteCombinedSigSucceeded: Invalid state, view, or sequence number." << KVLOG(view, curView));
+    return;
+  }
+
+  SeqNumInfo &seqNumInfo = mainLog->get(seqNumber);
+  seqNumInfo.addCombinedSig(combinedSig, combinedSigLen);
+  seqNumInfo.onCompletionOfVoteSignaturesProcessing(seqNumber, view, combinedSig, combinedSigLen, span_context);
+
+}
+
+void ReplicaImp::onVoteVerifyCombinedSigResult(SeqNum seqNumber, ViewNum view, bool isValid) {
+  LOG_DEBUG(GL, KVLOG(view));
+
+  if ((isCollectingState()) || (!currentViewIsActive()) || (curView != view) ||
+      (!mainLog->insideActiveWindow(seqNumber))) {
+    LOG_INFO(GL,
+             "onVoteVerifyCombinedSigResult: Invalid state, view, or sequence number."
+                 << KVLOG(seqNumber, view, curView, mainLog->insideActiveWindow(seqNumber)));
+    return;
+  }
+
+  SeqNumInfo &seqNumInfo = mainLog->get(seqNumber);
+
+  seqNumInfo.onCompletionOfCombinedPrepareSigVerification(seqNumber, view, isValid);
+
+  if (!isValid) {
+    //TODO: leader equivocation?
+  }  // TODO(GG): we should do something about the replica that sent this invalid message
+
+}
+
 
 }  // namespace bftEngine::impl

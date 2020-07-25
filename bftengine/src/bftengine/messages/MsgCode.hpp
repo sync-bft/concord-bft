@@ -22,7 +22,6 @@ class MsgCode {
 
     PrePrepare = 100,
     PreparePartial,
-    Vote,
     PrepareFull,
     CommitPartial,
     CommitVote,
@@ -42,6 +41,8 @@ class MsgCode {
     StateTransfer,
 
     Proposal,
+    Vote,
+    VoteFull,
 
     ClientPreProcessRequest,
     PreProcessRequest,
