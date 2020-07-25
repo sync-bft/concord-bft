@@ -3653,7 +3653,10 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   char* msgCombinedSig = msg->combinedSigBody();
   char* logCombinedSig = seqNumInfo.getCombinedSig();
 
-  if (msgCombinedSig != logCombinedSig) return;//blame
+  if (msgCombinedSig != logCombinedSig) {
+    LOG_INFO(CNSUS, "Leader equivocation detected");
+    return;//blame
+  }
 
   AssertEQ(msgCombinedSig, logCombinedSig);
 
