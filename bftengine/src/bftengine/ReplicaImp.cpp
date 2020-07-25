@@ -3680,7 +3680,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     sendAckIfNeeded(msg, msgSender, msgSeqNum);
     LOG_DEBUG(GL, "Received relevant VoteMsg." << KVLOG(msgSender));
     //controller->onMessage(msg);
-    VoteMsg *vote = SeqNumInfo.getVoteMsg()
+    VoteMsg *vote = seqNumInfo.getVoteMsg()
     if (vote != nullptr) {
       sendVote(seqNumInfo)
     } else {
