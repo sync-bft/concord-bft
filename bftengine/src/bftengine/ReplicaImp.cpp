@@ -3648,12 +3648,19 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   const SeqNum msgSeqNum = msg->seqNumber();
   const ReplicaId msgSender = msg->senderId();
   const ViewNum msgViewNum = msg->viewNum();
-  const SeqNumInfo &seqNumInfo = mainLog->get(msgSeqNum);
+  const SeqNumInfo& seqNumInfo = mainLog->get(msgSeqNum);
+  const ReplicasInfo& repsInfo = getReplicasInfo();
+
+  msg.validate(repsInfo);
+  Digest& msgDigestOfRequestsSeqNum = digestOfRequestsSeqNum();
+  ProposalMsg* logProposalMsg = seqNumInfo.getProposalMsg();
+  Digest& logDigestOfRequestsSeqNum = logProposalMsg->digestOfRequestsSeqNum;
 
   char* msgCombinedSig = msg->combinedSigBody();
   char* logCombinedSig = seqNumInfo.getCombinedSig();
 
-  if (msgCombinedSig != logCombinedSig) {
+  if (strcmp(msgCombinedSig, logCombinedSig) != 0 ||
+      (msgDigestOfRequestsSeqNum.toString()).compare(logDigestOfRequestsSeqNum.toString()) != 0) {
     LOG_INFO(CNSUS, "Leader equivocation detected");
     return;//blame
   }
