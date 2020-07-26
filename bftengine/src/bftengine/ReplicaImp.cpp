@@ -3652,6 +3652,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   const ReplicasInfo& repsInfo = getReplicasInfo();
 
   msg.validate(repsInfo);
+
   Digest& msgDigestOfRequestsSeqNum = digestOfRequestsSeqNum();
   ProposalMsg* logProposalMsg = seqNumInfo.getProposalMsg();
   Digest& logDigestOfRequestsSeqNum = logProposalMsg->digestOfRequestsSeqNum;
@@ -3666,38 +3667,37 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   }
 
   AssertEQ(msgCombinedSig, logCombinedSig);
+  AssertLE(lastStableSeqNum, msgSeqNum);
 
-  if (msgSender == currentPrimary()) {
+  if (msgSeqNum > lastStableSeqNum) {
     for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
-      sendRetransmittableMsgToReplica(msg, x, primaryLastUsedSeqNum);
+      sendRetransmittableMsgToReplica(msg, x, msgSeqNum);
     }
-  }
 
-  //SCOPED_MDC_PRIMARY(std::to_string(currentPrimary()));
-  //SCOPED_MDC_SEQ_NUM(std::to_string(msgSeqNum));
-  //SCOPED_MDC_PATH(CommitPathToMDCString(CommitPath::SLOW)); Do we care aboutr scope?
-  bool msgAdded = false;
-  //auto span = concordUtils::startChildSpanFromContext(msg->spanContext<std::remove_pointer<decltype(msg)>::type>(),
-                                                     // "bft_handle_prepare_partial_msg");//can I change this?
-  const SeqNum minSeqNum = lastExecutedSeqNum + 1;
-  const SeqNum maxSeqNum = primaryLastUsedSeqNum;
-  AssertLE(minSeqNum, maxSeqNum + 1);
-  if (minSeqNum > maxSeqNum) return;
-  if (relevantMsgForActiveView(msg)) {
-    sendAckIfNeeded(msg, msgSender, msgSeqNum);
-    LOG_DEBUG(GL, "Received relevant VoteMsg." << KVLOG(msgSender));
-    //controller->onMessage(msg);
-    VoteMsg *vote = seqNumInfo.getVoteMsg()
-    if (vote != nullptr) {
-      sendVote(seqNumInfo)
-    } else {
-      msgAdded = seqNumInfo.addMsg(msg);
-    }
-  
-    if (ps_) {
-      ps_->beginWriteTran();
-      ps_->setVoteMsgInSeqNumWindow(seqNumber, vote);
-      ps_->endWriteTran();
+    // SCOPED_MDC_PRIMARY(std::to_string(currentPrimary()));
+    // SCOPED_MDC_SEQ_NUM(std::to_string(msgSeqNum));
+    // SCOPED_MDC_PATH(CommitPathToMDCString(CommitPath::SLOW)); Do we care about scope?
+    bool msgAdded = false;
+    // auto span = concordUtils::startChildSpanFromContext(msg->spanContext<std::remove_pointer<decltype(msg)>::type>(),
+    // "bft_handle_prepare_partial_msg");//can I change this?
+    const SeqNum minSeqNum = lastExecutedSeqNum + 1;
+    const SeqNum maxSeqNum = primaryLastUsedSeqNum;
+    AssertLE(minSeqNum, maxSeqNum + 1);
+    if (minSeqNum > maxSeqNum) return;
+    if (relevantMsgForActiveView(msg)) {
+      sendAckIfNeeded(msg, msgSender, msgSeqNum);
+      LOG_DEBUG(GL, "Received relevant VoteMsg." << KVLOG(msgSender));
+      // controller->onMessage(msg);
+      VoteMsg *vote = seqNumInfo.getVoteMsg() if (vote != nullptr) { sendVote(seqNumInfo) }
+      else {
+        msgAdded = seqNumInfo.addMsg(msg);
+      }
+
+      if (ps_) {
+        ps_->beginWriteTran();
+        ps_->setVoteMsgInSeqNumWindow(seqNumber, vote);
+        ps_->endWriteTran();
+      }
     }
   }
 
@@ -3711,7 +3711,6 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
                       << msgSeqNum << ")");
     delete msg;
   }
-}
 }
 
 void ReplicaImp::onStartCommitTimer(Timers::Handle timer) {
