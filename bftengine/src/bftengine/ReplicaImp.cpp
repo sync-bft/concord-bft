@@ -3465,10 +3465,6 @@ IncomingMsgsStorage &ReplicaImp::getIncomingMsgsStorage() { return *msgsCommunic
 // Sync-HotStuff
 //////////////////////////////////////////////////////////////////////
 
-/*
-TODO:
-3. sendproposal need to have the combined sig
-*/
 void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
 
   Assert(isCurrentPrimary());
@@ -3634,12 +3630,12 @@ void ReplicaImp::onMessage<VoteMsg>(VoteMsg *msg) {
   SeqNumInfo &seqNumInfo = mainLog->get(msgSeqNum);
 
   seqNumInfo.addMsg(msg, false);
-  if (seqNumInfo.canCommit()) {
+  /*if (seqNumInfo.canCommit()) {
     LOG_INFO(CNSUS, "Replica can commit");
   }
   else {
     LOG_INFO(CNSUS, "Replica cannot commit");
-  }
+  }*/
 }
 
 template<>
