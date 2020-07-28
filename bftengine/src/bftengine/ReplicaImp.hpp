@@ -406,7 +406,7 @@ class ReplicaImp : public InternalReplicaApi, public ReplicaForStateTransfer {
   
   void tryToSendProposalMsg(bool batchingLogic);
 
-  void sendVote(SeqNumInfo &seqNumInfo);
+  void sendVote(const SeqNumInfo &seqNumInfo);
 
   void executeRequestsInProposalMsg(concordUtils::SpanWrapper &parent_span,
                                     ProposalMsg *pMsg,
