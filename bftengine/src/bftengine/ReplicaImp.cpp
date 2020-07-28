@@ -226,7 +226,7 @@ void ReplicaImp::onMessage<ClientRequestMsg>(ClientRequestMsg *m) {
                                                         << "], senderId=" << senderId);
         requestsQueueOfPrimary.push(m);
         primaryCombinedReqSize += m->size();
-        tryToSendPrePrepareMsg(true);
+        tryToSendPrePrepareMsg();
         //tryToSendProposalMsg(true);
         return;
       } else {
@@ -3925,9 +3925,9 @@ void ReplicaImp::onVoteCombinedSigSucceeded(
     return;
   }
       
-LOG_INFO(CNSUS,
-            "seqNum information is as follows ["
-                << seqNumber << " " << view <<"]");
+  LOG_INFO(CNSUS,
+              "seqNum information is as follows ["
+                  << seqNumber << " " << view <<"]");
 
   SeqNumInfo &seqNumInfo = mainLog->get(seqNumber);
   seqNumInfo.addCombinedSig(combinedSig, combinedSigLen);
