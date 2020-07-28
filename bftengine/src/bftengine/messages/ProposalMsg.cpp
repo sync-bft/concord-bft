@@ -182,7 +182,7 @@ bool ContentIterator::getCurrent(char*& pContent) const {
 bool ContentIterator::end() const {
   Assert(currLoc <= msg->b()->endLocationOfLastRequest);
 
-  return (currLoc = msg->b()->endLocationOfLastRequest);
+  return (currLoc == msg->b()->endLocationOfLastRequest);
 }
 
 void ContentIterator::gotoNext() {
