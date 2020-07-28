@@ -48,7 +48,7 @@ class ProposalMsg : public MessageBase{
     
     public:
 
-        void validate(const ReplicasInfo&*) const override;
+        void validate(const ReplicasInfo&) const override;
 
         ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* combinedSigBody, size_t combinedSigLength, size_t size);
 
