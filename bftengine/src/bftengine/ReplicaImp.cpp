@@ -3653,9 +3653,9 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
 
   msg->validate(repsInfo);
 
-  Digest& msgDigestOfRequestsSeqNum = digestOfRequestsSeqNum();
+  Digest& msgDigestOfRequestsSeqNum = msg->digestOfRequestsSeqNum();
   ProposalMsg* logProposalMsg = seqNumInfo.getProposalMsg();
-  Digest& logDigestOfRequestsSeqNum = logProposalMsg->digestOfRequestsSeqNum;
+  Digest& logDigestOfRequestsSeqNum = logProposalMsg->digestOfRequestsSeqNum();
 
   char* msgCombinedSig = msg->combinedSigBody();
   char* logCombinedSig = seqNumInfo.getCombinedSig();
