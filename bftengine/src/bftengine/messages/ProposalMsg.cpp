@@ -8,6 +8,8 @@
 namespace bftEngine {
 namespace impl {
 
+uint32_t getRequestSizeTemp(const char* request);
+
 static Digest nullDigest(0x18);
 
 void ProposalMsg::validate(const ReplicasInfo& repInfo) const{
@@ -186,7 +188,7 @@ bool ContentIterator::end() const {
 void ContentIterator::gotoNext() {
   Assert(!end());
   char* p = msg->body() + currLoc;
-  uint32_t size = getRequestSizeTemp(p); // TODO(QF): to be implemented - signature size
+  uint32_t size = getRequestSizeTemp(p); 
   currLoc += size;
   Assert(currLoc <= msg->b()->endLocationOfLastRequest);
 }
