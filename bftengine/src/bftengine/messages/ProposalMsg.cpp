@@ -99,7 +99,7 @@ void ProposalMsg::finishAddingRequests() {
   Assert(!isReady());
   Assert(b()->numberOfRequests > 0);
   Assert(b()->endLocationOfLastRequest > requestsPayloadShift());
-  Assert(b()->digestOfRequests.isZero());
+  Assert(b()->digestOfRequestsSeqNum.isZero());
 
   // check requests (for debug - consider to remove)
   // Assert(checkRequests());
@@ -132,7 +132,7 @@ int16_t ProposalMsg::computeFlagsForProposalMsg(bool isNull, bool isReady) {
 }
 
 const std::string ProposalMsg::getClientCorrelationIdForMsg(int index) const {
-  auto it = ContentsIterator(this);
+  auto it = ContentIterator(this);
   int req_num = 0;
   while (!it.end() && req_num < index) {
     it.gotoNext();
@@ -159,7 +159,7 @@ uint32_t ProposalMsg::requestPayloadShift() const { return sizeof(Header) + b()-
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// ContentsIterator
+// ContentIterator
 ///////////////////////////////////////////////////////////////////////////////
 
 ContentIterator::ContentIterator(const ProposalMsg* const m) : msg{m}, currLoc{?m->requestsPayloadShift()} {
