@@ -435,7 +435,7 @@ void SeqNumInfo::init(SeqNumInfo& i, void* d) {
   i.prepareSigCollector =
       new CollectorOfThresholdSignatures<PreparePartialMsg, PrepareFullMsg, ExFuncForPrepareCollector>(context);
   i.voteSigCollector =
-      new CollectorOfThresholdSignatures<VoteMsg, CommitVoteMsg, ExFuncForVoteCollector>(context);
+      new CollectorOfThresholdSignatures<VoteMsg, VoteFullMsg, ExFuncForVoteCollector>(context);
   i.commitMsgsCollector =
       new CollectorOfThresholdSignatures<CommitPartialMsg, CommitFullMsg, ExFuncForCommitCollector>(context);
   i.partialProofsSet = new PartialProofsSet((InternalReplicaApi*)r);
