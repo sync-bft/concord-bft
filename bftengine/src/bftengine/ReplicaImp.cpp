@@ -3589,7 +3589,7 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
   LOG_INFO(CNSUS,
            "Sending Proposal with the following payload of the following correlation ids ["
             << proposal->getBatchCorrelationIdAsString() << "]");
-  SeqNumInfo &seqNumInfo = mainLog->get(primaryLastUsedSeqNum);
+  
   seqNumInfo.addSelfMsg(proposal);
 
   // skip ps_
