@@ -50,9 +50,9 @@ class ProposalMsg : public MessageBase{
 
         void validate(const ReplicasInfo&) const override;
 
-        ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, char* combinedSigBody, size_t combinedSigLength, size_t size);
+        ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* combinedSigBody, size_t combinedSigLength, size_t size);
 
-        ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, char* combinedSigBody, size_t combinedSigLength, const std::string& spanContext, size_t size);
+        ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* combinedSigBody, size_t combinedSigLength, const std::string& spanContext, size_t size);
 
         uint32_t remainingSizeForRequests() const;
 

@@ -3611,7 +3611,7 @@ void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
   VoteMsg *v = VoteMsg::create(curView,
                               pMsg->seqNumber(),
                               config_.replicaId,
-                              pMsg->digestOfRequests(),
+                              pMsg->digestOfRequestsSeqNum(),
                               config_.thresholdSignerForSlowPathCommit,
                               span_context);
   seqNumInfo.addMsg(v);
