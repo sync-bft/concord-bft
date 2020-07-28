@@ -3487,7 +3487,7 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
 
    if (requestsQueueOfPrimary.empty()) return;
 
-  ClientRequestMsg *first = requestQueueOfPrimary.front();
+  ClientRequestMsg *first = requesstQueueOfPrimary.front();
   
   // TODO(QY): change queue to iterateable structure
   while (first != nullptr &&
@@ -3501,9 +3501,9 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
 
   if (requestsQueueOfPrimary.size() == 0) return;
   
-  unit64_t concurrentDiff = ((primaryLastUsedSeqNum + 1) - lastExecutedSeqNum);
+  uint64_t concurrentDiff = ((primaryLastUsedSeqNum + 1) - lastExecutedSeqNum);
 
-  unit64_t minBatchSize = 1;
+  uint64_t minBatchSize = 1;
 
   // update maxNumberOfPendingRequestsInRecentHistory (if needed)
   if (requestsInQueue > maxNumberOfPendingRequestsInRecentHistory)
