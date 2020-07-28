@@ -138,7 +138,7 @@ class CollectorOfThresholdSignatures {
                                           ViewNum view,
                                           const std::set<ReplicaId>& replicasWithBadSigs)  // if we found bad signatures
   {
-    Assert(expectedSeqNumber == seqNumber);
+    //Assert(expectedSeqNumber == seqNumber);
     Assert(expectedView == view);
     Assert(processingSignaturesInTheBackground);
     Assert(combinedValidSignatureMsg == nullptr);
