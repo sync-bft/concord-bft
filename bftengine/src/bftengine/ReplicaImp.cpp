@@ -3657,8 +3657,8 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   ProposalMsg* logProposalMsg = seqNumInfo.getProposalMsg();
   Digest& logDigestOfRequestsSeqNum = logProposalMsg->digestOfRequestsSeqNum();
 
-  char* msgCombinedSig = msg->combinedSigBody();
-  char* logCombinedSig = seqNumInfo.getCombinedSig();
+  const char* msgCombinedSig = msg->combinedSigBody();
+  const char* logCombinedSig = seqNumInfo.getCombinedSig();
 
   if (strcmp(msgCombinedSig, logCombinedSig) != 0 ||
       (msgDigestOfRequestsSeqNum.toString()).compare(logDigestOfRequestsSeqNum.toString()) != 0) {
