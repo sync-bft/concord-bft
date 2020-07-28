@@ -447,12 +447,10 @@ void SeqNumInfo::init(SeqNumInfo& i, void* d) {
 
 ProposalMsg* SeqNumInfo::getProposalMsg() const { return proposalMsg; }
 
-bool SeqNumInfo::addMsg(ProposalMsg* m, bool directAdd) {
+bool SeqNumInfo::addMsg(ProposalMsg* m) {
   if (proposalMsg != nullptr) return false;
 
   Assert(primary == false);
-  Assert(!forcedCompleted);
-  Assert(!prepareSigCollector->hasPartialMsgFromReplica(replica->getReplicasInfo().myId()));
 
   proposalMsg = m;
 
