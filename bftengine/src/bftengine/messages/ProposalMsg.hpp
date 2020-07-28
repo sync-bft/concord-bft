@@ -74,8 +74,6 @@ class ProposalMsg : public MessageBase{
         
         uint16_t numberOfRequests() const { return b()->numberOfRequests; }
 
-        uint16_t numberOfSignatures() const {return b()->numberOfSignatures;}
-
         Digest& digestOfRequestsSeqNum() const {return b()->digestOfRequestsSeqNum;}
     
         size_t combinedSigLength() const {return combinedSigLen;}

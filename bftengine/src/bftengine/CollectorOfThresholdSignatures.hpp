@@ -22,6 +22,7 @@
 #include "IncomingMsgsStorage.hpp"
 #include "assertUtils.hpp"
 #include "messages/SignedShareMsgs.hpp"
+#include "InternalReplicaApi.hpp"
 
 namespace bftEngine {
 namespace impl {
