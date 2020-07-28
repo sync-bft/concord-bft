@@ -3481,8 +3481,7 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
   if (primaryLastUsedSeqNum > lastExecutedSeqNum + config_.concurrencyLevel) { //  config_.concurrencyLevel
     LOG_INFO(GL,
              "Will not send Proposal since next sequence number ["
-                 << primaryLastUsedSeqNum + 1 << "] exceeds the next executed sequence
-                 number [" << lastExecutedSeqNum << "]");
+                 << primaryLastUsedSeqNum + 1 << "] exceeds the next executed sequence number [" << lastExecutedSeqNum << "]");
     return;  // TODO(GG): should also be checked by the non-primary replicas
   }
 
