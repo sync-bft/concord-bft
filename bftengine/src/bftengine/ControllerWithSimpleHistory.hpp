@@ -96,9 +96,9 @@ class ControllerWithSimpleHistory : public ControllerBase {
     return ((1 + factor) * val);
   }
 
-  int durationSinceProposal(SeqNum n); // Sync-HotStuff
+  virtual int durationSinceProposal(SeqNum n) override; // Sync-HotStuff
 
-  void onSendingProposal(SeqNum n); // Sync-HotStuff
+  virtual void onSendingProposal(SeqNum n) override; // Sync-HotStuff
 
   void onSendingProposal(SeqNum n, const Time& timePoint); // Sync-HotStuff
 

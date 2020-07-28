@@ -46,6 +46,10 @@ class ControllerBase {
 
   // TODO(GG): add more methods that may be useful  by controllers
   virtual int durationSincePrePrepare(SeqNum n) = 0;
+
+  virtual void onSendingProposal(SeqNum n) {} // Sync-HotStuff
+  virtual int durationSinceProposal(SeqNum n) = 0; // Sync-HotStuff
+
 };
 
 ///////////////////////////////////////////////////////////////////////////////
