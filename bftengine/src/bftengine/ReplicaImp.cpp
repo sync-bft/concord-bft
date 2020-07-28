@@ -3720,8 +3720,8 @@ void ReplicaImp::onStartCommitTimer(Timers::Handle timer) {
   SeqNumInfo &seqNumInfo = mainLog->get(lastExecutedSeqNum + 1);
   ProposalMsg *proposal = seqNumInfo.getProposalMsg();
   auto span = concordUtils::startSpan("bft_execute_requests_in_proposal");
-  bool recoverFromErrorInRequestsExecution = false; // temp
-  executeRequestsInProposalMsg(span, *proposal, recoverFromErrorInRequestsExecution);
+  bool recoverFromErrorInRequestsExec = false; // temp
+  executeRequestsInProposalMsg(span, proposal, recoverFromErrorInRequestsExec);
 }
 
 void ReplicaImp::executeRequestsInProposalMsg(concordUtils::SpanWrapper &parent_span,
@@ -3787,7 +3787,7 @@ void ReplicaImp::executeRequestsInProposalMsg(concordUtils::SpanWrapper &parent_
     reqIdx = 0;
     requestBody = nullptr;
 
-    auto dur = controller->durationSincePoposal(lastExecutedSeqNum + 1);
+    auto dur = controller->durationSinceProposal(lastExecutedSeqNum + 1);
     if (dur > 0) {
       // Primary
       LOG_DEBUG(CNSUS, "Consensus reached, duration [" << dur << "ms]");
