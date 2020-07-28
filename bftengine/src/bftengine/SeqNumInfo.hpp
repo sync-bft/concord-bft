@@ -134,6 +134,17 @@ class SeqNumInfo {
     commitMsgsCollector->onCompletionOfCombinedSigVerification(seqNumber, viewNumber, isValid);
   }
 
+  void onCompletionOfVoteSignaturesProcessing(SeqNum seqNumber,
+                                              ViewNum viewNumber,
+                                              const std::set<ReplicaId>& replicasWithBadSigs);
+  void onCompletionOfVoteSignaturesProcessing(SeqNum seqNumber,
+                                              ViewNum viewNumber,
+                                              const char* combinedSig,
+                                              uint16_t combinedSigLen,
+                                              const std::string& span_context);
+  void onCompletionOfCombinedVoteSigVerification(SeqNum seqNumber, ViewNum viewNumber, bool isValid);
+
+
  protected:
   class ExFuncForPrepareCollector {
    public:

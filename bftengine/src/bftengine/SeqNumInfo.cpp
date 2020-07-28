@@ -479,21 +479,21 @@ bool SeqNumInfo::addCombinedSig(const char* sig, uint16_t len){
 }
 
 void SeqNumInfo::onCompletionOfVoteSignaturesProcessing(SeqNum seqNumber,
-                                                           ViewNum viewNumber,
-                                                           const std::set<ReplicaId>& replicasWithBadSigs) {
+                                                        ViewNum viewNumber,
+                                                        const std::set<ReplicaId>& replicasWithBadSigs) {
   voteSigCollector->onCompletionOfSignaturesProcessing(seqNumber, viewNumber, replicasWithBadSigs);
 }
 
-void SeqNumInfo::onCompletionOfPrepareSignaturesProcessing(SeqNum seqNumber,
-                                                           ViewNum viewNumber,
-                                                           const char* combinedSig,
-                                                           uint16_t combinedSigLen,
-                                                           const std::string& span_context) {
+void SeqNumInfo::onCompletionOfVoteSignaturesProcessing(SeqNum seqNumber,
+                                                        ViewNum viewNumber,
+                                                        const char* combinedSig,
+                                                        uint16_t combinedSigLen,
+                                                        const std::string& span_context) {
   voteSigCollector->onCompletionOfSignaturesProcessing(
       seqNumber, viewNumber, combinedSig, combinedSigLen, span_context);
 }
 
-void SeqNumInfo::onCompletionOfCombinedPrepareSigVerification(SeqNum seqNumber, ViewNum viewNumber, bool isValid) {
+void SeqNumInfo::onCompletionOfCombinedVoteSigVerification(SeqNum seqNumber, ViewNum viewNumber, bool isValid) {
   voteSigCollector->onCompletionOfCombinedSigVerification(seqNumber, viewNumber, isValid);
 }
 
