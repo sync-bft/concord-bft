@@ -489,6 +489,9 @@ void SeqNumInfo::onCompletionOfVoteSignaturesProcessing(SeqNum seqNumber,
                                                         const char* combinedSig,
                                                         uint16_t combinedSigLen,
                                                         const std::string& span_context) {
+  LOG_INFO(CNSUS,
+           "seqNum information is as follows ["
+               << seqNumber << " " << expectedSeqNumber <<"]");
   voteSigCollector->onCompletionOfSignaturesProcessing(
       seqNumber, viewNumber, combinedSig, combinedSigLen, span_context);
 }
