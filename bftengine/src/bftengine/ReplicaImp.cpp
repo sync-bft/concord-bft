@@ -3599,7 +3599,7 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
   }
 }
 
-void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
+void ReplicaImp::sendVote(const SeqNumInfo &seqNumInfo) {
   Assert(currentViewIsActive());
 
   // if (seqNumInfo.getSelfVoteMsg() == nullptr && seqNumInfo.hasPrePrepareMsg() && !seqNumInfo.isPrepared()) {
@@ -3649,7 +3649,6 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   const ReplicaId msgSender = msg->senderId();
   const ViewNum msgViewNum = msg->viewNumber();
   const SeqNumInfo& seqNumInfo = mainLog->get(msgSeqNum);
-  const ReplicasInfo& repsInfo = getReplicasInfo();
 
   msg->validate(repsInfo);
 
@@ -3690,7 +3689,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
       // controller->onMessage(msg);
       VoteMsg *vote = seqNumInfo.getSelfVoteMsg();
       if (vote != nullptr) { 
-        sendVote(seqNumInfo) 
+        sendVote(seqNumInfo);
         }
       else {
         msgAdded = seqNumInfo.addMsg(msg);
