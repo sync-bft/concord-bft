@@ -76,13 +76,12 @@ ProposalMsg::ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* comb
 uint32_t ProposalMsg::remainingSizeForRequests() const {
   Assert(!isReady());
   Assert(!isNull());
-  Assert(b()->endLocationOfLastRequest >= requestSPayloadShift());
+  Assert(b()->endLocationOfLastRequest >= requestsPayloadShift());
 
   return (internalStorageSize() - b()->endLocationOfLastRequest);
 }
 
 void ProposalMsg::addRequest(const char* pRequest, uint32_t requestSize) {
-  Assert(getRequestSizeTemp(pRequest) == requestSize);
   Assert(!isNull());
   Assert(!isReady());
   Assert(remainingSizeForRequests() >= requestSize);
