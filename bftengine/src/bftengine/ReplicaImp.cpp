@@ -3924,6 +3924,10 @@ void ReplicaImp::onVoteCombinedSigSucceeded(
     LOG_INFO(GL, "onVoteCombinedSigSucceeded: Invalid state, view, or sequence number." << KVLOG(view, curView));
     return;
   }
+      
+LOG_INFO(CNSUS,
+            "seqNum information is as follows ["
+                << seqNumber << " " << view <<"]");
 
   SeqNumInfo &seqNumInfo = mainLog->get(seqNumber);
   seqNumInfo.addCombinedSig(combinedSig, combinedSigLen);
