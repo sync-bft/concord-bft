@@ -22,6 +22,12 @@ void ProposalMsg::validate(const ReplicasInfo& repInfo) const{
     const bool isNull = ((flags & 0x1) == 0);
     const bool isReady = (((flags >> 1) & 0x1) == 1);
 
+     if (b()->seqNum == 0 || isNull ||  // we don't send null requests
+      !isReady ||                    // not ready
+      b()->endLocationOfLastRequest > size() || b()->numberOfRequests == 0 ||
+      b()->numberOfRequests >= b()->endLocationOfLastRequest)
+    throw std::runtime_error(__PRETTY_FUNCTION__ + std::string(": advanced"));
+
     // check digest of client request buffer
     Digest d;
     const char* buffer = (char*)&(b()->seqNumDigestFill);
