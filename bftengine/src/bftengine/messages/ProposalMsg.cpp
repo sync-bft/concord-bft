@@ -146,7 +146,7 @@ const std::string ProposalMsg::getClientCorrelationIdForMsg(int index) const {
 
 const std::string ProposalMsg::getBatchCorrelationIdAsString() const {
   std::string ret;
-  auto it = RequestsIterator(this);
+  auto it = ContentIterator(this);
   char* requestBody = nullptr;
   while (it.getAndGoToNext(requestBody)) {
     ClientRequestMsg req((ClientRequestMsgHeader*)requestBody);
@@ -155,7 +155,7 @@ const std::string ProposalMsg::getBatchCorrelationIdAsString() const {
   return ret;
 }
 
-uint32_t ProposalMsg::requestPayloadShift() const { return sizeof(Header) + b()->header.spanContextSize + b()->combinedSigLen; }
+uint32_t ProposalMsg::requestsPayloadShift() const { return sizeof(Header) + b()->header.spanContextSize + b()->combinedSigLen; }
 
 
 ///////////////////////////////////////////////////////////////////////////////
