@@ -10,7 +10,7 @@ namespace impl {
 
 static Digest nullDigest(0x18);
 
-void ProposalMsg::validate(const ReplicasInfo& repInfo) const{
+void ProposalMsg::validate(const ReplicasInfo&* repInfo) const{
     Assert(senderId() != repInfo.myId());
 
     if (size() < sizeof(Header) + spanContextSize() || 
