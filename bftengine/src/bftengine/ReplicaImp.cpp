@@ -3647,7 +3647,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   //metric_received_prepare_partials_.Get().Inc(); Do we have other metrices?
   const SeqNum msgSeqNum = msg->seqNumber();
   const ReplicaId msgSender = msg->senderId();
-  const ViewNum msgViewNum = msg->viewNumber();
+  //const ViewNum msgViewNum = msg->viewNumber();
   
   SeqNumInfo& seqNumInfo = mainLog->get(msgSeqNum);
 
@@ -3720,6 +3720,7 @@ void ReplicaImp::onStartCommitTimer(Timers::Handle timer) {
   SeqNumInfo &seqNumInfo = mainLog->get(lastExecutedSeqNum + 1);
   ProposalMsg *proposal = seqNumInfo.getProposalMsg();
   auto span = concordUtils::startSpan("bft_execute_requests_in_proposal");
+  bool recoverFromErrorInRequestsExecution = false; // temp
   executeRequestsInProposalMsg(span, *proposal, recoverFromErrorInRequestsExecution);
 }
 
@@ -3740,8 +3741,7 @@ void ReplicaImp::executeRequestsInProposalMsg(concordUtils::SpanWrapper &parent_
   if (numOfRequests > 0) {
     Bitmap requestSet(numOfRequests);
     size_t reqIdx = 0;
-    bool isRequest = true;
-    ContentIterator reqIter(pMsg, isRequest);
+    ContentIterator reqIter(pMsg);
     char *requestBody = nullptr;
 
     //////////////////////////////////////////////////////////////////////
