@@ -3470,6 +3470,8 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
   Assert(isCurrentPrimary());
   Assert(currentViewIsActive());
 
+  LOG_INFO(GL, "On tryToSendProposalMsg");
+
   if (primaryLastUsedSeqNum + 1 > lastStableSeqNum + kWorkWindowSize) {
     LOG_INFO(GL,
              "Will not send Proposal since next sequence number ["
@@ -3478,7 +3480,7 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
     return;
   }
 
-  if (primaryLastUsedSeqNum > lastExecutedSeqNum + config_.concurrencyLevel) { //  config_.concurrencyLevel
+  if (primaryLastUsedSeqNum > lastExecutedSeqNum + 1){//config_.concurrencyLevel) { //  config_.concurrencyLevel
     LOG_INFO(GL,
              "Will not send Proposal since next sequence number ["
                  << primaryLastUsedSeqNum + 1 << "] exceeds the next executed sequence number [" << lastExecutedSeqNum << "]");
