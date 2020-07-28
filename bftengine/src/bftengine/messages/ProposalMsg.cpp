@@ -73,7 +73,7 @@ ProposalMsg::ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* comb
     memcpy(position, combinedSigBody, b()->combinedSigLen);
 }
 
-int32_t ProposalMsg::remainingSizeForRequests() const {
+uint32_t ProposalMsg::remainingSizeForRequests() const {
   Assert(!isReady());
   Assert(!isNull());
   Assert(b()->endLocationOfLastRequest >= requestSPayloadShift());
