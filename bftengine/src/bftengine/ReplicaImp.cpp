@@ -121,8 +121,8 @@ void ReplicaImp::registerMsgHandlers() {
   msgHandlers_->registerMsgHandler(MsgCode::Vote,
                                    bind(&ReplicaImp::messageHandler<VoteMsg>, this, _1));
 
-    msgHandlers_->registerMsgHandler(MsgCode::VoteFull,
-                                   bind(&ReplicaImp::messageHandler<VoteFullMsg>, this, _1));
+  //msgHandlers_->registerMsgHandler(MsgCode::VoteFull,
+  //                                 bind(&ReplicaImp::messageHandler<VoteFullMsg>, this, _1));
 }
 
 template <typename T>
