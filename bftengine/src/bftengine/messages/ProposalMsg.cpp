@@ -178,9 +178,9 @@ bool ContentIterator::getCurrent(char*& pContent) const {
 }
 
 bool ContentIterator::end() const {
-  Assert(currLoc <= msg->b()->endLocationOfLastRequest;
+  Assert(currLoc <= msg->b()->endLocationOfLastRequest);
 
-  return (currLoc = msg->b()->endLocationOfLastRequest;
+  return (currLoc = msg->b()->endLocationOfLastRequest);
 }
 
 void ContentIterator::gotoNext() {
@@ -188,7 +188,7 @@ void ContentIterator::gotoNext() {
   char* p = msg->body() + currLoc;
   uint32_t size = getRequestSizeTemp(p); // TODO(QF): to be implemented - signature size
   currLoc += size;
-  Assert(currLoc <= msg->b()->endLocationOfLastRequest;
+  Assert(currLoc <= msg->b()->endLocationOfLastRequest);
 }
 
 bool ContentIterator::getAndGoToNext(char*& pContent) {
