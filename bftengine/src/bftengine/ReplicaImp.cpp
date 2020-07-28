@@ -3647,11 +3647,11 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   //metric_received_prepare_partials_.Get().Inc(); Do we have other metrices?
   const SeqNum msgSeqNum = msg->seqNumber();
   const ReplicaId msgSender = msg->senderId();
-  const ViewNum msgViewNum = msg->viewNum();
+  const ViewNum msgViewNum = msg->viewNumber();
   const SeqNumInfo& seqNumInfo = mainLog->get(msgSeqNum);
   const ReplicasInfo& repsInfo = getReplicasInfo();
 
-  msg.validate(repsInfo);
+  msg->validate(repsInfo);
 
   Digest& msgDigestOfRequestsSeqNum = digestOfRequestsSeqNum();
   ProposalMsg* logProposalMsg = seqNumInfo.getProposalMsg();
