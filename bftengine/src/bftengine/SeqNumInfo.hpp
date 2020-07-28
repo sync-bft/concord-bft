@@ -52,8 +52,8 @@ class SeqNumInfo {
   bool addMsg(CommitPartialMsg* m);
   bool addSelfCommitPartialMsgAndDigest(CommitPartialMsg* m, Digest& commitDigest, bool directAdd = false);
 
-  bool addMsg(VoteFullMsg* m);
-  bool addSelfCommitVoteMsgAndDigest(VoteFullMsg* m, Digest& commitDigest, bool directAdd = false);
+  //bool addMsg(VoteFullMsg* m);
+  //bool addSelfVoteFullMsgAndDigest(VoteFullMsg* m, Digest& commitDigest, bool directAdd = false);
 
   bool addMsg(CommitFullMsg* m, bool directAdd = false);
 
