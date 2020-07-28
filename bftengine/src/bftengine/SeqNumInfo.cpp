@@ -501,14 +501,14 @@ void SeqNumInfo::onCompletionOfCombinedVoteSigVerification(SeqNum seqNumber, Vie
 // class SeqNumInfo::ExFuncForVoteCollector
 ///////////////////////////////////////////////////////////////////////////////
 
-CommitVoteMsg* SeqNumInfo::ExFuncForVoteCollector::createCombinedSignatureMsg(void* context,
-                                                                        SeqNum seqNumber,
-                                                                        ViewNum viewNumber,
-                                                                        const char* const combinedSig,
-                                                                        uint16_t combinedSigLen,
-                                                                        const std::string& span_context) {
+VoteFullMsg* SeqNumInfo::ExFuncForVoteCollector::createCombinedSignatureMsg(void* context,
+                                                                            SeqNum seqNumber,
+                                                                            ViewNum viewNumber,
+                                                                            const char* const combinedSig,
+                                                                            uint16_t combinedSigLen,
+                                                                            const std::string& span_context) {
   InternalReplicaApi* r = (InternalReplicaApi*)context;
-  return CommitVoteMsg::create(
+  return VoteFullMsg::create(
       viewNumber, seqNumber, r->getReplicasInfo().myId(), combinedSig, combinedSigLen, span_context);
 }
 
