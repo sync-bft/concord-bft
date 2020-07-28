@@ -162,7 +162,7 @@ uint32_t ProposalMsg::requestsPayloadShift() const { return sizeof(Header) + b()
 // ContentIterator
 ///////////////////////////////////////////////////////////////////////////////
 
-ContentIterator::ContentIterator(const ProposalMsg* const m) : msg{m}, currLoc{?m->requestsPayloadShift()} {
+ContentIterator::ContentIterator(const ProposalMsg* const m) : msg{m}, currLoc{m->requestsPayloadShift()} {
   Assert(msg->isReady());
 }
 
