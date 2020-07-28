@@ -27,7 +27,7 @@ class ProposalMsg : public MessageBase{
             uint16_t flags;
             Digest digestOfRequestsSeqNum;
 
-            uint16_t combinedSigLength;
+            uint16_t combinedSigLen;
 
             SeqNum seqNumDigestFill;  // used to calculate digest
             uint16_t numberOfRequests;
@@ -78,13 +78,13 @@ class ProposalMsg : public MessageBase{
 
         Digest& digestOfRequestsSeqNum() const {return b()->digestOfRequestsSeqNum;}
     
-        size_t combinedSigLength() const {return combinedSigLength;}
+        size_t combinedSigLength() const {return combinedSigLen;}
 
         char* combinedSigBody() const { return body() + sizeof(Header) +  b()->header.spanContextSize; }
     
     protected:
 
-        size_t combinedSigLength;
+        size_t combinedSigLen;
 
         static int16_t computeFlagsForProposalMsg(bool isNull, bool isReady);
 
@@ -102,7 +102,7 @@ class ProposalMsg : public MessageBase{
 
 class ContentIterator {
  public:
-  ContentIterator(const ProposalMsg* const m, bool isR);
+  ContentIterator(const ProposalMsg* const m);
 
   void restart();
 
@@ -117,7 +117,6 @@ class ContentIterator {
  protected:
   const ProposalMsg* const msg;
   uint32_t currLoc;
-  bool isRequest;
 };
 
 template <>

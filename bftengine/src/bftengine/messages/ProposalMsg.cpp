@@ -7,8 +7,6 @@
 
 namespace bftEngine {
 namespace impl {
-// Signatures must be filled before requests
-// Assume: all signatures are the same size
 
 static Digest nullDigest(0x18);
 
@@ -61,12 +59,12 @@ ProposalMsg::ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, char* combinedSi
     b()->seqNum = s;
     b()->viewNum = v;
     b()->seqNumDigestFill = s;
-    b()->combinedSigLength = combinedSigLength;
+    b()->combinedSigLen = combinedSigLength;
 
     char* position = body() + sizeof(Header);
     memcpy(position, spanContext.data(), b()->header.spanContextSize);
     position = body() + sizeof(Header) +  b()->header.spanContextSize;
-    memcpy(position, combinedSigBody, b()->combinedSigLength);
+    memcpy(position, combinedSigBody, b()->combinedSigLen);
 }
 
 int32_t ProposalMsg::remainingSizeForRequests() const {
@@ -129,8 +127,7 @@ int16_t ProposalMsg::computeFlagsForProposalMsg(bool isNull, bool isReady) {
 }
 
 const std::string ProposalMsg::getClientCorrelationIdForMsg(int index) const {
-  bool isRequest = true;
-  auto it = ContentsIterator(this, isRequest);
+  auto it = ContentsIterator(this);
   int req_num = 0;
   while (!it.end() && req_num < index) {
     it.gotoNext();
@@ -144,8 +141,7 @@ const std::string ProposalMsg::getClientCorrelationIdForMsg(int index) const {
 
 const std::string ProposalMsg::getBatchCorrelationIdAsString() const {
   std::string ret;
-  bool isRequest = true;
-  auto it = RequestsIterator(this, isRequest);
+  auto it = RequestsIterator(this);
   char* requestBody = nullptr;
   while (it.getAndGoToNext(requestBody)) {
     ClientRequestMsg req((ClientRequestMsgHeader*)requestBody);
@@ -154,20 +150,18 @@ const std::string ProposalMsg::getBatchCorrelationIdAsString() const {
   return ret;
 }
 
-uint32_t ProposalMsg::requestPayloadShift() const { return sizeof(Header) + b()->header.spanContextSize + b()->combinedSigLength; }
+uint32_t ProposalMsg::requestPayloadShift() const { return sizeof(Header) + b()->header.spanContextSize + b()->combinedSigLen; }
 
 
 ///////////////////////////////////////////////////////////////////////////////
 // ContentsIterator
 ///////////////////////////////////////////////////////////////////////////////
 
-ContentIterator::ContentIterator(const ProposalMsg* const m, bool isR) : isRequest{isR}, msg{m}, currLoc{isRequest?m->requestsPayloadShift()
-                                                                                                                  :m->signaturesPayloadShift()} {
+ContentIterator::ContentIterator(const ProposalMsg* const m) : msg{m}, currLoc{?m->requestsPayloadShift()} {
   Assert(msg->isReady());
 }
 
-void ContentIterator::restart() { currLoc = isRequest?msg->requestsPayloadShift()
-                                                      :msg->signaturesPayloadShift();}
+void ContentIterator::restart() { currLoc = msg->requestsPayloadShift();}
 
 bool ContentIterator::getCurrent(char*& pContent) const {
   if (end()) return false;
@@ -179,20 +173,17 @@ bool ContentIterator::getCurrent(char*& pContent) const {
 }
 
 bool ContentIterator::end() const {
-  Assert(currLoc <= isRequest?msg->b()->endLocationOfLastRequest
-                             :msg->b()->endLocationOfLastSignature);
+  Assert(currLoc <= msg->b()->endLocationOfLastRequest;
 
-  return (currLoc == isRequest?msg->b()->endLocationOfLastRequest
-                              :msg->b()->endLocationOfLastSignature);
+  return (currLoc = msg->b()->endLocationOfLastRequest;
 }
 
 void ContentIterator::gotoNext() {
   Assert(!end());
   char* p = msg->body() + currLoc;
-  uint32_t size = isRequest?getRequestSizeTemp(p):m->signatureSize(); // TODO(QF): to be implemented - signature size
+  uint32_t size = getRequestSizeTemp(p); // TODO(QF): to be implemented - signature size
   currLoc += size;
-  Assert(currLoc <= isRequest?msg->b()->endLocationOfLastRequest
-                             :msg->b()->endLocationOfLastSignature);
+  Assert(currLoc <= msg->b()->endLocationOfLastRequest;
 }
 
 bool ContentIterator::getAndGoToNext(char*& pContent) {
