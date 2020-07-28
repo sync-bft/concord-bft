@@ -78,7 +78,7 @@ class SeqNumInfo {
   CommitPartialMsg* getSelfCommitPartialMsg() const;
   CommitFullMsg* getValidCommitFullMsg() const;
 
-  char* getCombinedSig() const { return combinedSig;}
+  const char* getCombinedSig() const { return combinedSig;}
 
   uint16_t getCombinedSigLen() const { return combinedSigLen;}
 
@@ -222,6 +222,7 @@ class SeqNumInfo {
   InternalReplicaApi* replica = nullptr;
 
   PrePrepareMsg* prePrepareMsg;
+  ProposalMsg* proposalMsg;
 
   CollectorOfThresholdSignatures<PreparePartialMsg, PrepareFullMsg, ExFuncForPrepareCollector>* prepareSigCollector;
   CollectorOfThresholdSignatures<VoteMsg, VoteFullMsg, ExFuncForVoteCollector>* voteSigCollector; 
@@ -239,10 +240,7 @@ class SeqNumInfo {
   Time timeOfLastInfoRequest;
   Time commitUpdateTime;
 
-  ProposalMsg* proposalMsg;
-
   const char *combinedSig;
-  
   uint16_t combinedSigLen;
 
  public:
