@@ -3668,7 +3668,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
 
   AssertEQ(msgCombinedSig, logCombinedSig);
   AssertLE(lastStableSeqNum, msgSeqNum);
-
+  bool msgAdded = false;
   if (msgSeqNum > lastStableSeqNum) {
     for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
       sendRetransmittableMsgToReplica(msg, x, msgSeqNum);
@@ -3677,7 +3677,6 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     // SCOPED_MDC_PRIMARY(std::to_string(currentPrimary()));
     // SCOPED_MDC_SEQ_NUM(std::to_string(msgSeqNum));
     // SCOPED_MDC_PATH(CommitPathToMDCString(CommitPath::SLOW)); Do we care about scope?
-    bool msgAdded = false;
     // auto span = concordUtils::startChildSpanFromContext(msg->spanContext<std::remove_pointer<decltype(msg)>::type>(),
     // "bft_handle_prepare_partial_msg");//can I change this?
     const SeqNum minSeqNum = lastExecutedSeqNum + 1;
@@ -3696,11 +3695,11 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
         msgAdded = seqNumInfo.addMsg(msg);
       }
 
-      if (ps_) {
+      /*if (ps_) {
         ps_->beginWriteTran();
         ps_->setVoteMsgInSeqNumWindow(seqNumber, vote);
         ps_->endWriteTran();
-      }
+      }*/
     }
   }
 
