@@ -43,9 +43,9 @@ constexpr int MaxNumberOfReplicas = 64;
 // Work windows and intervals
 ///////////////////////////////////////////////////////////////////////////////
 
-constexpr uint16_t kWorkWindowSize = 30000;
+constexpr uint16_t kWorkWindowSize = 3000;
 
-constexpr uint16_t checkpointWindowSize = 15000;
+constexpr uint16_t checkpointWindowSize = 1500;
 static_assert(kWorkWindowSize == 2 * checkpointWindowSize, "kWorkWindowSize != 2 * checkpointWindowSize");
 
 // TODO(GG): check the value in config:
