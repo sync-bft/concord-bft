@@ -3470,7 +3470,7 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
   Assert(isCurrentPrimary());
   Assert(currentViewIsActive());
 
-  LOG_INFO(GL, "On tryToSendProposalMsg");
+  LOG_INFO(CNSUS, "On tryToSendProposalMsg");
 
   if (primaryLastUsedSeqNum + 1 > lastStableSeqNum + kWorkWindowSize) {
     LOG_INFO(GL,

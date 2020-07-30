@@ -467,7 +467,16 @@ bool SeqNumInfo::addSelfMsg(ProposalMsg* m, bool directAdd) {
   proposalMsg = m;
   primary = true;
 
-  // TODO(QF): store sigs?
+  // set expected
+  Digest tmpDigest;
+  Digest::calcCombination(m->digestOfRequestsSeqNum(), m->viewNumber(), m->seqNumber(), tmpDigest);
+  if (!directAdd)
+    voteSigCollector->setExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
+  else
+    voteSigCollector->initExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
+
+  if (firstSeenFromPrimary == MinTime)  // TODO(GG): remove condition - TBD
+    firstSeenFromPrimary = getMonotonicTime();
 
   return true;
 }
