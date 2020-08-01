@@ -77,16 +77,16 @@ bool SeqNumInfo::addMsg(PrePrepareMsg* m, bool directAdd) {
 
   prePrepareMsg = m;
 
-  // set expected
-  Digest tmpDigest;
-  Digest::calcCombination(m->digestOfRequests(), m->viewNumber(), m->seqNumber(), tmpDigest);
-  if (!directAdd)
-    prepareSigCollector->setExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
-  else
-    prepareSigCollector->initExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
+    // set expected
+    Digest tmpDigest;
+    Digest::calcCombination(m->digestOfRequests(), m->viewNumber(), m->seqNumber(), tmpDigest);
+    if (!directAdd)
+      prepareSigCollector->setExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
+    else
+      prepareSigCollector->initExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
 
-  if (firstSeenFromPrimary == MinTime)  // TODO(GG): remove condition - TBD
-    firstSeenFromPrimary = getMonotonicTime();
+    if (firstSeenFromPrimary == MinTime)  // TODO(GG): remove condition - TBD
+      firstSeenFromPrimary = getMonotonicTime();
 
   return true;
 }
@@ -467,7 +467,17 @@ bool SeqNumInfo::addSelfMsg(ProposalMsg* m, bool directAdd) {
   proposalMsg = m;
   primary = true;
 
-  // TODO(QF): store sigs?
+  // set expected
+  Digest tmpDigest;
+  Digest::calcCombination(m->digestOfRequests(), m->viewNumber(), m->seqNumber(), tmpDigest);
+  if (!directAdd)
+    voteSigCollector->setExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
+  else
+    voteSigCollector->initExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
+
+  if (firstSeenFromPrimary == MinTime)  // TODO(GG): remove condition - TBD
+    firstSeenFromPrimary = getMonotonicTime();
+
 
   return true;
 }
