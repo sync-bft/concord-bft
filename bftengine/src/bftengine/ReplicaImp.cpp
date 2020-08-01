@@ -3156,7 +3156,7 @@ void ReplicaImp::addTimers() {
 }
 
 void ReplicaImp::start() {
-  //ReplicaForStateTransfer::start();
+  ReplicaForStateTransfer::start();
   addTimers();
   processMessages();
 }
