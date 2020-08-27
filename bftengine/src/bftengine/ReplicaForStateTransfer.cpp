@@ -45,7 +45,7 @@ ReplicaForStateTransfer::ReplicaForStateTransfer(const ReplicaConfig &config,
 }
 
 void ReplicaForStateTransfer::start() {
-  const std::chrono::milliseconds defaultTimeout = 5s;
+  const std::chrono::milliseconds defaultTimeout = 200s;
   stateTranTimer_ =
       timers_.add(defaultTimeout, Timers::Timer::RECURRING, [this](Timers::Handle h) { stateTransfer->onTimer(); });
   metric_state_transfer_timer_.Get().Set(defaultTimeout.count());
