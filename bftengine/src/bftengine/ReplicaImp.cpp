@@ -3705,7 +3705,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
 
   commitReportTimer_ = timers_.add(milliseconds(commitReportMilli),
                                    Timers::Timer::ONESHOT,
-                                   [this](Timers::Handle h) { onStartCommitTimer(h); });
+                                   [this](Timers::Handle h) { onStartCommitTimer(h, *msgSeqNum); });
   
   if (!msgAdded) {
     LOG_DEBUG(GL,
@@ -3715,16 +3715,14 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   }
 }
 
-void ReplicaImp::onStartCommitTimer(Timers::Handle timer) {
+void ReplicaImp::onStartCommitTimer(Timers::Handle timer, seqNum* msgSeqNum) {
   LOG_INFO(CNSUS, "Start commit Timer");
-  msgIterator = lastStableSeqNum + 1;
-  while (msgIterator <= lastExecutedSeqNum + 1) {
+  for (seqNum msgIterator = lastExecutedSeqNum + 1; msgIterator <= msgSeqNum; msgIterator++;){
     SeqNumInfo &seqNumInfo = mainLog->get(msgIterator);
     ProposalMsg *proposal = seqNumInfo.getProposalMsg();
     auto span = concordUtils::startSpan("bft_execute_requests_in_proposal");
     bool recoverFromErrorInRequestsExec = false;  // temp
     executeRequestsInProposalMsg(span, proposal, recoverFromErrorInRequestsExec);
-    msgIterator++;
   }
 }
 
