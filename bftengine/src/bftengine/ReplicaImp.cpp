@@ -3505,7 +3505,7 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
 
   if (requestsInQueue == 0) return;
   
-  uint64_t concurrentDiff = ((primaryLastUsedSeqNum + 1) - lastExecutedSeqNum);
+  //uint64_t concurrentDiff = ((primaryLastUsedSeqNum + 1) - lastExecutedSeqNum);
   uint64_t minBatchSize = 1;
 
   // update maxNumberOfPendingRequestsInRecentHistory (if needed)
