@@ -226,8 +226,8 @@ void ReplicaImp::onMessage<ClientRequestMsg>(ClientRequestMsg *m) {
                                                         << "], senderId=" << senderId);
         requestsQueueOfPrimary.push(m);
         primaryCombinedReqSize += m->size();
-        tryToSendPrePrepareMsg(true);
-        //tryToSendProposalMsg(true);
+        //tryToSendPrePrepareMsg(true);
+        tryToSendProposalMsg(true);
         return;
       } else {
         LOG_INFO(GL,
@@ -3501,14 +3501,11 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
     first = (!requestsQueueOfPrimary.empty() ? requestsQueueOfPrimary.front() : nullptr);
   }
 
-  if (requestsQueueOfPrimary.size() == 0) return;
-
   const size_t requestsInQueue = requestsQueueOfPrimary.size();
 
   if (requestsInQueue == 0) return;
   
   uint64_t concurrentDiff = ((primaryLastUsedSeqNum + 1) - lastExecutedSeqNum);
-
   uint64_t minBatchSize = 1;
 
   // update maxNumberOfPendingRequestsInRecentHistory (if needed)
@@ -3516,13 +3513,13 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
     maxNumberOfPendingRequestsInRecentHistory = requestsInQueue;
 
   // TODO(GG): the batching logic should be part of the configuration - TBD.
-  if (batchingLogic && (concurrentDiff >= 2)) {
+  /*if (batchingLogic && (concurrentDiff >= 2)) {
     minBatchSize = concurrentDiff * batchingFactor;
 
     const size_t maxReasonableMinBatchSize = 350;  // TODO(GG): use param from configuration
 
     if (minBatchSize > maxReasonableMinBatchSize) minBatchSize = maxReasonableMinBatchSize;
-  }
+  }*/
 
   if (requestsInQueue < minBatchSize) {
     LOG_INFO(GL,
@@ -3549,14 +3546,12 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
 
   ClientRequestMsg *nextRequest = (!requestsQueueOfPrimary.empty() ? requestsQueueOfPrimary.front() : nullptr);
   const auto &span_context = nextRequest ? nextRequest->spanContext<ClientRequestMsg>() : std::string{};
-
-  SeqNumInfo &seqNumInfo =  mainLog->get(primaryLastUsedSeqNum);
   
+  bool exceptionNotInsideActiveWindow = true;
+  SeqNumInfo &seqNumInfo =  mainLog->get(primaryLastUsedSeqNum, exceptionNotInsideActiveWindow);
 
   ProposalMsg *proposal = new ProposalMsg(
       config_.replicaId, curView, (primaryLastUsedSeqNum + 1), seqNumInfo.getCombinedSig(), seqNumInfo.getCombinedSigLen(), span_context, primaryCombinedReqSize);
-  
-  // TODO(QF): added the sigs
 
   uint16_t initialStorageForRequests = proposal->remainingSizeForRequests();
   while (nextRequest != nullptr) {
