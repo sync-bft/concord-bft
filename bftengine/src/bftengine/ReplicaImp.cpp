@@ -3724,6 +3724,7 @@ void ReplicaImp::onStartCommitTimer(Timers::Handle timer) {
     auto span = concordUtils::startSpan("bft_execute_requests_in_proposal");
     bool recoverFromErrorInRequestsExec = false;  // temp
     executeRequestsInProposalMsg(span, proposal, recoverFromErrorInRequestsExec);
+    msgIterator++;
   }
 }
 
