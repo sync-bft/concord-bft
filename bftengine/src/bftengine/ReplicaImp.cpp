@@ -3705,7 +3705,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
 
   commitReportTimer_ = timers_.add(milliseconds(commitReportMilli),
                                    Timers::Timer::ONESHOT,
-                                   [this](Timers::Handle h) { onStartCommitTimer(h, *msgSeqNum); });
+                                   [this](Timers::Handle h) { onStartCommitTimer(h, msgSeqNum); });
   
   if (!msgAdded) {
     LOG_DEBUG(GL,
@@ -3715,7 +3715,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   }
 }
 
-void ReplicaImp::onStartCommitTimer(Timers::Handle timer, seqNum* msgSeqNum) {
+void ReplicaImp::onStartCommitTimer(Timers::Handle timer, seqNum msgSeqNum) {
   LOG_INFO(CNSUS, "Start commit Timer");
   for (seqNum msgIterator = lastExecutedSeqNum + 1; msgIterator <= msgSeqNum; msgIterator++;){
     SeqNumInfo &seqNumInfo = mainLog->get(msgIterator);
