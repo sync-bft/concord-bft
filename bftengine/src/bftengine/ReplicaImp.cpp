@@ -3547,7 +3547,7 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
   ClientRequestMsg *nextRequest = (!requestsQueueOfPrimary.empty() ? requestsQueueOfPrimary.front() : nullptr);
   const auto &span_context = nextRequest ? nextRequest->spanContext<ClientRequestMsg>() : std::string{};
   
-  bool exceptionNotInsideActiveWindow = true;
+  bool exceptionNotInsideActiveWindow = !isPrimaryInitialized;
   SeqNumInfo &seqNumInfo =  mainLog->get(primaryLastUsedSeqNum, exceptionNotInsideActiveWindow);
 
   ProposalMsg *proposal = new ProposalMsg(
@@ -3581,19 +3581,21 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
 
   proposal->finishAddingRequests();
 
-
   primaryLastUsedSeqNum++;
   LOG_INFO(CNSUS,
            "Sending Proposal with the following payload of the following correlation ids ["
             << proposal->getBatchCorrelationIdAsString() << "]");
   
-  seqNumInfo.addSelfMsg(proposal);
+  bool primaryFirstMsg = !isPrimaryInitialized;
+  seqNumInfo.addSelfMsg(proposal, false, primaryFirstMsg);
 
   // skip ps_
 
   for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
     sendRetransmittableMsgToReplica(proposal, x, primaryLastUsedSeqNum);
   }
+
+  if (!isPrimaryInitialized) isPrimaryInitialized = true;
 }
 
 void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {

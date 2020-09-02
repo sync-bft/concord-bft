@@ -58,7 +58,7 @@ class SeqNumInfo {
   bool addMsg(CommitFullMsg* m, bool directAdd = false);
 
   bool addMsg(ProposalMsg* m);
-  bool addSelfMsg(ProposalMsg* m, bool directAdd = false);
+  bool addSelfMsg(ProposalMsg* m, bool directAdd = false, bool primaryFirstMsg=false);
 
   bool addCombinedSig(const char* sig, uint16_t len);
 

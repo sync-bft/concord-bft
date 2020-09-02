@@ -457,7 +457,9 @@ bool SeqNumInfo::addMsg(ProposalMsg* m) {
   return true;
 }
 
-bool SeqNumInfo::addSelfMsg(ProposalMsg* m, bool directAdd) {
+bool SeqNumInfo::addSelfMsg(ProposalMsg* m, bool directAdd, bool primaryFirstMsg) {
+  
+  primary = primaryFirstMsg? true:primary;
   Assert(primary == true);  // TODO(QF): in view change: could be the leader primary's first proposal before set to primary 
   Assert(proposalMsg == nullptr);
 
@@ -465,7 +467,7 @@ bool SeqNumInfo::addSelfMsg(ProposalMsg* m, bool directAdd) {
   // another replica
 
   proposalMsg = m;
-  primary = true;
+  //primary = true;
 
   // set expected
   Digest tmpDigest;

@@ -421,6 +421,7 @@ class ReplicaImp : public InternalReplicaApi, public ReplicaForStateTransfer {
                                   const std::string& span_context);
   void onVoteVerifyCombinedSigResult(SeqNum seqNumber, ViewNum view, bool isValid);
 
+  bool isPrimaryInitialized = false;
 
  private:
   void addTimers();
