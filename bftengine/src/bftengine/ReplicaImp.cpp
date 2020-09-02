@@ -3642,6 +3642,8 @@ void ReplicaImp::onMessage<VoteMsg>(VoteMsg *msg) {
 
 template<>
 void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalMsg
+
+  LOG_INFO(CNSUS, "Received a proposal message");
  
   //metric_received_prepare_partials_.Get().Inc(); Do we have other metrices?
   const SeqNum msgSeqNum = msg->seqNumber();
