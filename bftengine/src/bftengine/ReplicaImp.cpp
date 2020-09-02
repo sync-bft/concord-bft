@@ -3717,11 +3717,14 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
 
 void ReplicaImp::onStartCommitTimer(Timers::Handle timer) {
   LOG_INFO(CNSUS, "Start commit Timer");
-  SeqNumInfo &seqNumInfo = mainLog->get(lastExecutedSeqNum + 1);
-  ProposalMsg *proposal = seqNumInfo.getProposalMsg();
-  auto span = concordUtils::startSpan("bft_execute_requests_in_proposal");
-  bool recoverFromErrorInRequestsExec = false; // temp
-  executeRequestsInProposalMsg(span, proposal, recoverFromErrorInRequestsExec);
+  msgIterator = lastStableSeqNum + 1;
+  while (msgIterator <= lastExecutedSeqNum + 1) {
+    SeqNumInfo &seqNumInfo = mainLog->get(msgIterator);
+    ProposalMsg *proposal = seqNumInfo.getProposalMsg();
+    auto span = concordUtils::startSpan("bft_execute_requests_in_proposal");
+    bool recoverFromErrorInRequestsExec = false;  // temp
+    executeRequestsInProposalMsg(span, proposal, recoverFromErrorInRequestsExec);
+  }
 }
 
 void ReplicaImp::executeRequestsInProposalMsg(concordUtils::SpanWrapper &parent_span,
