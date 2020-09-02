@@ -3550,7 +3550,7 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
   ClientRequestMsg *nextRequest = (!requestsQueueOfPrimary.empty() ? requestsQueueOfPrimary.front() : nullptr);
   const auto &span_context = nextRequest ? nextRequest->spanContext<ClientRequestMsg>() : std::string{};
 
-  SeqNumInfo seqNumInfo =  mainLog->get(primaryLastUsedSeqNum);
+  SeqNumInfo &seqNumInfo =  mainLog->get(primaryLastUsedSeqNum);
   
 
   ProposalMsg *proposal = new ProposalMsg(
