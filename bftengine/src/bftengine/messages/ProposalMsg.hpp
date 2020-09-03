@@ -50,9 +50,9 @@ class ProposalMsg : public MessageBase{
 
         void validate(const ReplicasInfo&) const override;
 
-        ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* combinedSigBody, size_t combinedSigLength, size_t size);
+        ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* combinedSigBody, size_t combinedSigLength, size_t size, bool isFirst=false);
 
-        ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* combinedSigBody, size_t combinedSigLength, const std::string& spanContext, size_t size);
+        ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* combinedSigBody, size_t combinedSigLength, const std::string& spanContext, size_t size, bool isFirst=false);
 
         uint32_t remainingSizeForRequests() const;
 
@@ -80,6 +80,8 @@ class ProposalMsg : public MessageBase{
 
         char* combinedSigBody() const { return body() + sizeof(Header) +  b()->header.spanContextSize; }
     
+        bool isFirstMsg() const {return isFirstSent;}
+
     protected:
 
         size_t combinedSigLen;
@@ -95,6 +97,8 @@ class ProposalMsg : public MessageBase{
         uint32_t requestsPayloadShift() const;
 
         friend class ContentIterator;
+
+        bool isFirstSent;
 
 };
 

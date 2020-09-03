@@ -43,10 +43,10 @@ void ProposalMsg::validate(const ReplicasInfo& repInfo) const{
 
 }
 
-ProposalMsg::ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* combinedSigBody, size_t combinedSigLength, size_t size)
-    : ProposalMsg(sender, v, s, combinedSigBody, combinedSigLength, "", size){}
+ProposalMsg::ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* combinedSigBody, size_t combinedSigLength, size_t size, bool isFirst)
+    : ProposalMsg(sender, v, s, combinedSigBody, combinedSigLength, "", size, isFirst){}
 
-ProposalMsg::ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* combinedSigBody, size_t combinedSigLength, const std::string& spanContext, size_t size)
+ProposalMsg::ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* combinedSigBody, size_t combinedSigLength, const std::string& spanContext, size_t size, bool isFirst)
     : MessageBase(sender,
                   MsgCode::Proposal,
                   spanContext.size(),
@@ -73,6 +73,7 @@ ProposalMsg::ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* comb
     memcpy(position, spanContext.data(), b()->header.spanContextSize);
     position = body() + sizeof(Header) +  b()->header.spanContextSize;
     memcpy(position, combinedSigBody, b()->combinedSigLen);
+    isFirstSent = isFirst; 
 }
 
 uint32_t ProposalMsg::remainingSizeForRequests() const {

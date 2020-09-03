@@ -3547,11 +3547,16 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
   ClientRequestMsg *nextRequest = (!requestsQueueOfPrimary.empty() ? requestsQueueOfPrimary.front() : nullptr);
   const auto &span_context = nextRequest ? nextRequest->spanContext<ClientRequestMsg>() : std::string{};
   
-  bool exceptionNotInsideActiveWindow = !isPrimaryInitialized;
-  SeqNumInfo &seqNumInfo =  mainLog->get(primaryLastUsedSeqNum, exceptionNotInsideActiveWindow);
-
-  ProposalMsg *proposal = new ProposalMsg(
-      config_.replicaId, curView, (primaryLastUsedSeqNum + 1), seqNumInfo.getCombinedSig(), seqNumInfo.getCombinedSigLen(), span_context, primaryCombinedReqSize);
+  if (!isPrimaryInitialized){
+    ProposalMsg *proposal = new ProposalMsg(
+      config_.replicaId, curView, (primaryLastUsedSeqNum + 1), NULL, 0, span_context, primaryCombinedReqSize, !is_primary_initialized);
+  }
+  else{
+    SeqNumInfo &lastSeqNumInfo =  mainLog->get(primaryLastUsedSeqNum);
+    ProposalMsg *proposal = new ProposalMsg(
+        config_.replicaId, curView, (primaryLastUsedSeqNum + 1), lastSeqNumInfo->getCombinedSig(), lastSeqNumInfo->getCombinedSigLen(), 
+        span_context, primaryCombinedReqSize, !is_primary_initialized);
+  }
 
   uint16_t initialStorageForRequests = proposal->remainingSizeForRequests();
   while (nextRequest != nullptr) {
@@ -3587,7 +3592,8 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
             << proposal->getBatchCorrelationIdAsString() << "]");
   
   bool primaryFirstMsg = !isPrimaryInitialized;
-  seqNumInfo.addSelfMsg(proposal, false, primaryFirstMsg);
+  SeqNumInfo &currSeqNumInfo =  mainLog->get(primaryLastUsedSeqNum);
+  currSeqNumInfo.addSelfMsg(proposal, false, primaryFirstMsg);
 
   // skip ps_
 
@@ -3618,7 +3624,7 @@ void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
   if (!isCurrentPrimary()) {
     for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
       sendRetransmittableMsgToReplica(v, x, primaryLastUsedSeqNum);
-      LOG_INFO(CNSUS, "Vote sent to replica ");
+      LOG_INFO(CNSUS, "Vote sent to replica");
     }
   }
 
@@ -3645,75 +3651,72 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
 
   LOG_INFO(CNSUS, "Received a proposal message");
  
-  //metric_received_prepare_partials_.Get().Inc(); Do we have other metrices?
   const SeqNum msgSeqNum = msg->seqNumber();
   const ReplicaId msgSender = msg->senderId();
   //const ViewNum msgViewNum = msg->viewNumber();
+
+  msg->validate(repsInfo);
+  LOG_DEBUG(CNSUS, "Message has been validated");  
   
-  SeqNumInfo& seqNumInfo = mainLog->get(msgSeqNum);
+  // if the msg is the first proposal msg from the primary, no need to do leader equivocation checking
+  if (!msg->isFirstMsg()){
+    LOG_DEBUG(CNSUS, "On leader equivocation checking.");
+    SeqNumInfo& lastSeqNumInfo = mainLog->get(msgSeqNum-1);
 
-  //msg->validate(repsInfo);
+    Digest& msgDigestOfRequestsSeqNum = msg->digestOfRequestsSeqNum();
+    ProposalMsg* logProposalMsg = lastSeqNumInfo.getProposalMsg();
+    Digest& logDigestOfRequestsSeqNum = logProposalMsg->digestOfRequestsSeqNum();
 
-  Digest& msgDigestOfRequestsSeqNum = msg->digestOfRequestsSeqNum();
-  ProposalMsg* logProposalMsg = seqNumInfo.getProposalMsg();
-  Digest& logDigestOfRequestsSeqNum = logProposalMsg->digestOfRequestsSeqNum();
-
-  const char* msgCombinedSig = msg->combinedSigBody();
-  const char* logCombinedSig = seqNumInfo.getCombinedSig();
-
-  if (strcmp(msgCombinedSig, logCombinedSig) != 0 ||
-      (msgDigestOfRequestsSeqNum.toString()).compare(logDigestOfRequestsSeqNum.toString()) != 0) {
-    LOG_INFO(CNSUS, "Leader equivocation detected");
-    return;//blame
+    const char* msgCombinedSig = msg->combinedSigBody();
+    const char* logCombinedSig = lastSeqNumInfo.getCombinedSig();
+    
+    if (strcmp(msgCombinedSig, logCombinedSig) != 0 ||
+        (msgDigestOfRequestsSeqNum != logDigestOfRequestsSeqNum)) {
+      LOG_INFO(CNSUS, "Leader equivocation detected");
+      return;//blame
+    }
   }
 
-  AssertEQ(msgCombinedSig, logCombinedSig);
   AssertLE(lastStableSeqNum, msgSeqNum);
   bool msgAdded = false;
+
+  SeqNumInfo& currSeqNumInfo = mainLog->get(msgSeqNum);
+  currSeqNumInfo.addMsg(msg);
+  //currSeqNumInfo.addCombinedSig(msg->combinedSigBody(), msg->combinedSigLength());
+  LOG_DEBUG(CNSUS, "Proposal msg added to the mainLog");
+  
   if (msgSeqNum > lastStableSeqNum) {
     for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
       sendRetransmittableMsgToReplica(msg, x, msgSeqNum);
     }
+    LOG_DEBUG(CNSUS, "Proposal msg broadcasted to all other replicas");
 
-    // SCOPED_MDC_PRIMARY(std::to_string(currentPrimary()));
-    // SCOPED_MDC_SEQ_NUM(std::to_string(msgSeqNum));
-    // SCOPED_MDC_PATH(CommitPathToMDCString(CommitPath::SLOW)); Do we care about scope?
-    // auto span = concordUtils::startChildSpanFromContext(msg->spanContext<std::remove_pointer<decltype(msg)>::type>(),
-    // "bft_handle_prepare_partial_msg");//can I change this?
     const SeqNum minSeqNum = lastExecutedSeqNum + 1;
     const SeqNum maxSeqNum = primaryLastUsedSeqNum;
     AssertLE(minSeqNum, maxSeqNum + 1);
     if (minSeqNum > maxSeqNum) return;
+
     if (relevantMsgForActiveView(msg)) {
       sendAckIfNeeded(msg, msgSender, msgSeqNum);
       LOG_DEBUG(GL, "Received relevant VoteMsg." << KVLOG(msgSender));
-      // controller->onMessage(msg);
-      VoteMsg *vote = seqNumInfo.getSelfVoteMsg();
-      if (vote != nullptr) { 
-        sendVote(seqNumInfo);
-        }
-      else {
-        msgAdded = seqNumInfo.addMsg(msg);
-      }
+      //controller->onMessage(msg);
 
-      /*if (ps_) {
-        ps_->beginWriteTran();
-        ps_->setVoteMsgInSeqNumWindow(seqNumber, vote);
-        ps_->endWriteTran();
-      }*/
+      VoteMsg *vote = seqNumInfo.getSelfVoteMsg();
+      if (vote == nullptr) { 
+        sendVote(seqNumInfo);
+      }
+      else {
+        LOG_DEBUG(GL,
+              "Node " << config_.replicaId << " ignored the Proposal from node " << msgSender << " (seqNumber "
+                      << msgSeqNum << ")");
+        delete msg;
+      }
     }
   }
 
   commitReportTimer_ = timers_.add(milliseconds(commitReportMilli),
                                    Timers::Timer::ONESHOT,
                                    [this](Timers::Handle h) { onStartCommitTimer(h); });
-  
-  if (!msgAdded) {
-    LOG_DEBUG(GL,
-              "Node " << config_.replicaId << " ignored the Proposal from node " << msgSender << " (seqNumber "
-                      << msgSeqNum << ")");
-    delete msg;
-  }
 }
 
 void ReplicaImp::onStartCommitTimer(Timers::Handle timer) {
