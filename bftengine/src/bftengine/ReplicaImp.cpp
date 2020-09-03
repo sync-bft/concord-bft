@@ -3664,7 +3664,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   LOG_DEBUG(CNSUS, "Message has been validated");  
   
   // if the msg is the first proposal msg from the primary, no need to do leader equivocation checking
-  if (!msg->isFirstMsg()){
+  if (!msg->isFirstMsg() || msgSeqNum == 1){
     LOG_DEBUG(CNSUS, "On leader equivocation checking.");
     SeqNumInfo& lastSeqNumInfo = mainLog->get(msgSeqNum-1);
 
