@@ -51,9 +51,9 @@ class ProposalMsg : public MessageBase{
 
         void validate(const ReplicasInfo&) const override;
 
-        ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* combinedSigBody, size_t combinedSigLength, size_t size, bool isFirst=false);
+        ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* combinedSigBody, size_t combinedSigLength, size_t size, bool isFirst);
 
-        ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* combinedSigBody, size_t combinedSigLength, const std::string& spanContext, size_t size, bool isFirst=false);
+        ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* combinedSigBody, size_t combinedSigLength, const std::string& spanContext, size_t size, bool isFirst);
 
         uint32_t remainingSizeForRequests() const;
 
