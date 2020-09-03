@@ -3549,14 +3549,18 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
   
   ProposalMsg *proposal = nullptr;
   if (!isPrimaryInitialized){
+    LOG_DEBUG(CNSUS, "Creating first proposal msg from primary");
+    bool isFirstMsg = true;
     proposal = new ProposalMsg(
-      config_.replicaId, curView, (primaryLastUsedSeqNum + 1), NULL, 0, span_context, primaryCombinedReqSize, !isPrimaryInitialized);
+      config_.replicaId, curView, (primaryLastUsedSeqNum + 1), NULL, 0, span_context, primaryCombinedReqSize, isFirstMsg);
   }
   else{
+    LOG_DEBUG(CNSUS, "Creating non-first proposal msg from primary");
+    bool isFirstMsg = false;
     SeqNumInfo &lastSeqNumInfo =  mainLog->get(primaryLastUsedSeqNum);
     proposal = new ProposalMsg(
         config_.replicaId, curView, (primaryLastUsedSeqNum + 1), lastSeqNumInfo.getCombinedSig(), lastSeqNumInfo.getCombinedSigLen(), 
-        span_context, primaryCombinedReqSize, !isPrimaryInitialized);
+        span_context, primaryCombinedReqSize, isFirstMsg);
   }
 
   uint16_t initialStorageForRequests = proposal->remainingSizeForRequests();
