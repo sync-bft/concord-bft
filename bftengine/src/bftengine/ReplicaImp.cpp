@@ -3547,13 +3547,14 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
   ClientRequestMsg *nextRequest = (!requestsQueueOfPrimary.empty() ? requestsQueueOfPrimary.front() : nullptr);
   const auto &span_context = nextRequest ? nextRequest->spanContext<ClientRequestMsg>() : std::string{};
   
+  ProposalMsg *proposal = nullptr;
   if (!isPrimaryInitialized){
-    ProposalMsg *proposal = new ProposalMsg(
+    *proposal = new ProposalMsg(
       config_.replicaId, curView, (primaryLastUsedSeqNum + 1), NULL, 0, span_context, primaryCombinedReqSize, !isPrimaryInitialized);
   }
   else{
     SeqNumInfo &lastSeqNumInfo =  mainLog->get(primaryLastUsedSeqNum);
-    ProposalMsg *proposal = new ProposalMsg(
+    *proposal = new ProposalMsg(
         config_.replicaId, curView, (primaryLastUsedSeqNum + 1), lastSeqNumInfo.getCombinedSig(), lastSeqNumInfo.getCombinedSigLen(), 
         span_context, primaryCombinedReqSize, !isPrimaryInitialized);
   }
