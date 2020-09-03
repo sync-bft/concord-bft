@@ -66,14 +66,14 @@ ProposalMsg::ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* comb
     b()->numberOfRequests = 0;
     b()->seqNum = s;
     b()->viewNum = v;
+    b()->isFirstMsg = isFirst;
     b()->seqNumDigestFill = s;
     b()->combinedSigLen = combinedSigLength;
 
     char* position = body() + sizeof(Header);
     memcpy(position, spanContext.data(), b()->header.spanContextSize);
     position = body() + sizeof(Header) +  b()->header.spanContextSize;
-    memcpy(position, combinedSigBody, b()->combinedSigLen);
-    isFirstSent = isFirst; 
+    memcpy(position, combinedSigBody, b()->combinedSigLen); 
 }
 
 uint32_t ProposalMsg::remainingSizeForRequests() const {
