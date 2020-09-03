@@ -3679,7 +3679,6 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   }
 
   AssertLE(lastStableSeqNum, msgSeqNum);
-  bool msgAdded = false;
 
   SeqNumInfo& currSeqNumInfo = mainLog->get(msgSeqNum);
   currSeqNumInfo.addMsg(msg);
@@ -3702,9 +3701,9 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
       LOG_DEBUG(GL, "Received relevant VoteMsg." << KVLOG(msgSender));
       //controller->onMessage(msg);
 
-      VoteMsg *vote = seqNumInfo.getSelfVoteMsg();
+      VoteMsg *vote =currSeqNumInfo.getSelfVoteMsg();
       if (vote == nullptr) { 
-        sendVote(seqNumInfo);
+        sendVote(currSeqNumInfo);
       }
       else {
         LOG_DEBUG(GL,
