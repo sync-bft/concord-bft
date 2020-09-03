@@ -3549,12 +3549,12 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
   
   ProposalMsg *proposal = nullptr;
   if (!isPrimaryInitialized){
-    *proposal = new ProposalMsg(
+    proposal = new ProposalMsg(
       config_.replicaId, curView, (primaryLastUsedSeqNum + 1), NULL, 0, span_context, primaryCombinedReqSize, !isPrimaryInitialized);
   }
   else{
     SeqNumInfo &lastSeqNumInfo =  mainLog->get(primaryLastUsedSeqNum);
-    *proposal = new ProposalMsg(
+    proposal = new ProposalMsg(
         config_.replicaId, curView, (primaryLastUsedSeqNum + 1), lastSeqNumInfo.getCombinedSig(), lastSeqNumInfo.getCombinedSigLen(), 
         span_context, primaryCombinedReqSize, !isPrimaryInitialized);
   }
@@ -3656,7 +3656,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   const ReplicaId msgSender = msg->senderId();
   //const ViewNum msgViewNum = msg->viewNumber();
 
-  msg->validate(repsInfo);
+  msg->validate(*repsInfo);
   LOG_DEBUG(CNSUS, "Message has been validated");  
   
   // if the msg is the first proposal msg from the primary, no need to do leader equivocation checking
