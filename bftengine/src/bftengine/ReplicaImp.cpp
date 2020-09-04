@@ -3660,8 +3660,8 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   const char* msgCombinedSig = msg->combinedSigBody();
   const char* logCombinedSig = seqNumInfo.getCombinedSig();
 
-  if (strcmp(msgCombinedSig, logCombinedSig) != 0 ||
-      (msgDigestOfRequestsSeqNum.toString()).compare(logDigestOfRequestsSeqNum.toString()) != 0) {
+  //compare digest
+  if (msgDigestOfRequestsSeqNum != logDigestOfRequestsSeqNum) {
     LOG_INFO(CNSUS, "Leader equivocation detected");
     return;//blame
   }
