@@ -3669,17 +3669,18 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     LOG_DEBUG(CNSUS, "On leader equivocation checking.");
     SeqNumInfo& lastSeqNumInfo = mainLog->get(msgSeqNum-1);
 
-    const char* msgCombinedSig = msg->combinedSigBody();
-    const char* logCombinedSig = lastSeqNumInfo.getCombinedSig();
-    
+    //const char* msgCombinedSig = msg->combinedSigBody();
+    //const char* logCombinedSig = lastSeqNumInfo.getCombinedSig();
+
     Digest& msgDigestOfRequestsSeqNum = msg->digestOfRequestsSeqNum();
     ProposalMsg* logProposalMsg = lastSeqNumInfo.getProposalMsg();
     Digest& logDigestOfRequestsSeqNum = logProposalMsg->digestOfRequestsSeqNum();
 
   //compare digest
-  if (msgDigestOfRequestsSeqNum != logDigestOfRequestsSeqNum) { // TODO: add certificate checking 
-    LOG_INFO(CNSUS, "Leader equivocation detected");
-    return;//blame
+    if (msgDigestOfRequestsSeqNum != logDigestOfRequestsSeqNum) { // TODO: add certificate checking 
+      LOG_INFO(CNSUS, "Leader equivocation detected");
+      return;//blame
+    }
   }
 
   //AssertEQ(msgCombinedSig, logCombinedSig);
