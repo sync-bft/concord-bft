@@ -160,6 +160,9 @@ class CollectorOfThresholdSignatures {
                                           uint16_t combinedSigLen,
                                           const std::string& span_context)  // if we compute a valid combined signature
   {
+    LOG_INFO(GL,
+             "seqNum information is as follows ["
+                 << seqNumber << " " << expectedSeqNumber <<"]");
     Assert(expectedSeqNumber == seqNumber);
     Assert(expectedView == view);
     Assert(processingSignaturesInTheBackground);

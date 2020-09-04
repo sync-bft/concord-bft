@@ -226,8 +226,13 @@ void ReplicaImp::onMessage<ClientRequestMsg>(ClientRequestMsg *m) {
                                                         << "], senderId=" << senderId);
         requestsQueueOfPrimary.push(m);
         primaryCombinedReqSize += m->size();
+<<<<<<< HEAD
         //tryToSendPrePrepareMsg(true);
         tryToSendProposalMsg(true);
+=======
+        tryToSendPrePrepareMsg();
+        //tryToSendProposalMsg(true);
+>>>>>>> origin/george_debug
         return;
       } else {
         LOG_INFO(GL,
@@ -3669,6 +3674,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     LOG_DEBUG(CNSUS, "On leader equivocation checking.");
     SeqNumInfo& lastSeqNumInfo = mainLog->get(msgSeqNum-1);
 
+<<<<<<< HEAD
     Digest& msgDigestOfRequestsSeqNum = msg->digestOfRequestsSeqNum();
     ProposalMsg* logProposalMsg = lastSeqNumInfo.getProposalMsg();
     Digest& logDigestOfRequestsSeqNum = logProposalMsg->digestOfRequestsSeqNum();
@@ -3683,6 +3689,18 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     }
   }
 
+=======
+  //const char* msgCombinedSig = msg->combinedSigBody();
+  //const char* logCombinedSig = seqNumInfo.getCombinedSig();
+
+  //compare digest
+  if (msgDigestOfRequestsSeqNum != logDigestOfRequestsSeqNum) {
+    LOG_INFO(CNSUS, "Leader equivocation detected");
+    return;//blame
+  }
+
+  //AssertEQ(msgCombinedSig, logCombinedSig);
+>>>>>>> origin/george_debug
   AssertLE(lastStableSeqNum, msgSeqNum);
 
   SeqNumInfo& currSeqNumInfo = mainLog->get(msgSeqNum);
@@ -3721,16 +3739,29 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
 
   commitReportTimer_ = timers_.add(milliseconds(commitReportMilli),
                                    Timers::Timer::ONESHOT,
+<<<<<<< HEAD
                                    [this](Timers::Handle h) { onStartCommitTimer(h); });
+=======
+                                   [this](Timers::Handle h) { onStartCommitTimer(h, msgSeqNum); });
+  
+  if (!msgAdded) {
+    LOG_DEBUG(GL,
+              "Node " << config_.replicaId << " ignored the Proposal from node " << msgSender << " (seqNumber "
+                      << msgSeqNum << ")");
+    delete msg;
+  }
+>>>>>>> origin/george_debug
 }
 
-void ReplicaImp::onStartCommitTimer(Timers::Handle timer) {
+void ReplicaImp::onStartCommitTimer(Timers::Handle timer, seqNum msgSeqNum) {
   LOG_INFO(CNSUS, "Start commit Timer");
-  SeqNumInfo &seqNumInfo = mainLog->get(lastExecutedSeqNum + 1);
-  ProposalMsg *proposal = seqNumInfo.getProposalMsg();
-  auto span = concordUtils::startSpan("bft_execute_requests_in_proposal");
-  bool recoverFromErrorInRequestsExec = false; // temp
-  executeRequestsInProposalMsg(span, proposal, recoverFromErrorInRequestsExec);
+  for (seqNum msgIterator = lastExecutedSeqNum + 1; msgIterator <= msgSeqNum; msgIterator++;){
+    SeqNumInfo &seqNumInfo = mainLog->get(msgIterator);
+    ProposalMsg *proposal = seqNumInfo.getProposalMsg();
+    auto span = concordUtils::startSpan("bft_execute_requests_in_proposal");
+    bool recoverFromErrorInRequestsExec = false;  // temp
+    executeRequestsInProposalMsg(span, proposal, recoverFromErrorInRequestsExec);
+  }
 }
 
 void ReplicaImp::executeRequestsInProposalMsg(concordUtils::SpanWrapper &parent_span,
@@ -3933,6 +3964,10 @@ void ReplicaImp::onVoteCombinedSigSucceeded(
     LOG_INFO(GL, "onVoteCombinedSigSucceeded: Invalid state, view, or sequence number." << KVLOG(view, curView));
     return;
   }
+      
+  LOG_INFO(CNSUS,
+              "seqNum information is as follows ["
+                  << seqNumber << " " << view <<"]");
 
   SeqNumInfo &seqNumInfo = mainLog->get(seqNumber);
   seqNumInfo.addCombinedSig(combinedSig, combinedSigLen);
