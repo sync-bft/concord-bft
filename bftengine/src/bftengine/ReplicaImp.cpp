@@ -226,13 +226,8 @@ void ReplicaImp::onMessage<ClientRequestMsg>(ClientRequestMsg *m) {
                                                         << "], senderId=" << senderId);
         requestsQueueOfPrimary.push(m);
         primaryCombinedReqSize += m->size();
-<<<<<<< HEAD
         //tryToSendPrePrepareMsg(true);
         tryToSendProposalMsg(true);
-=======
-        tryToSendPrePrepareMsg();
-        //tryToSendProposalMsg(true);
->>>>>>> origin/george_debug
         return;
       } else {
         LOG_INFO(GL,
