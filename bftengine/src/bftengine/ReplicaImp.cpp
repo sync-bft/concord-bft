@@ -3739,6 +3739,7 @@ void ReplicaImp::onStartCommitTimer(Timers::Handle timer, SeqNum msgSeqNum) {
 void ReplicaImp::executeRequestsInProposalMsg(concordUtils::SpanWrapper &parent_span,
                                               ProposalMsg *pMsg,
                                               bool recoverFromErrorInRequestsExecution) {
+  LOG_DEBUG(CNSUS, "on executeRequestInProposalMsg");
   auto span = concordUtils::startChildSpan("bft_execute_requests_in_preprepare", parent_span);
   AssertAND(!isCollectingState(), currentViewIsActive());
   AssertNE(pMsg, nullptr);
