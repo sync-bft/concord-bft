@@ -3671,7 +3671,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   }
 
   if (!msg->isFirstMsg()){
-    if (msg->senderId() == currentPrimary(){
+    if (msg->senderId() == currentPrimary()){
       LOG_DEBUG(CNSUS, "On leader equivocation checking.");
       }
     SeqNumInfo& lastSeqNumInfo = mainLog->get(msgSeqNum-1);
