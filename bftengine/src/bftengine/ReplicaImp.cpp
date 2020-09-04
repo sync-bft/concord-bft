@@ -3725,9 +3725,9 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
                                    [this](Timers::Handle h) { onStartCommitTimer(h, msgSeqNum); });
 }
 
-void ReplicaImp::onStartCommitTimer(Timers::Handle timer, seqNum msgSeqNum) {
+void ReplicaImp::onStartCommitTimer(Timers::Handle timer, SeqNum msgSeqNum) {
   LOG_INFO(CNSUS, "Start commit Timer");
-  for (seqNum msgIterator = lastExecutedSeqNum + 1; msgIterator <= msgSeqNum; msgIterator++;){
+  for (SeqNum msgIterator = lastExecutedSeqNum + 1; msgIterator <= msgSeqNum; msgIterator++;){
     SeqNumInfo &seqNumInfo = mainLog->get(msgIterator);
     ProposalMsg *proposal = seqNumInfo.getProposalMsg();
     auto span = concordUtils::startSpan("bft_execute_requests_in_proposal");
