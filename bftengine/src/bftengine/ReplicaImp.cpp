@@ -3654,19 +3654,26 @@ void ReplicaImp::onMessage<VoteMsg>(VoteMsg *msg) {
 template<>
 void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalMsg
 
-  LOG_INFO(CNSUS, "Received a proposal message");
+  if (msg->senderId() == currentPrimary()){
+    LOG_INFO(CNSUS, "Received a proposal message");
+  }
  
   const SeqNum msgSeqNum = msg->seqNumber();
   const ReplicaId msgSender = msg->senderId();
   //const ViewNum msgViewNum = msg->viewNumber();
 
   msg->validate(*repsInfo);
-  LOG_DEBUG(CNSUS, "Message has been validated");  
+  //LOG_DEBUG(CNSUS, "Message has been validated");  
   
   // if the msg is the first proposal msg from the primary, no need to do leader equivocation checking
-  LOG_DEBUG(CNSUS, "Message is the first primary msg:" << msg->isFirstMsg());
+  if (msg->senderId() == currentPrimary()){
+    LOG_DEBUG(CNSUS, "Message is the first primary msg:" << msg->isFirstMsg());
+  }
+
   if (!msg->isFirstMsg()){
-    LOG_DEBUG(CNSUS, "On leader equivocation checking.");
+    if (msg->senderId() == currentPrimary(){
+      LOG_DEBUG(CNSUS, "On leader equivocation checking.");
+      }
     SeqNumInfo& lastSeqNumInfo = mainLog->get(msgSeqNum-1);
 
     //const char* msgCombinedSig = msg->combinedSigBody();
@@ -3689,13 +3696,14 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   SeqNumInfo& currSeqNumInfo = mainLog->get(msgSeqNum);
   currSeqNumInfo.addMsg(msg);
   //currSeqNumInfo.addCombinedSig(msg->combinedSigBody(), msg->combinedSigLength());
-  LOG_DEBUG(CNSUS, "Proposal msg added to the mainLog");
+  //LOG_DEBUG(CNSUS, "Proposal msg added to the mainLog");
   
   if (msgSeqNum > lastStableSeqNum) {
     for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
       sendRetransmittableMsgToReplica(msg, x, msgSeqNum);
     }
-    LOG_DEBUG(CNSUS, "Proposal msg broadcasted to all other replicas");
+    if (msg->senderId() == currentPrimary()){
+    LOG_DEBUG(CNSUS, "Proposal msg broadcasted to all other replicas");}
 
     const SeqNum minSeqNum = lastExecutedSeqNum + 1;
     const SeqNum maxSeqNum = primaryLastUsedSeqNum;
@@ -3704,7 +3712,8 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
 
     if (relevantMsgForActiveView(msg)) {
       sendAckIfNeeded(msg, msgSender, msgSeqNum);
-      LOG_DEBUG(GL, "Received relevant VoteMsg." << KVLOG(msgSender));
+      if (msg->senderId() == currentPrimary()){
+      LOG_DEBUG(GL, "Received relevant VoteMsg." << KVLOG(msgSender));}
       //controller->onMessage(msg);
 
       VoteMsg *vote =currSeqNumInfo.getSelfVoteMsg();
