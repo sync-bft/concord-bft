@@ -3666,7 +3666,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     return;//blame
   }
 
-  AssertEQ(msgCombinedSig, logCombinedSig);
+  //AssertEQ(msgCombinedSig, logCombinedSig);
   AssertLE(lastStableSeqNum, msgSeqNum);
   bool msgAdded = false;
   if (msgSeqNum > lastStableSeqNum) {
