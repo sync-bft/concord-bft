@@ -3674,22 +3674,6 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     LOG_DEBUG(CNSUS, "On leader equivocation checking.");
     SeqNumInfo& lastSeqNumInfo = mainLog->get(msgSeqNum-1);
 
-<<<<<<< HEAD
-    Digest& msgDigestOfRequestsSeqNum = msg->digestOfRequestsSeqNum();
-    ProposalMsg* logProposalMsg = lastSeqNumInfo.getProposalMsg();
-    Digest& logDigestOfRequestsSeqNum = logProposalMsg->digestOfRequestsSeqNum();
-
-    const char* msgCombinedSig = msg->combinedSigBody();
-    const char* logCombinedSig = lastSeqNumInfo.getCombinedSig();
-    
-    if (strcmp(msgCombinedSig, logCombinedSig) != 0 ||
-        (msgDigestOfRequestsSeqNum != logDigestOfRequestsSeqNum)) {
-      LOG_INFO(CNSUS, "Leader equivocation detected");
-      return;//blame
-    }
-  }
-
-=======
   //const char* msgCombinedSig = msg->combinedSigBody();
   //const char* logCombinedSig = seqNumInfo.getCombinedSig();
 
@@ -3700,7 +3684,6 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   }
 
   //AssertEQ(msgCombinedSig, logCombinedSig);
->>>>>>> origin/george_debug
   AssertLE(lastStableSeqNum, msgSeqNum);
 
   SeqNumInfo& currSeqNumInfo = mainLog->get(msgSeqNum);
@@ -3739,18 +3722,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
 
   commitReportTimer_ = timers_.add(milliseconds(commitReportMilli),
                                    Timers::Timer::ONESHOT,
-<<<<<<< HEAD
-                                   [this](Timers::Handle h) { onStartCommitTimer(h); });
-=======
                                    [this](Timers::Handle h) { onStartCommitTimer(h, msgSeqNum); });
-  
-  if (!msgAdded) {
-    LOG_DEBUG(GL,
-              "Node " << config_.replicaId << " ignored the Proposal from node " << msgSender << " (seqNumber "
-                      << msgSeqNum << ")");
-    delete msg;
-  }
->>>>>>> origin/george_debug
 }
 
 void ReplicaImp::onStartCommitTimer(Timers::Handle timer, seqNum msgSeqNum) {
