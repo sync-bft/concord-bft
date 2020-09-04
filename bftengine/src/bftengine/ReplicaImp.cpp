@@ -3722,7 +3722,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
 
   commitReportTimer_ = timers_.add(milliseconds(commitReportMilli),
                                    Timers::Timer::ONESHOT,
-                                   [this](Timers::Handle h) { onStartCommitTimer(h, msgSeqNum); });
+                                   [this, msgSeqNum](Timers::Handle h) { onStartCommitTimer(h, msgSeqNum); });
 }
 
 void ReplicaImp::onStartCommitTimer(Timers::Handle timer, SeqNum msgSeqNum) {
