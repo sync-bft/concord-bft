@@ -3735,7 +3735,8 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
 }
 
 void ReplicaImp::onStartCommitTimer(Timers::Handle timer, SeqNum msgSeqNum) {
-  LOG_INFO(CNSUS, "Start commit Timer");
+  LOG_INFO(CNSUS, " Commit message sequence number: " << msgSeqNum);
+  LOG_INFO(CNSUS, " Last Executed Sequence Number is : " << lastExecutedSeqNum + 1);
   for (SeqNum msgIterator = lastExecutedSeqNum + 1; msgIterator <= msgSeqNum; msgIterator++){
     SeqNumInfo &seqNumInfo = mainLog->get(msgIterator);
     ProposalMsg *proposal = seqNumInfo.getProposalMsg();
