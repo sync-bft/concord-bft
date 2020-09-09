@@ -3654,7 +3654,6 @@ void ReplicaImp::onMessage<VoteMsg>(VoteMsg *msg) {
 
 template<>
 void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalMsg
-    LOG_INFO(CNSUS, " FIRST lastExecutedSeqNum when received from proposal Msg: " << lastExecutedSeqNum);
   if (msg->senderId() == currentPrimary()){
     LOG_INFO(CNSUS, "Received a proposal message");
   }
@@ -3662,6 +3661,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   const SeqNum msgSeqNum = msg->seqNumber();
   const ReplicaId msgSender = msg->senderId();
   //const ViewNum msgViewNum = msg->viewNumber();
+      LOG_INFO(CNSUS, "PROPOSAL msgSeqNum when received from proposal Msg: " << msgSeqNum);
 
   msg->validate(*repsInfo);
   //LOG_DEBUG(CNSUS, "Message has been validated");  
