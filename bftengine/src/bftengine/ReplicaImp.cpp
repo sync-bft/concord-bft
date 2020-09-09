@@ -3481,7 +3481,7 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
   }
 
   if (primaryLastUsedSeqNum > lastExecutedSeqNum + 1){//config_.concurrencyLevel) { //  config_.concurrencyLevel
-    LOG_INFO(CNSUS, " FIRST Commit message sequence number sent from proposal Msg: " << msgSeqNum);
+    LOG_INFO(CNSUS, " FIRST lastExecutedSeqNum sent from proposal Msg: " << lastExecutedSeqNum);
     LOG_INFO(GL,
              "Will not send Proposal since next sequence number ["
                  << primaryLastUsedSeqNum + 1 << "] exceeds the next executed sequence number [" << lastExecutedSeqNum << "]");
@@ -3654,7 +3654,7 @@ void ReplicaImp::onMessage<VoteMsg>(VoteMsg *msg) {
 
 template<>
 void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalMsg
-  LOG_INFO(CNSUS, " Commit message sequence number received from proposal Msg: " << msgSeqNum);
+    LOG_INFO(CNSUS, " FIRST lastExecutedSeqNum when received from proposal Msg: " << lastExecutedSeqNum);
   if (msg->senderId() == currentPrimary()){
     LOG_INFO(CNSUS, "Received a proposal message");
   }
