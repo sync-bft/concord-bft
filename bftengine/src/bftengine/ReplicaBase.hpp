@@ -104,7 +104,7 @@ class ReplicaBase {
 
   // TODO [TK] move to ReplicaImpl
   // last SeqNum executed  by this replica (or its affect was transferred to this replica)
-  SeqNum lastExecutedSeqNum = 0;
+  SeqNum lastExecutedSeqNum = 1;
 
   //////////////////////////////////////////////////
   // METRICS
