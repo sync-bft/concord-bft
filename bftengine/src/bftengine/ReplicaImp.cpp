@@ -3555,6 +3555,7 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
     proposal = new ProposalMsg(
       config_.replicaId, curView, (primaryLastUsedSeqNum + 1), NULL, 0, span_context, primaryCombinedReqSize, isFirstMsg);
   }
+  LOG_INFO(CNSUS, "T1 primaryLastUsedSeqNum is: " << primaryLastUsedSeqNum);
   else{
     LOG_DEBUG(CNSUS, "Creating non-first proposal msg from primary");
     bool isFirstMsg = false;
