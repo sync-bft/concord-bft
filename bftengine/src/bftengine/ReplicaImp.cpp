@@ -3549,13 +3549,13 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
   const auto &span_context = nextRequest ? nextRequest->spanContext<ClientRequestMsg>() : std::string{};
   
   ProposalMsg *proposal = nullptr;
+  LOG_INFO(CNSUS, "T1 primaryLastUsedSeqNum is: " << primaryLastUsedSeqNum);
   if (!isPrimaryInitialized){
     LOG_DEBUG(CNSUS, "Creating first proposal msg from primary");
     bool isFirstMsg = true;
     proposal = new ProposalMsg(
       config_.replicaId, curView, (primaryLastUsedSeqNum + 1), NULL, 0, span_context, primaryCombinedReqSize, isFirstMsg);
   }
-  LOG_INFO(CNSUS, "T1 primaryLastUsedSeqNum is: " << primaryLastUsedSeqNum);
   else{
     LOG_DEBUG(CNSUS, "Creating non-first proposal msg from primary");
     bool isFirstMsg = false;
