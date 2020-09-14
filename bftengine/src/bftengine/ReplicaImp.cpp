@@ -3152,7 +3152,9 @@ void ReplicaImp::addTimers() {
   metric_info_request_timer_.Get().Set(dynamicUpperLimitOfRounds->upperLimit() / 2);
   infoReqTimer_ = timers_.add(milliseconds(dynamicUpperLimitOfRounds->upperLimit() / 2),
                               Timers::Timer::RECURRING,
-                              [this](Timers::Handle h) { onInfoRequestTimer(h); });
+                              [this](Timers::Handle h) {
+      //onInfoRequestTimer(h);
+       });
 }
 
 void ReplicaImp::start() {
@@ -3607,6 +3609,12 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
   }
 
   if (!isPrimaryInitialized) isPrimaryInitialized = true;
+
+  // Start commit timer for primary.
+  commitReportTimer_ = timers_.add(milliseconds(commitReportMilli),
+                                     Timers::Timer::ONESHOT,
+                                     [this, msgSeqNum=proposal->seqNumber()](Timers::Handle h) { onStartCommitTimer(h, msgSeqNum); });
+
 }
 
 void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
@@ -3684,9 +3692,9 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     Digest& logDigestOfRequestsSeqNum = logProposalMsg->digestOfRequestsSeqNum();
 
   //compare digest
-    if (msgDigestOfRequestsSeqNum != logDigestOfRequestsSeqNum) { // TODO: add certificate checking 
-      LOG_INFO(CNSUS, "Leader equivocation detected");
-      return;//blame
+    if (msgDigestOfRequestsSeqNum != logDigestOfRequestsSeqNum) { // TODO: add certificate checking
+//      LOG_INFO(CNSUS, "Leader equivocation detected");
+//      return;//blame
     }
   }
 
@@ -3699,16 +3707,16 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   //LOG_DEBUG(CNSUS, "Proposal msg added to the mainLog");
   
   if (msgSeqNum > lastStableSeqNum) {
-    for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
-      sendRetransmittableMsgToReplica(msg, x, msgSeqNum);
-    }
+//    for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
+//      sendRetransmittableMsgToReplica(msg, x, msgSeqNum);
+//    }
     if (msg->senderId() == currentPrimary()){
     LOG_DEBUG(CNSUS, "Proposal msg broadcasted to all other replicas");}
 
     const SeqNum minSeqNum = lastExecutedSeqNum + 1;
     const SeqNum maxSeqNum = primaryLastUsedSeqNum;
     AssertLE(minSeqNum, maxSeqNum + 1);
-    if (minSeqNum > maxSeqNum) return;
+//    if (minSeqNum > maxSeqNum) return;
 
     if (relevantMsgForActiveView(msg)) {
       sendAckIfNeeded(msg, msgSender, msgSeqNum);
@@ -3728,6 +3736,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
       }
     }
   }
+  primaryLastUsedSeqNum++;
 
   commitReportTimer_ = timers_.add(milliseconds(commitReportMilli),
                                    Timers::Timer::ONESHOT,
@@ -3735,7 +3744,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
 }
 
 void ReplicaImp::onStartCommitTimer(Timers::Handle timer, SeqNum msgSeqNum) {
-  LOG_INFO(CNSUS, "Start commit Timer");
+  LOG_INFO(CNSUS, "Start commit Timer " << msgSeqNum);
   for (SeqNum msgIterator = lastExecutedSeqNum + 1; msgIterator <= msgSeqNum; msgIterator++){
     SeqNumInfo &seqNumInfo = mainLog->get(msgIterator);
     ProposalMsg *proposal = seqNumInfo.getProposalMsg();
@@ -3744,6 +3753,7 @@ void ReplicaImp::onStartCommitTimer(Timers::Handle timer, SeqNum msgSeqNum) {
     executeRequestsInProposalMsg(span, proposal, recoverFromErrorInRequestsExec);
   }
 }
+
 
 void ReplicaImp::executeRequestsInProposalMsg(concordUtils::SpanWrapper &parent_span,
                                               ProposalMsg *pMsg,

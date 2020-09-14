@@ -460,7 +460,7 @@ bool SeqNumInfo::addMsg(ProposalMsg* m) {
 bool SeqNumInfo::addSelfMsg(ProposalMsg* m, bool directAdd, bool primaryFirstMsg) {
   
   primary = primaryFirstMsg? true:primary;
-  Assert(primary == true);  // TODO(QF): in view change: could be the leader primary's first proposal before set to primary 
+//  Assert(primary == true);  // TODO(QF): in view change: could be the leader primary's first proposal before set to primary
   Assert(proposalMsg == nullptr);
 
   // Assert(me->id() == m->senderId()); // GG: incorrect assert - because after a view change it may has been sent by
