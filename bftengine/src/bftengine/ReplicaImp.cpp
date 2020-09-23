@@ -4017,7 +4017,7 @@ void ReplicaImp::log2File(SeqNum msgSeqNum){
   fout.open(logFileName, std::ios::app);
   if (fout.fail())
   {
-    LOG_INFO(logger_, "Replica " << config_.replicaId << "- is unable to open the log file.")
+    LOG_INFO(CNSUS, "Replica " << config_.replicaId << "- is unable to open the log file.")
   }
 
   fout << msgSeqNum << " executed at "
@@ -4028,6 +4028,6 @@ void ReplicaImp::log2File(SeqNum msgSeqNum){
        << microseconds.count() << ":"
        << nanoseconds.count() << std::endl;
   fout.close();
-  LOG_INFO(logger_, "Replica " << config_.replicaId << " - execution of the most recent committed message logged.")
+  LOG_INFO(CNSUS, "Replica " << config_.replicaId << " - execution of the most recent committed message logged.")
   return;
 }  // namespace bftEngine::impl
