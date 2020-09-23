@@ -14,6 +14,9 @@
 #include <mutex>
 #include <cmath>
 #include <condition_variable>
+#include <chrono>
+#include <ctime>
+#include <fstream>
 
 #include "ClientMsgs.hpp"
 #include "SimpleClient.hpp"
@@ -71,11 +74,13 @@ class SimpleClientImp : public SimpleClient, public IReceiver {
   void onMessageFromReplica(MessageBase* msg);
   void onRetransmission();
   void reset();
+  void logToFile(uint64_t reqSeqNum);
 
  protected:
   static const uint32_t maxLegalMsgSize_ = 64 * 1024;  // TODO(GG): ???
   static const uint16_t timersResolutionMilli_ = 50;
 
+  const char* logFileName = "../../logging/client_log.txt";
   const uint16_t clientId_;
   const uint16_t numberOfReplicas_;
   const uint16_t numberOfRequiredReplicas_;
@@ -199,6 +204,53 @@ SimpleClientImp::~SimpleClientImp() {
   Assert(numberOfTransmissions_ == 0);
 }
 
+void SimpleClientImp::logToFile(uint64_t reqSeqNum){
+  std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+  auto duration = now.time_since_epoch();
+
+  typedef std::chrono::duration<int, std::ratio_multiply<std::chrono::hours::period, std::ratio<8>>::type> Days; /* UTC: +8:00 */
+
+  auto days = std::chrono::duration_cast<Days>(duration);
+  duration -= days;
+  
+  auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
+  duration -= hours;
+  
+  auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
+  duration -= minutes;
+
+  auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
+  duration -= seconds;
+
+  auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
+  duration -= milliseconds;
+
+  auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(duration);
+  duration -= microseconds;
+  
+  auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+
+  std::ofstream fout;
+  fout.open(logFileName, std::ios::app);
+  if (fout.fail())
+  {
+    LOG_INFO(logger_, "Client " << clientId_ << "- is unable to open the log file.")
+    return;
+  }
+
+  fout << reqSeqNum << " sent at "
+       << hours.count() << ":"
+       << minutes.count() << ":"
+       << seconds.count() << ":"
+       << milliseconds.count() << ":"
+       << microseconds.count() << ":"
+       << nanoseconds.count() << std::endl;
+  
+  fout.close();
+  LOG_INFO(logger_, "Client " << clientId_ << " - logged the sending of the most recent request message.")
+  return;
+}
+
 OperationResult SimpleClientImp::sendRequest(uint8_t flags,
                                              const char* request,
                                              uint32_t lengthOfRequest,
@@ -252,6 +304,7 @@ OperationResult SimpleClientImp::sendRequest(uint8_t flags,
   pendingRequest_ = reqMsg;
 
   sendPendingRequest();
+  logToFile(reqSeqNum);
 
   bool requestTimeout = false;
   bool requestCommitted = false;
