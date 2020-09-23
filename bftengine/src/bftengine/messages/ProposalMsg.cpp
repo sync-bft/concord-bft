@@ -67,6 +67,7 @@ ProposalMsg::ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* comb
     b()->seqNum = s;
     b()->viewNum = v;
     b()->isFirstMsg = isFirst;
+    b()->isForwardedMsg = false;
     b()->seqNumDigestFill = s;
     b()->combinedSigLen = combinedSigLength;
 

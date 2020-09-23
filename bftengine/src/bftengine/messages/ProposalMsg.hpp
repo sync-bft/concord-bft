@@ -26,6 +26,7 @@ class ProposalMsg : public MessageBase{
             SeqNum seqNum;
             uint16_t flags;
             bool isFirstMsg;
+            bool isForwardedMsg;
             Digest digestOfRequestsSeqNum;
 
             uint16_t combinedSigLen;
@@ -41,7 +42,7 @@ class ProposalMsg : public MessageBase{
         };
 
     #pragma pack(pop)
-      static_assert(sizeof(Header) == (6 + 8 + 8 + 2 + 1 + DIGEST_SIZE + 2 + 8 + 2 + 4), "Header is 73B");
+      static_assert(sizeof(Header) == (6 + 8 + 8 + 2 + 1 + 1 + DIGEST_SIZE + 2 + 8 + 2 + 4), "Header is 74B");
 
       static const size_t proposalHeaderPrefix =
         sizeof(Header) - sizeof(Header::seqNumDigestFill) - sizeof(Header::numberOfRequests) - sizeof(Header::endLocationOfLastRequest);
@@ -82,6 +83,10 @@ class ProposalMsg : public MessageBase{
         char* combinedSigBody() const { return body() + sizeof(Header) +  b()->header.spanContextSize; }
     
         bool isFirstMsg() const {return b()->isFirstMsg;}
+
+        bool isForwardedMsg() const {return b()->isForwardedMsg;}
+
+        void setForwardedMsg(bool status) {b()->isForwardedMsg = status;}
 
     protected:
 

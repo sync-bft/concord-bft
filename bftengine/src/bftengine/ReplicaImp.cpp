@@ -3698,6 +3698,8 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     }
   }
 
+  if (msg->isForwardedMsg() == true){return;}
+
   //AssertEQ(msgCombinedSig, logCombinedSig);
   AssertLE(lastStableSeqNum, msgSeqNum);
 
@@ -3707,9 +3709,10 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   //LOG_DEBUG(CNSUS, "Proposal msg added to the mainLog");
   
   if (msgSeqNum > lastStableSeqNum) {
-//    for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
-//      sendRetransmittableMsgToReplica(msg, x, msgSeqNum);
-//    }
+    msg->setForwardedMsg(true);
+    for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
+      sendRetransmittableMsgToReplica(msg, x, msgSeqNum);
+    }
     if (msg->senderId() == currentPrimary()){
     LOG_DEBUG(CNSUS, "Proposal msg broadcasted to all other replicas");}
 
