@@ -37,6 +37,9 @@ struct ReplicaConfig {
   // C value. cVal >=0
   uint16_t cVal = 0;
 
+  //directory of log file
+  const char* logFileName = "../../logging/Replica_log.txt";
+
   // unique identifier of the replica.
   // The number of replicas in the system should be N = 3*fVal + 2*cVal + 1
   // In the current version, replicaId should be a number between 0 and  N-1

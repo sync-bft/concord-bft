@@ -420,6 +420,7 @@ class ReplicaImp : public InternalReplicaApi, public ReplicaForStateTransfer {
                                   uint16_t combinedSigLen,
                                   const std::string& span_context);
   void onVoteVerifyCombinedSigResult(SeqNum seqNumber, ViewNum view, bool isValid);
+  void log2File(u_int64_t msgSeqNum);
 
   bool isPrimaryInitialized = false;
 

@@ -42,6 +42,10 @@
 
 #include <string>
 #include <type_traits>
+#include <chrono>
+#include <ctime>
+#include <fstream>
+#include <isotream>
 
 using concordUtil::Timers;
 using namespace std;
@@ -3152,7 +3156,9 @@ void ReplicaImp::addTimers() {
   metric_info_request_timer_.Get().Set(dynamicUpperLimitOfRounds->upperLimit() / 2);
   infoReqTimer_ = timers_.add(milliseconds(dynamicUpperLimitOfRounds->upperLimit() / 2),
                               Timers::Timer::RECURRING,
-                              [this](Timers::Handle h) { onInfoRequestTimer(h); });
+                              [this](Timers::Handle h) {
+      //onInfoRequestTimer(h);
+       });
 }
 
 void ReplicaImp::start() {
@@ -3609,6 +3615,12 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
   }
 
   if (!isPrimaryInitialized) isPrimaryInitialized = true;
+
+  // Start commit timer for primary.
+  commitReportTimer_ = timers_.add(milliseconds(commitReportMilli),
+                                     Timers::Timer::ONESHOT,
+                                     [this, msgSeqNum=proposal->seqNumber()](Timers::Handle h) { onStartCommitTimer(h, msgSeqNum); });
+
 }
 
 void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
@@ -3685,9 +3697,9 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
     Digest& logDigestOfRequestsSeqNum = logProposalMsg->digestOfRequestsSeqNum();
 
   //compare digest
-    if (msgDigestOfRequestsSeqNum != logDigestOfRequestsSeqNum) { // TODO: add certificate checking 
-      LOG_INFO(CNSUS, "Leader equivocation detected");
-      return;//blame
+    if (msgDigestOfRequestsSeqNum != logDigestOfRequestsSeqNum) { // TODO: add certificate checking
+//      LOG_INFO(CNSUS, "Leader equivocation detected");
+//      return;//blame
     }
   }
 
@@ -3700,16 +3712,16 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   //LOG_DEBUG(CNSUS, "Proposal msg added to the mainLog");
   
   if (msgSeqNum > lastStableSeqNum) {
-    for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
-      sendRetransmittableMsgToReplica(msg, x, msgSeqNum);
-    }
+//    for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
+//      sendRetransmittableMsgToReplica(msg, x, msgSeqNum);
+//    }
     if (msg->senderId() == currentPrimary()){
     LOG_DEBUG(CNSUS, "Proposal msg broadcasted to all other replicas");}
 
     const SeqNum minSeqNum = lastExecutedSeqNum + 1;
     const SeqNum maxSeqNum = primaryLastUsedSeqNum;
     AssertLE(minSeqNum, maxSeqNum + 1);
-    if (minSeqNum > maxSeqNum) return;
+//    if (minSeqNum > maxSeqNum) return;
 
     if (relevantMsgForActiveView(msg)) {
       sendAckIfNeeded(msg, msgSender, msgSeqNum);
@@ -3729,6 +3741,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
       }
     }
   }
+  primaryLastUsedSeqNum++;
 
   commitReportTimer_ = timers_.add(milliseconds(commitReportMilli),
                                    Timers::Timer::ONESHOT,
@@ -3736,8 +3749,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
 }
 
 void ReplicaImp::onStartCommitTimer(Timers::Handle timer, SeqNum msgSeqNum) {
-  LOG_INFO(CNSUS, " Commit message sequence number: " << msgSeqNum);
-  LOG_INFO(CNSUS, " Last Executed Sequence Number is : " << lastExecutedSeqNum + 1);
+  LOG_INFO(CNSUS, "Start commit Timer " << msgSeqNum);
   for (SeqNum msgIterator = lastExecutedSeqNum + 1; msgIterator <= msgSeqNum; msgIterator++){
     SeqNumInfo &seqNumInfo = mainLog->get(msgIterator);
     ProposalMsg *proposal = seqNumInfo.getProposalMsg();
@@ -3747,10 +3759,12 @@ void ReplicaImp::onStartCommitTimer(Timers::Handle timer, SeqNum msgSeqNum) {
   }
 }
 
+
 void ReplicaImp::executeRequestsInProposalMsg(concordUtils::SpanWrapper &parent_span,
                                               ProposalMsg *pMsg,
                                               bool recoverFromErrorInRequestsExecution) {
   LOG_DEBUG(CNSUS, "on executeRequestInProposalMsg");
+  const SeqNum msgSeqNum = msg->seqNumber();
   auto span = concordUtils::startChildSpan("bft_execute_requests_in_preprepare", parent_span);
   AssertAND(!isCollectingState(), currentViewIsActive());
   AssertNE(pMsg, nullptr);
@@ -3812,6 +3826,8 @@ void ReplicaImp::executeRequestsInProposalMsg(concordUtils::SpanWrapper &parent_
     requestBody = nullptr;
 
     auto dur = controller->durationSinceProposal(lastExecutedSeqNum + 1);
+    
+    log2File(msgSeqNum);
     if (dur > 0) {
       // Primary
       LOG_DEBUG(CNSUS, "Consensus reached, duration [" << dur << "ms]");
@@ -3980,5 +3996,38 @@ void ReplicaImp::onVoteVerifyCombinedSigResult(SeqNum seqNumber, ViewNum view, b
 
 }
 
+void ReplicaImp::log2File(SeqNum msgSeqNum){
+  std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+  auto duration = now.time_since_epoch();
+  auto days = std::chrono::duration_cast<Days>(duration);
+  duration -= days;
+  auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
+  duration -= hours;
+  auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
+  duration -= minutes;
+  auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
+  duration -= seconds;
+  auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
+  duration -= milliseconds;
+  auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(duration);
+  duration -= microseconds;
+  auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
 
+  std::ofstream fout;
+  fout.open(logFileName, std::ios::app);
+  if (fout.fail())
+  {
+    LOG_INFO(logger_, "Replica " << config_.replicaId << "- is unable to open the log file.")
+  }
+
+  fout << msgSeqNum << " executed at "
+       << hours.count() << ":"
+       << minutes.count() << ":"
+       << seconds.count() << ":"
+       << milliseconds.count() << ":"
+       << microseconds.count() << ":"
+       << nanoseconds.count() << std::endl;
+  fout.close();
+  LOG_INFO(logger_, "Replica " << config_.replicaId << " - execution of the most recent committed message logged.")
+  return;
 }  // namespace bftEngine::impl
