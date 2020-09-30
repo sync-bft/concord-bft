@@ -251,6 +251,32 @@ void SimpleClientImp::logToFile(uint64_t reqSeqNum){
   return;
 }
 
+void SimpleClientImp::takeTimeToken(uint64_t reqSeqNum) {
+  ifstream inFile;
+  inFile.open( "/logging/client_log.txt" );
+
+  if (!inFile) {
+        std::cout << "Unable to open /logging/client_log.txt";
+        exit(1); // terminate with error
+    }
+
+  int a, c; // not sure if c should be an int or something else
+  string b; // not sure if b should be string
+  int iterations = config_.fVal + 1;
+  int timeToken;
+
+  // TODO: sort time tokens (not necessary?)
+
+  while ( (infile >> a >> b >> c) && (b == ' sent at ') && (iterations != 0) ) {
+    timeToken = b;
+    iterations--
+  }
+  inFile.close();
+  std::cout << timeToken;
+
+  return;
+}
+
 OperationResult SimpleClientImp::sendRequest(uint8_t flags,
                                              const char* request,
                                              uint32_t lengthOfRequest,
