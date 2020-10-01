@@ -270,7 +270,7 @@ void SimpleClientImp::takeTimeToken(uint64_t reqSeqNum) {
 
   while ( getline(file, line) && (iterations != 0) ) {
     index = line.find("sent at");
-    timeToken = line.substr(index+9, -1);
+    timeToken = line.substr(index+8);
     iterations--;
   }
   file.close();
