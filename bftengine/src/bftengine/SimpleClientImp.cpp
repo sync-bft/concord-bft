@@ -17,6 +17,8 @@
 #include <chrono>
 #include <ctime>
 #include <fstream>
+#include <iostream>
+#include <string>
 
 #include "ClientMsgs.hpp"
 #include "SimpleClient.hpp"
@@ -75,6 +77,7 @@ class SimpleClientImp : public SimpleClient, public IReceiver {
   void onRetransmission();
   void reset();
   void logToFile(uint64_t reqSeqNum);
+  void takeTimeToken(uint64_t reqSeqNum);
 
  protected:
   static const uint32_t maxLegalMsgSize_ = 64 * 1024;  // TODO(GG): ???
@@ -252,26 +255,25 @@ void SimpleClientImp::logToFile(uint64_t reqSeqNum){
 }
 
 void SimpleClientImp::takeTimeToken(uint64_t reqSeqNum) {
-  ifstream inFile;
-  inFile.open( "/logging/client_log.txt" );
+  std::ifstream file;
+  file.open( "/logging/client_log.txt" );
 
-  if (!inFile) {
+  if (!file) {
         std::cout << "Unable to open /logging/client_log.txt";
         exit(1); // terminate with error
     }
 
-  int a, c; // not sure if c should be an int or something else
-  string b; // not sure if b should be string
-  int iterations = config_.fVal + 1;
-  int timeToken;
+  std::string line;
+  int iterations = 3;      //needs to be changed to f + 1
+  std::string timeToken;
+  int index;
 
-  // TODO: sort time tokens (not necessary?)
-
-  while ( (infile >> a >> b >> c) && (b == ' sent at ') && (iterations != 0) ) {
-    timeToken = b;
-    iterations--
+  while ( getline(file, line) && (iterations != 0) ) {
+    index = line.find("sent at");
+    timeToken = line.substr(index+9, -1);
+    iterations--;
   }
-  inFile.close();
+  file.close();
   std::cout << timeToken;
 
   return;
