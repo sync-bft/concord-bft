@@ -372,7 +372,8 @@ OperationResult SimpleClientImp::sendRequest(uint8_t flags,
   pendingRequest_ = reqMsg;
 
   sendPendingRequest();
-  logToVec(reqSeqNum, SEND);
+  //logToVec(reqSeqNum, SEND);
+  
   if (reqSeqMap.count(reqSeqNum) != 0){
     LOG_DEBUG(logger_, "Duplicative request sequence number :" << reqSeqNum );
     return TIMEOUT;
