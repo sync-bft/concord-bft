@@ -6,3 +6,12 @@ replicas_config:
  - 127.0.0.1:3440
 
 clients_config: 127.0.0.1:4444
+
+Original settings 
+# replicas_config:
+#  - 127.0.0.1:3410
+#  - 127.0.0.1:3420
+#  - 127.0.0.1:3430
+#  - 127.0.0.1:3440
+
+# clients_config: 127.0.0.1:4444
