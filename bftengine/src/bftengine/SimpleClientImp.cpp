@@ -10,6 +10,7 @@
 // file.
 
 #include <queue>
+#include <map>
 #include <thread>
 #include <mutex>
 #include <cmath>
@@ -17,6 +18,11 @@
 #include <chrono>
 #include <ctime>
 #include <fstream>
+#include <vector>
+#include <string>
+#include <iostream>
+#include <sstream>
+#include <iterator>
 
 #include "ClientMsgs.hpp"
 #include "SimpleClient.hpp"
@@ -74,19 +80,20 @@ class SimpleClientImp : public SimpleClient, public IReceiver {
   void onMessageFromReplica(MessageBase* msg);
   void onRetransmission();
   void reset();
-  void logToFile(uint64_t reqSeqNum);
+  void logToVec(uint64_t reqSeqNum, msgLogFlag flag);
+  void vecToFile();
 
  protected:
   static const uint32_t maxLegalMsgSize_ = 64 * 1024;  // TODO(GG): ???
   static const uint16_t timersResolutionMilli_ = 50;
-
-  const char* logFileName = "../../logging/client_log.txt";
   const uint16_t clientId_;
   const uint16_t numberOfReplicas_;
   const uint16_t numberOfRequiredReplicas_;
   const uint16_t fVal_;
   const uint16_t cVal_;
   const std::set<uint16_t> replicas_;
+  std::vector <time_t> logVec;
+  std::map <uint64_t, std::set<ReplicaId>> reqSeqMap;
   ICommunication* const communication_;
 
   MsgsCertificate<ClientReplyMsg, false, false, true, SimpleClientImp> replysCertificate_;
@@ -148,6 +155,20 @@ void SimpleClientImp::onMessageFromReplica(MessageBase* msg) {
     // TODO(GG): print .....
     replysCertificate_.resetAndFree();
   }
+  if (reqSeqMap.count(replyMsg->reqSeqNum()) == 0){
+    return; //has been processed
+  }
+  reqSeqMap.find(replyMsg->reqSeqNum())->second.insert(replyMsg->senderId());
+  //LOG_INFO(logger_, "NUM VOTED: " << replyMsg->replicaVoted
+           //<< "with sender ID" << replyMsg->senderId())
+  uint16_t quorumSize = (numberOfReplicas_ - 1)/2;
+  if ( reqSeqMap.find(replyMsg->reqSeqNum())->second.size() > quorumSize){ //assume 2f + 1
+    logToVec(replyMsg->reqSeqNum(), RECEIVE);
+    LOG_INFO(logger_, "Client " << clientId_ << " with Req ID: " << replyMsg->reqSeqNum()
+                                << " - f + 1 Replica Replied.")
+    reqSeqMap.erase(replyMsg->reqSeqNum());
+  }
+
 }
 
 void SimpleClientImp::onRetransmission() {
@@ -197,6 +218,7 @@ SimpleClientImp::SimpleClientImp(
 }
 
 SimpleClientImp::~SimpleClientImp() {
+  LOG_INFO(logger_, "PRINTING")
   Assert(replysCertificate_.isEmpty());
   Assert(msgQueue_.empty());
   Assert(pendingRequest_ == nullptr);
@@ -204,18 +226,21 @@ SimpleClientImp::~SimpleClientImp() {
   Assert(numberOfTransmissions_ == 0);
 }
 
-void SimpleClientImp::logToFile(uint64_t reqSeqNum){
+void SimpleClientImp::logToVec(uint64_t reqSeqNum, msgLogFlag flag){
+  time_t receiveTime = system_clock::to_time_t(high_resolution_clock::now());
+  logVec.push_back(receiveTime);
+  /*
   std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
   auto duration = now.time_since_epoch();
 
-  typedef std::chrono::duration<int, std::ratio_multiply<std::chrono::hours::period, std::ratio<8>>::type> Days; /* UTC: +8:00 */
+  typedef std::chrono::duration<int, std::ratio_multiply<std::chrono::hours::period, std::ratio<8>>::type> Days;
 
   auto days = std::chrono::duration_cast<Days>(duration);
   duration -= days;
-  
+
   auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
   duration -= hours;
-  
+
   auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
   duration -= minutes;
 
@@ -227,28 +252,61 @@ void SimpleClientImp::logToFile(uint64_t reqSeqNum){
 
   auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(duration);
   duration -= microseconds;
-  
+
   auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
 
-  std::ofstream fout;
-  fout.open(logFileName, std::ios::app);
-  if (fout.fail())
-  {
-    LOG_INFO(logger_, "Client " << clientId_ << "- is unable to open the log file.")
+
+  std::ostringstream reqSendOs;
+
+  if (flag == SEND){
+    reqSendOs << reqSeqNum << " sent at "
+              << hours.count() << ":"
+              << minutes.count() << ":"
+              << seconds.count() << ":"
+              << milliseconds.count() << ":"
+              << microseconds.count() << ":"
+              << nanoseconds.count() << std::endl;
+    LOG_INFO(logger_, "Client " << clientId_ << " with Req ID: " << reqSeqNum
+                                << " - logged the SEND of the most recent request message.")
+
+
+  } else if (flag == RECEIVE){
+
+    reqSendOs << reqSeqNum << " received at "
+              << hours.count() << ":"
+              << minutes.count() << ":"
+              << seconds.count() << ":"
+              << milliseconds.count() << ":"
+              << microseconds.count() << ":"
+              << nanoseconds.count() << std::endl;
+
+
+    LOG_INFO(logger_, "Client " << clientId_ << " with Req ID: " << reqSeqNum
+                                <<" - logged the RECEIVE of the most recent request message.")
+  } else{
+    LOG_INFO(logger_, "Client " << clientId_ << " with Req ID: " << reqSeqNum
+                                << "- is unable to log into vector.";
     return;
   }
 
-  fout << reqSeqNum << " sent at "
-       << hours.count() << ":"
-       << minutes.count() << ":"
-       << seconds.count() << ":"
-       << milliseconds.count() << ":"
-       << microseconds.count() << ":"
-       << nanoseconds.count() << std::endl;
-  
+  std::string reqSendStr = reqSendOs.str();
+   */
+}
+
+void SimpleClientImp::vecToFile(){
+  std::ostringstream logFileName;
+  std::ofstream fout;
+  logFileName << "../../logging/client" << clientId_ << "log.txt";
+  fout.open(logFileName.str());
+  if (fout.fail())
+  {
+    LOG_INFO(logger_, "Unable to open the log file.")
+    return;
+  }
+  std::ostream_iterator<time_t> vecIterator(fout, "\n");
+  std::copy(logVec.begin(), logVec.end(), vecIterator);
   fout.close();
-  LOG_INFO(logger_, "Client " << clientId_ << " - logged the sending of the most recent request message.")
-  return;
+
 }
 
 OperationResult SimpleClientImp::sendRequest(uint8_t flags,
@@ -304,7 +362,13 @@ OperationResult SimpleClientImp::sendRequest(uint8_t flags,
   pendingRequest_ = reqMsg;
 
   sendPendingRequest();
-  logToFile(reqSeqNum);
+  logToVec(reqSeqNum, SEND);
+  if (reqSeqMap.count(reqSeqNum) != 0){
+    LOG_DEBUG(logger_, "Duplicative request sequence number :" << reqSeqNum );
+    return TIMEOUT;
+  }
+  reqSeqMap.insert(std::pair<uint64_t, std::set<ReplicaId>> (reqSeqNum, std::set<ReplicaId>()));
+  vecToFile();
 
   bool requestTimeout = false;
   bool requestCommitted = false;
@@ -564,3 +628,5 @@ SeqNumberGeneratorForClientRequests* SeqNumberGeneratorForClientRequests::create
 }
 
 }  // namespace bftEngine
+
+

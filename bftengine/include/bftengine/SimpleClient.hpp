@@ -36,6 +36,8 @@ enum ClientMsgFlag : uint8_t { EMPTY_FLAGS_REQ = 0x0, READ_ONLY_REQ = 0x1, PRE_P
 
 enum OperationResult : int8_t { SUCCESS, NOT_READY, TIMEOUT, BUFFER_TOO_SMALL };
 
+enum msgLogFlag : uint8_t {SEND, RECEIVE};
+
 class SimpleClient {
  public:
   explicit SimpleClient(uint16_t clientId)
