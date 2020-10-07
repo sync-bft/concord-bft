@@ -43,6 +43,7 @@ using namespace bft::communication;
 using namespace std;
 
 std::vector <time_t> logVec;
+string logFileName;
 
 namespace bftEngine {
 namespace impl {
@@ -86,7 +87,6 @@ class SimpleClientImp : public SimpleClient, public IReceiver {
   void onRetransmission();
   void reset();
   void logToVec(uint64_t reqSeqNum, msgLogFlag flag);
-  void vecToFile();
 
  protected:
   static const uint32_t maxLegalMsgSize_ = 64 * 1024;  // TODO(GG): ???
@@ -183,12 +183,9 @@ void SimpleClientImp::onRetransmission() {
 }
 
 void printLog(int sigNum) {
-  cout << "Hello World!" << endl;
-
-  std::ostringstream logFileName;
+  cout << "Printing Log" << endl;
   std::ofstream fout;
-  logFileName << "../../logging/client" << 1 << "log.txt";
-  fout.open(logFileName.str());
+  fout.open(logFileName);
 
   std::ostream_iterator<time_t> vecIterator(fout, "\n");
   std::copy(logVec.begin(), logVec.end(), vecIterator);
@@ -252,95 +249,7 @@ SimpleClientImp::~SimpleClientImp() {
 void SimpleClientImp::logToVec(uint64_t reqSeqNum, msgLogFlag flag){
   time_t receiveTime = system_clock::to_time_t(high_resolution_clock::now());
   logVec.push_back(receiveTime);
-  /*
-  std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
-  auto duration = now.time_since_epoch();
-  typedef std::chrono::duration<int, std::ratio_multiply<std::chrono::hours::period, std::ratio<8>>::type> Days;
-  auto days = std::chrono::duration_cast<Days>(duration);
-  duration -= days;
-  auto hours = std::chrono::duration_cast<std::chrono::hours>(duration);
-  duration -= hours;
-  auto minutes = std::chrono::duration_cast<std::chrono::minutes>(duration);
-  duration -= minutes;
-  auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration);
-  duration -= seconds;
-  auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
-  duration -= milliseconds;
-  auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(duration);
-  duration -= microseconds;
-  auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
-  std::ostringstream reqSendOs;
-  if (flag == SEND){
-    reqSendOs << reqSeqNum << " sent at "
-              << hours.count() << ":"
-              << minutes.count() << ":"
-              << seconds.count() << ":"
-              << milliseconds.count() << ":"
-              << microseconds.count() << ":"
-              << nanoseconds.count() << std::endl;
-    LOG_INFO(logger_, "Client " << clientId_ << " with Req ID: " << reqSeqNum
-                                << " - logged the SEND of the most recent request message.")
-  } else if (flag == RECEIVE){
-    reqSendOs << reqSeqNum << " received at "
-              << hours.count() << ":"
-              << minutes.count() << ":"
-              << seconds.count() << ":"
-              << milliseconds.count() << ":"
-              << microseconds.count() << ":"
-              << nanoseconds.count() << std::endl;
-    LOG_INFO(logger_, "Client " << clientId_ << " with Req ID: " << reqSeqNum
-                                <<" - logged the RECEIVE of the most recent request message.")
-  } else{
-    LOG_INFO(logger_, "Client " << clientId_ << " with Req ID: " << reqSeqNum
-                                << "- is unable to log into vector.";
-    return;
-  }
-  std::string reqSendStr = reqSendOs.str();
-   */
 }
-
-void SimpleClientImp::vecToFile(){
-  std::ostringstream logFileName;
-  std::ofstream fout;
-  logFileName << "../../logging/client" << clientId_ << "log.txt";
-  fout.open(logFileName.str());
-  if (fout.fail())
-  {
-    LOG_INFO(logger_, "Unable to open the log file.")
-    return;
-  }
-  std::ostream_iterator<time_t> vecIterator(fout, "\n");
-  std::copy(logVec.begin(), logVec.end(), vecIterator);
-  fout.close();
-
-}
-
-/*
-void SimpleClientImp::takeTimeToken(uint64_t reqSeqNum) {
-  std::ifstream file;
-  file.open( "/logging/client_log.txt" );
-
-  if (!file) {
-        std::cout << "Unable to open /logging/client_log.txt";
-        exit(1); // terminate with error
-    }
-
-  std::string line;
-  int iterations = 3;      //needs to be changed to f + 1
-  std::string timeToken;
-  int index;
-
-  while ( getline(file, line) && (iterations != 0) ) {
-    index = line.find("sent at");
-    timeToken = line.substr(index+8);
-    iterations--;
-  }
-  file.close();
-  std::cout << timeToken;
-
-  return;
-}
-*/
 
 OperationResult SimpleClientImp::sendRequest(uint8_t flags,
                                              const char* request,
@@ -402,7 +311,6 @@ OperationResult SimpleClientImp::sendRequest(uint8_t flags,
     return TIMEOUT;
   }
   reqSeqMap.insert(std::pair<uint64_t, std::set<ReplicaId>> (reqSeqNum, std::set<ReplicaId>()));
-  vecToFile();
 
   bool requestTimeout = false;
   bool requestCommitted = false;
@@ -652,6 +560,10 @@ SimpleClient* SimpleClient::createSimpleClient(ICommunication* communication,
                                                uint16_t fVal,
                                                uint16_t cVal) {
   SimpleClientParams p;
+  std::ostringstream logFileNameStream;
+  std::ofstream fout;
+  logFileNameStream << "../../logging/client" << clientId << "log.txt";
+  logFileName = logFileNameStream.str();
   return SimpleClient::createSimpleClient(communication, clientId, fVal, cVal, p);
 }
 
