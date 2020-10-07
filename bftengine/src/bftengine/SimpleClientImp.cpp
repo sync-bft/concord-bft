@@ -23,6 +23,8 @@
 #include <iostream>
 #include <sstream>
 #include <iterator>
+#include <csignal>
+#include <iostream>
 
 #include "ClientMsgs.hpp"
 #include "SimpleClient.hpp"
@@ -38,6 +40,9 @@
 
 using namespace std::chrono;
 using namespace bft::communication;
+using namespace std;
+
+std::vector <time_t> logVec;
 
 namespace bftEngine {
 namespace impl {
@@ -92,7 +97,7 @@ class SimpleClientImp : public SimpleClient, public IReceiver {
   const uint16_t fVal_;
   const uint16_t cVal_;
   const std::set<uint16_t> replicas_;
-  std::vector <time_t> logVec;
+
   std::map <uint64_t, std::set<ReplicaId>> reqSeqMap;
   ICommunication* const communication_;
 
@@ -118,6 +123,7 @@ class SimpleClientImp : public SimpleClient, public IReceiver {
   uint16_t clientPeriodicResetThresh_;
 
   logging::Logger logger_ = logging::getLogger("concord.bft.client");
+
 };
 
 bool SimpleClientImp::isSystemReady() const {
@@ -176,6 +182,21 @@ void SimpleClientImp::onRetransmission() {
   sendPendingRequest();
 }
 
+void printLog(int sigNum) {
+  cout << "Hello World!" << endl;
+
+  std::ostringstream logFileName;
+  std::ofstream fout;
+  logFileName << "../../logging/client" << 1 << "log.txt";
+  fout.open(logFileName.str());
+
+  std::ostream_iterator<time_t> vecIterator(fout, "\n");
+  std::copy(logVec.begin(), logVec.end(), vecIterator);
+  fout.close();
+
+  exit(sigNum);
+}
+
 // in this version we assume that the set of replicas is 0,1,2,...,numberOfReplicas (TODO(GG): should be changed to
 // support full dynamic reconfiguration)
 static std::set<ReplicaId> generateSetOfReplicas_helpFunc(const int16_t numberOfReplicas) {
@@ -215,6 +236,8 @@ SimpleClientImp::SimpleClientImp(
   knownPrimaryReplica_ = 0;
 
   communication_->setReceiver(clientId_, this);
+
+  signal(SIGINT, printLog);
 }
 
 SimpleClientImp::~SimpleClientImp() {
