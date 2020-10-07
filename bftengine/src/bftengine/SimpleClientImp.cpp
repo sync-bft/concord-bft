@@ -86,7 +86,7 @@ class SimpleClientImp : public SimpleClient, public IReceiver {
   void onMessageFromReplica(MessageBase* msg);
   void onRetransmission();
   void reset();
-  void logToVec(uint64_t reqSeqNum, msgLogFlag flag);
+  void logToVec();
 
  protected:
   static const uint32_t maxLegalMsgSize_ = 64 * 1024;  // TODO(GG): ???
@@ -169,7 +169,7 @@ void SimpleClientImp::onMessageFromReplica(MessageBase* msg) {
            //<< "with sender ID" << replyMsg->senderId())
   uint16_t quorumSize = (numberOfReplicas_ - 1)/2;
   if ( reqSeqMap.find(replyMsg->reqSeqNum())->second.size() > quorumSize){ //assume 2f + 1
-    logToVec(replyMsg->reqSeqNum(), RECEIVE);
+    logToVec();
     LOG_INFO(logger_, "Client " << clientId_ << " with Req ID: " << replyMsg->reqSeqNum()
                                 << " - f + 1 Replica Replied.")
     reqSeqMap.erase(replyMsg->reqSeqNum());
@@ -246,7 +246,7 @@ SimpleClientImp::~SimpleClientImp() {
   Assert(numberOfTransmissions_ == 0);
 }
 
-void SimpleClientImp::logToVec(uint64_t reqSeqNum, msgLogFlag flag){
+void SimpleClientImp::logToVec(){
   time_t receiveTime = system_clock::to_time_t(high_resolution_clock::now());
   logVec.push_back(receiveTime);
 }
@@ -304,8 +304,7 @@ OperationResult SimpleClientImp::sendRequest(uint8_t flags,
   pendingRequest_ = reqMsg;
 
   sendPendingRequest();
-  //logToVec(reqSeqNum, SEND);
-  
+
   if (reqSeqMap.count(reqSeqNum) != 0){
     LOG_DEBUG(logger_, "Duplicative request sequence number :" << reqSeqNum );
     return TIMEOUT;
