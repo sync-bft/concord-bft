@@ -162,20 +162,25 @@ void SimpleClientImp::onMessageFromReplica(MessageBase* msg) {
     replysCertificate_.resetAndFree();
   }
 
-  if (reqSeqMap.count(replyMsg->reqSeqNum()) == 0){
+  uint64_t reqSeqMsg = replyMsg->reqSeqNum();
+
+  if (reqSeqMap.count(reqSeqMsg) == 0){
+    AssertEQ(logMap.find(reqSeqMsg)->second.size(), 2);
     return; //has been processed
   }
-  reqSeqMap.find(replyMsg->reqSeqNum())->second.insert(replyMsg->senderId());
+
+  std::set<ReplicaId> &replicaSet = reqSeqMap.find(reqSeqMsg)->second;
+  replicaSet.insert(replyMsg->senderId());
   //LOG_INFO(logger_, "NUM VOTED: " << replyMsg->replicaVoted
            //<< "with sender ID" << replyMsg->senderId())
   uint16_t quorumSize = (numberOfReplicas_ - 1)/2;
-  if ( reqSeqMap.find(replyMsg->reqSeqNum())->second.size() > quorumSize){ //assume 2f + 1
-    logToMap(replyMsg->reqSeqNum());
+  if (replicaSet.size() > quorumSize){ //assume 2f + 1
+    logToMap(reqSeqMsg);
 
     LOG_INFO(logger_, "Client " << clientId_ << " with Req ID: " << replyMsg->reqSeqNum()
                                 << " - f + 1 Replica Replied.")
 
-    reqSeqMap.erase(replyMsg->reqSeqNum());
+    reqSeqMap.erase(reqSeqMsg);
   }
 
 }
@@ -265,7 +270,7 @@ void SimpleClientImp::logToMap(uint64_t reqSeqNum){
     AssertEQ(mapVec.size(), 1);
 
     time_t sendTime = mapVec.front();
-    mapVec.erase(mapVec.begin());
+    mapVec.pop_back();
     mapVec.push_back(receiveTime);
     mapVec.push_back(receiveTime - sendTime);
   }
