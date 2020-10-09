@@ -42,7 +42,7 @@ using namespace std::chrono;
 using namespace bft::communication;
 using namespace std;
 
-std::vector <time_t> logVec;
+std::map <uint64_t, std::vector<time_t>> logMap;
 string logFileName;
 
 namespace bftEngine {
@@ -86,7 +86,7 @@ class SimpleClientImp : public SimpleClient, public IReceiver {
   void onMessageFromReplica(MessageBase* msg);
   void onRetransmission();
   void reset();
-  void logToVec();
+  void logToMap(uint64_t reqSeqNum);
 
  protected:
   static const uint32_t maxLegalMsgSize_ = 64 * 1024;  // TODO(GG): ???
@@ -161,6 +161,7 @@ void SimpleClientImp::onMessageFromReplica(MessageBase* msg) {
     // TODO(GG): print .....
     replysCertificate_.resetAndFree();
   }
+
   if (reqSeqMap.count(replyMsg->reqSeqNum()) == 0){
     return; //has been processed
   }
@@ -169,9 +170,11 @@ void SimpleClientImp::onMessageFromReplica(MessageBase* msg) {
            //<< "with sender ID" << replyMsg->senderId())
   uint16_t quorumSize = (numberOfReplicas_ - 1)/2;
   if ( reqSeqMap.find(replyMsg->reqSeqNum())->second.size() > quorumSize){ //assume 2f + 1
-    logToVec();
+    logToMap(replyMsg->reqSeqNum());
+
     LOG_INFO(logger_, "Client " << clientId_ << " with Req ID: " << replyMsg->reqSeqNum()
                                 << " - f + 1 Replica Replied.")
+
     reqSeqMap.erase(replyMsg->reqSeqNum());
   }
 
@@ -183,12 +186,16 @@ void SimpleClientImp::onRetransmission() {
 }
 
 void printLog(int sigNum) {
-  cout << "Printing Log" << endl;
+  cout << "\nPrinting Log" << endl;
   std::ofstream fout;
   fout.open(logFileName);
 
-  std::ostream_iterator<time_t> vecIterator(fout, "\n");
-  std::copy(logVec.begin(), logVec.end(), vecIterator);
+  map <uint64_t, std::vector<time_t>>::iterator mapIterator;
+  for (mapIterator = logMap.begin(); mapIterator != logMap.end(); mapIterator++) {
+    std::ostream_iterator<time_t> vecIterator(fout, "\n");
+    std::copy(mapIterator->second.begin(), mapIterator->second.end(), vecIterator);
+  }
+
   fout.close();
 
   exit(sigNum);
@@ -246,9 +253,23 @@ SimpleClientImp::~SimpleClientImp() {
   Assert(numberOfTransmissions_ == 0);
 }
 
-void SimpleClientImp::logToVec(){
+void SimpleClientImp::logToMap(uint64_t reqSeqNum){
   time_t receiveTime = system_clock::to_time_t(high_resolution_clock::now());
-  logVec.push_back(receiveTime);
+
+  if (logMap.count(reqSeqNum) == 0){
+    logMap.insert(std::pair<uint64_t, std::vector<time_t>>
+                  (reqSeqNum, std::vector<time_t>()));
+    logMap.find(reqSeqNum)->second.push_back(receiveTime);
+  } else{
+    std::vector<time_t> &mapVec = logMap.find(reqSeqNum)->second;
+    AssertEQ(mapVec.size(), 1);
+
+    time_t sendTime = mapVec.front();
+    mapVec.erase(mapVec.begin());
+    mapVec.push_back(receiveTime);
+    mapVec.push_back(receiveTime - sendTime);
+  }
+
 }
 
 OperationResult SimpleClientImp::sendRequest(uint8_t flags,
@@ -304,6 +325,9 @@ OperationResult SimpleClientImp::sendRequest(uint8_t flags,
   pendingRequest_ = reqMsg;
 
   sendPendingRequest();
+
+  AssertEQ(logMap.count(reqSeqNum), 0);
+  logToMap(reqSeqNum);
 
   if (reqSeqMap.count(reqSeqNum) != 0){
     LOG_DEBUG(logger_, "Duplicative request sequence number :" << reqSeqNum );
