@@ -42,7 +42,7 @@ using namespace std::chrono;
 using namespace bft::communication;
 using namespace std;
 
-std::map <uint64_t, std::vector<time_t>> logMap;
+std::map <uint64_t, std::vector<long int>> logMap;
 string logFileName;
 
 namespace bftEngine {
@@ -195,9 +195,9 @@ void printLog(int sigNum) {
   std::ofstream fout;
   fout.open(logFileName);
 
-  map <uint64_t, std::vector<time_t>>::iterator mapIterator;
+  map <uint64_t, std::vector<long>>::iterator mapIterator;
   for (mapIterator = logMap.begin(); mapIterator != logMap.end(); mapIterator++) {
-    std::ostream_iterator<time_t> vecIterator(fout, "\n");
+    std::ostream_iterator<long> vecIterator(fout, "\n");
     std::copy(mapIterator->second.begin(), mapIterator->second.end(), vecIterator);
   }
 
@@ -259,20 +259,21 @@ SimpleClientImp::~SimpleClientImp() {
 }
 
 void SimpleClientImp::logToMap(uint64_t reqSeqNum){
-  time_t receiveTime = system_clock::to_time_t(high_resolution_clock::now());
+  high_resolution_clock::time_point receiveTime = high_resolution_clock::now();
+  auto nanoReceiveTime = duration_cast<nanoseconds>(receiveTime.time_since_epoch()).count();
 
   if (logMap.count(reqSeqNum) == 0){
     logMap.insert(std::pair<uint64_t, std::vector<time_t>>
                   (reqSeqNum, std::vector<time_t>()));
-    logMap.find(reqSeqNum)->second.push_back(receiveTime);
+    logMap.find(reqSeqNum)->second.push_back(nanoReceiveTime);
   } else{
-    std::vector<time_t> &mapVec = logMap.find(reqSeqNum)->second;
+    std::vector<long int> &mapVec = logMap.find(reqSeqNum)->second;
     AssertEQ(mapVec.size(), 1);
 
-    time_t sendTime = mapVec.front();
+    long int sendTime = mapVec.front();
     mapVec.pop_back();
-    mapVec.push_back(receiveTime);
-    mapVec.push_back(receiveTime - sendTime);
+    mapVec.push_back(nanoReceiveTime);
+    mapVec.push_back(sendTime - nanoReceiveTime);
   }
 
 }
