@@ -1,6 +1,8 @@
 replicas_config:
  - 10.197.133.21:3410
+ replicas_config:
  - 10.197.133.21:3420
+ replicas_config:
  - 10.197.133.21:3430
 
 clients_config: 34.122.181.149:4444

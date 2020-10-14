@@ -2,8 +2,12 @@
 
 replicas_config:
  - 127.0.0.1:3410
+ replicas_config:
  - 127.0.0.1:3420
+ replicas_config:
  - 127.0.0.1:3430
- - 127.0.0.1:3440
 
-# clients_config: 127.0.0.1:4444
+clients_config: 
+- 127.0.0.1:4444
+clients_config: 
+- 127.0.0.1:8888

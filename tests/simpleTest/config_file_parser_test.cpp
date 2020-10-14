@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
   string given_config_file;
   const string use_default_config_file = "d";
   const uint expected_replicas_num = 3; //4;
-  const uint expected_clients_num = 1;
+  const uint expected_clients_num = 2;
   const string expected_replica1 = "10.197.133.21:3410"; // "127.0.0.1:3410";
   const string expected_replica2 = "10.197.133.21:3420"; // "127.0.0.1:3420";
   const string expected_replica3 = "10.197.133.21:3430"; // "127.0.0.1:3430";
