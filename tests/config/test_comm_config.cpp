@@ -74,6 +74,9 @@ std::unordered_map<NodeNum, NodeInfo> TestCommConfig::SetUpConfiguredNodes(bool 
   }
   num_of_clients = static_cast<uint16_t>(config_file_parser.Count(CLIENTS_CONFIG));
   num_of_replicas = static_cast<uint16_t>(config_file_parser.Count(REPLICAS_CONFIG));
+  LOG_INFO(logger_,
+           "Number of clients/replicas configured: "
+                  << "numOfClients=" << num_of_clients << ", numOfReplicas=" << num_of_replicas);
   if ((is_replica && (node_id + 1 > num_of_replicas)) ||
       (!is_replica && (node_id + 1 > num_of_clients + num_of_replicas))) {
     LOG_FATAL(logger_,
