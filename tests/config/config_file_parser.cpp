@@ -42,12 +42,14 @@ bool ConfigFileParser::Parse() {
     LOG_FATAL(logger_, "Failed to open file: " << file_name_);
     return false;
   }
+  //LOG_DEBUG(logger_, "Config file opened sucessfully " << file_name_);
   string key;
   while (stream) {
     string value, tmp;
     getline(stream, tmp, end_of_line_);
     // get rid of leading and trailing spaces
     concord::util::trim_inplace(tmp);
+    //LOG_DEBUG(logger_, "Read and trimmed line " << tmp);
     if (tmp[0] == comment_delimiter_)  // Ignore comments.
       continue;
 
@@ -55,7 +57,9 @@ bool ConfigFileParser::Parse() {
       continue;
 
     if (tmp[0] == value_delimiter_) {  // of the form '- value'
-      value = tmp.substr(tmp[1]);
+      //LOG_DEBUG(logger_, "Did I crashed here?")
+      value = tmp.substr(1); //tmp.substr(tmp[1]);
+      //LOG_DEBUG(logger_, "Get value " << value);
       concord::util::ltrim_inplace(tmp);
       if (!key.empty())
         parameters_map_.insert(pair<string, string>(key, value));
