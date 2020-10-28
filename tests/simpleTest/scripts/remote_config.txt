@@ -8,7 +8,7 @@ replicas_config:
 clients_config: 
 -35.196.156.226:4444
 clients_config: 
--35.196.156.226:5555
+-35.232.51.225:5555
 clients_config: 
--35.196.156.226:6666
+-34.122.42.85:6666
 
