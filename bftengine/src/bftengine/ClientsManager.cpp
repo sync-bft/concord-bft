@@ -96,7 +96,13 @@ ReqId ClientsManager::seqNumberOfLastReplyToClient(NodeIdType clientId) {
   return retVal;
 }
 
-bool ClientsManager::isValidClient(NodeIdType clientId) const { return (clientIdToIndex_.count(clientId) > 0); }
+bool ClientsManager::isValidClient(NodeIdType clientId) const { 
+  for(auto it = clientIdToIndex_.begin(); it != clientIdToIndex_.end(); ++it)
+    {
+      LOG_DEBUG(GL, "clientIdToIndex_ content: "<<it->first << " " << it->second << "\n");
+  }
+  LOG_DEBUG(GL, "clientIdToIndex ends");
+  return (clientIdToIndex_.count(clientId) > 0); }
 
 void ClientsManager::getInfoAboutLastReplyToClient(NodeIdType clientId, ReqId& outSeqNumber, Time& outLatestTime) {
   uint16_t idx = clientIdToIndex_.at(clientId);
