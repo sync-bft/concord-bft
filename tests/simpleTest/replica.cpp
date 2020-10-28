@@ -176,7 +176,7 @@ void signalHandler(int signum) {
 int main(int argc, char **argv) {
   replicaLogger.setLogLevel(logging::info);
   GL.setLogLevel(logging::info);
-  CNSUS.setLogLevel(logging::info);
+  CNSUS.setLogLevel(logging::debug);
   PlainUDP.setLogLevel(logging::debug);
 
   ReplicaParams rp;
