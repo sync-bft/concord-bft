@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# arg 1 is number of replicas, arg 2 is number of clients, and arg 3 is the ip address
+# e.g. ./writeConfig.sh 3 128 35.196.156.226
+# will run 3 replicas and 128 clients with ip address 35.196.156.226
+
 set -e
 
 echo "replicas_config:" > ../../../tests/simpleTest/scripts/remote_config.txt

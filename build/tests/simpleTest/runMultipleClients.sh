@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# arg 1 is number of replicas and arg 2 is number of clients
+# e.g.: ./runMultipleClients.sh 3 3 
+# will run 3 replicas and 3 clients
+
 set -e
 
 counter=0
