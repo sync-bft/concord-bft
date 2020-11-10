@@ -4,8 +4,6 @@ replicas_config:
 -35.196.156.226:3420
 replicas_config:
 -35.196.156.226:3430
-replicas_config:
--35.196.156.226:3440
 
 clients_config:
 -35.196.156.226:4000

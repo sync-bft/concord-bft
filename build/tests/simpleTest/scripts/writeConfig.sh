@@ -10,7 +10,7 @@ echo "replicas_config:" > ../../../tests/simpleTest/scripts/remote_config.txt
 echo "-$3:3410" >> ../../../tests/simpleTest/scripts/remote_config.txt
 
 replicaCounter=3420
-replicaIterations=1
+replicaIterations=2
 
 while [ $replicaIterations -le $1 ]
 do

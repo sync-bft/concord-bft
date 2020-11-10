@@ -11,7 +11,8 @@ replicaCounter=1
 
 while [ $replicaCounter -le $1 ]
 do
-    gnome-terminal -- ./server -id $counter -cf ../../../tests/simpleTest/scripts/remote_config.txt
+    ./server -id $counter -cf ../../../tests/simpleTest/scripts/remote_config.txt &
+    processID=$!
     let counter=counter+1
     let replicaCounter=replicaCounter+1
 done
@@ -20,7 +21,8 @@ clientCounter=1
 
 while [ $clientCounter -le $2 ]    
 do
-    gnome-terminal -- ./client -id $counter -cf ../../../tests/simpleTest/scripts/remote_config.txt
+    ./client -id $counter -cf ../../../tests/simpleTest/scripts/remote_config.txt &
+    processID=$!
     let counter=counter+1
     let clientCounter=clientCounter+1
 done
@@ -28,7 +30,7 @@ done
 sleep 120
 
 pkill client
-pkill server	# Not sure if necessary
+pkill server
 
 exit 0
 
