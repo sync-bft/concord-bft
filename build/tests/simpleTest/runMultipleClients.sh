@@ -3,17 +3,22 @@
 set -e
 
 counter=0
+replicaCounter=1
 
-while [ $counter -le 2 ]
+while [ $replicaCounter -le $1 ]
 do
     gnome-terminal -- ./server -id $counter -cf ../../../tests/simpleTest/scripts/remote_config.txt
     let counter=counter+1
+    let replicaCounter=replicaCounter+1
 done
 
-while [ $counter -le 5 ]     #TODO: Change integer to a variable number
+clientCounter=1
+
+while [ $clientCounter -le $2 ]    
 do
     gnome-terminal -- ./client -id $counter -cf ../../../tests/simpleTest/scripts/remote_config.txt
     let counter=counter+1
+    let clientCounter=clientCounter+1
 done
 
 sleep 120
