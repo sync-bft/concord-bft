@@ -230,10 +230,19 @@ void ReplicaImp::onMessage<ClientRequestMsg>(ClientRequestMsg *m) {
         tryToSendProposalMsg(true);
         return;
       } else {
-        LOG_INFO(GL,
+        /*LOG_INFO(GL,
                  "ClientRequestMsg is ignored because: request is old, OR primary is current working on a request from "
                  "the same client. "
-                     << KVLOG(clientId, reqSeqNum));
+                     << KVLOG(clientId, reqSeqNum));*/
+        LOG_DEBUG(CNSUS,
+                  "[Originally old/currently working on a request from the same client] "
+                  "Pushing to primary queue, request [" << reqSeqNum << "], client [" << clientId
+                                                        << "], senderId=" << senderId);
+        requestsQueueOfPrimary.push(m);
+        primaryCombinedReqSize += m->size();
+        //tryToSendPrePrepareMsg(true);
+        tryToSendProposalMsg(true);
+        return;
       }
     } else {  // not the current primary
       if (clientsManager->noPendingAndRequestCanBecomePending(clientId, reqSeqNum)) {
@@ -244,10 +253,14 @@ void ReplicaImp::onMessage<ClientRequestMsg>(ClientRequestMsg *m) {
 
         LOG_INFO(GL, "Forwarding ClientRequestMsg to the current primary. " << KVLOG(reqSeqNum, clientId));
       } else {
-        LOG_INFO(GL,
+        /*LOG_INFO(GL,
                  "ClientRequestMsg is ignored because: request is old, OR primary is current working on a request "
                  "from the same client. "
-                     << KVLOG(clientId, reqSeqNum));
+                     << KVLOG(clientId, reqSeqNum));*/
+        send(m, currentPrimary());
+
+        LOG_INFO(GL, "[Originally old/primary is current working on a request]"
+                      "Forwarding ClientRequestMsg to the current primary. " << KVLOG(reqSeqNum, clientId));
       }
     }
   } else if (seqNumberOfLastReply == reqSeqNum) {

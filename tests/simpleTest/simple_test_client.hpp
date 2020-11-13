@@ -79,18 +79,18 @@ class SimpleTestClient {
     comm->Start();
 
     // The state number that the latest write operation returned.
-    uint64_t expectedStateNum = 0;
+    //uint64_t expectedStateNum = 0;
 
     // The expectedStateNum is not valid until we have issued at least one write
     // operation.
-    bool hasExpectedStateNum = false;
+    //bool hasExpectedStateNum = false;
 
     // The value that the latest write operation sent.
     uint64_t expectedLastValue = 0;
 
     // The expectedLastValue is not valid until we have issued at least one write
     // operation.
-    bool hasExpectedLastValue = false;
+    //bool hasExpectedLastValue = false;
 
     concordUtils::Histogram hist;
     hist.Clear();
@@ -143,12 +143,12 @@ class SimpleTestClient {
                             actualReplyLength);
 
         // Read should respond with eight bytes of data.
-        test_assert(actualReplyLength == sizeof(uint64_t), "actualReplyLength != " << sizeof(uint64_t));
+        //test_assert(actualReplyLength == sizeof(uint64_t), "actualReplyLength != " << sizeof(uint64_t));
 
         // Only assert the last expected value if we have previous set a value.
-        if (hasExpectedLastValue)
-          test_assert(*reinterpret_cast<uint64_t*>(replyBuffer) == expectedLastValue,
-                      "*reinterpret_cast<uint64_t*>(replyBuffer)!=" << expectedLastValue);
+        //if (hasExpectedLastValue)
+        //  test_assert(*reinterpret_cast<uint64_t*>(replyBuffer) == expectedLastValue,
+        //              "*reinterpret_cast<uint64_t*>(replyBuffer)!=" << expectedLastValue);
       } else {
         // Send a write, if we're not doing a read.
 
@@ -179,16 +179,16 @@ class SimpleTestClient {
                             actualReplyLength);
 
         // We can now check the expected value on the next read.
-        hasExpectedLastValue = true;
+        // hasExpectedLastValue = true;
 
         // Write should respond with eight bytes of data.
-        test_assert(actualReplyLength == sizeof(uint64_t), "actualReplyLength != " << sizeof(uint64_t));
+        //test_assert(actualReplyLength == sizeof(uint64_t), "actualReplyLength != " << sizeof(uint64_t));
 
-        uint64_t retVal = *reinterpret_cast<uint64_t*>(replyBuffer);
+        //uint64_t retVal = *reinterpret_cast<uint64_t*>(replyBuffer);
 
         // We don't know what state number to expect from the first request. The
         // replicas might still be up from a previous run of this test.
-        if (hasExpectedStateNum) {
+        /*if (hasExpectedStateNum) {
           // If we had done a previous write, then this write should return the
           // state number right after the state number that that write returned.
           expectedStateNum++;
@@ -196,7 +196,7 @@ class SimpleTestClient {
         } else {
           hasExpectedStateNum = true;
           expectedStateNum = retVal;
-        }
+        }*/
       }
 
       uint64_t end = get_monotonic_time();

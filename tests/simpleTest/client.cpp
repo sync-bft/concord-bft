@@ -46,6 +46,7 @@ using bftEngine::SeqNumberGeneratorForClientRequests;
 using bftEngine::SimpleClient;
 
 logging::Logger clientLogger = logging::getLogger("simpletest.client");
+logging::Logger concordLogger = logging::getLogger("concord.bft.client");
 
 void parse_params(int argc, char **argv, ClientParams &cp, bftEngine::SimpleClientParams &scp) {
   if (argc < 2) return;
@@ -151,6 +152,8 @@ void parse_params(int argc, char **argv, ClientParams &cp, bftEngine::SimpleClie
 
 int main(int argc, char **argv) {
   // TODO(IG:) configure Log4Cplus's output format, using default for now
+  clientLogger.setLogLevel(logging::debug);
+  concordLogger.setLogLevel(logging::debug);
 
   ClientParams cp;
   bftEngine::SimpleClientParams scp;

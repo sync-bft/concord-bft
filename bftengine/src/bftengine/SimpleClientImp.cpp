@@ -42,7 +42,7 @@ using namespace std::chrono;
 using namespace bft::communication;
 using namespace std;
 
-std::map <uint64_t, std::vector<long int>> logMap;
+std::map<uint64_t, std::vector<long int>> logMap;
 string logFileName;
 
 namespace bftEngine {
@@ -98,7 +98,7 @@ class SimpleClientImp : public SimpleClient, public IReceiver {
   const uint16_t cVal_;
   const std::set<uint16_t> replicas_;
 
-  std::map <uint64_t, std::set<ReplicaId>> reqSeqMap;
+  std::map<uint64_t, std::set<ReplicaId>> reqSeqMap;
   ICommunication* const communication_;
 
   MsgsCertificate<ClientReplyMsg, false, false, true, SimpleClientImp> replysCertificate_;
@@ -108,6 +108,7 @@ class SimpleClientImp : public SimpleClient, public IReceiver {
 
   std::queue<MessageBase*> msgQueue_;
   ClientRequestMsg* pendingRequest_ = nullptr;
+
 
   Time timeOfLastTransmission_ = MinTime;
   uint16_t numberOfTransmissions_ = 0;
@@ -123,7 +124,6 @@ class SimpleClientImp : public SimpleClient, public IReceiver {
   uint16_t clientPeriodicResetThresh_;
 
   logging::Logger logger_ = logging::getLogger("concord.bft.client");
-
 };
 
 bool SimpleClientImp::isSystemReady() const {
@@ -150,10 +150,10 @@ void SimpleClientImp::onMessageFromReplica(MessageBase* msg) {
                       << " sender=" << replyMsg->senderId() << "size=" << replyMsg->size()
                       << " primaryId=" << (int)replyMsg->currentPrimaryId() << " hash=" << replyMsg->debugHash());
 
-  if (replyMsg->reqSeqNum() != pendingRequest_->requestSeqNum()) {
-    delete msg;
-    return;
-  }
+  //if (replyMsg->reqSeqNum() != pendingRequest_->requestSeqNum()) {
+  //  delete msg;
+  //  return;
+  //}
 
   replysCertificate_.addMsg(replyMsg, replyMsg->senderId());
 
@@ -164,29 +164,29 @@ void SimpleClientImp::onMessageFromReplica(MessageBase* msg) {
 
   uint64_t reqSeqMsg = replyMsg->reqSeqNum();
 
-  if (reqSeqMap.count(reqSeqMsg) == 0){
+  if (reqSeqMap.count(reqSeqMsg) == 0) {
     AssertEQ(logMap.find(reqSeqMsg)->second.size(), 2);
-    return; //has been processed
+    return;  // has been processed
   }
 
-  std::set<ReplicaId> &replicaSet = reqSeqMap.find(reqSeqMsg)->second;
+  std::set<ReplicaId>& replicaSet = reqSeqMap.find(reqSeqMsg)->second;
   replicaSet.insert(replyMsg->senderId());
-  //LOG_INFO(logger_, "NUM VOTED: " << replyMsg->replicaVoted
-           //<< "with sender ID" << replyMsg->senderId())
-  uint16_t quorumSize = (numberOfReplicas_ - 1)/2;
-  if (replicaSet.size() > quorumSize){ //assume 2f + 1
+  // LOG_INFO(logger_, "NUM VOTED: " << replyMsg->replicaVoted
+  //<< "with sender ID" << replyMsg->senderId())
+  uint16_t quorumSize = (numberOfReplicas_ - 1) / 2;
+  if (replicaSet.size() > quorumSize) {  // assume 2f + 1
     logToMap(reqSeqMsg);
 
-    LOG_INFO(logger_, "Client " << clientId_ << " with Req ID: " << replyMsg->reqSeqNum()
-                                << " - f + 1 Replica Replied.")
+    LOG_INFO(logger_,
+             "Client " << clientId_ << " with Req ID: " << replyMsg->reqSeqNum() << " - f + 1 Replica Replied.")
 
     reqSeqMap.erase(reqSeqMsg);
   }
-
 }
 
 void SimpleClientImp::onRetransmission() {
   client_metrics_.retransmissions.Get().Inc();
+  Assert(pendingRequest_ != nullptr);
   sendPendingRequest();
 }
 
@@ -195,7 +195,7 @@ void printLog(int sigNum) {
   std::ofstream fout;
   fout.open(logFileName);
 
-  map <uint64_t, std::vector<long>>::iterator mapIterator;
+  map<uint64_t, std::vector<long>>::iterator mapIterator;
   for (mapIterator = logMap.begin(); mapIterator != logMap.end(); mapIterator++) {
     std::ostream_iterator<long> vecIterator(fout, "\n");
     std::copy(mapIterator->second.begin(), mapIterator->second.end(), vecIterator);
@@ -258,16 +258,15 @@ SimpleClientImp::~SimpleClientImp() {
   Assert(numberOfTransmissions_ == 0);
 }
 
-void SimpleClientImp::logToMap(uint64_t reqSeqNum){
+void SimpleClientImp::logToMap(uint64_t reqSeqNum) {
   high_resolution_clock::time_point receiveTime = high_resolution_clock::now();
   auto nanoReceiveTime = duration_cast<nanoseconds>(receiveTime.time_since_epoch()).count();
 
-  if (logMap.count(reqSeqNum) == 0){
-    logMap.insert(std::pair<uint64_t, std::vector<time_t>>
-                  (reqSeqNum, std::vector<time_t>()));
+  if (logMap.count(reqSeqNum) == 0) {
+    logMap.insert(std::pair<uint64_t, std::vector<time_t>>(reqSeqNum, std::vector<time_t>()));
     logMap.find(reqSeqNum)->second.push_back(nanoReceiveTime);
-  } else{
-    std::vector<long int> &mapVec = logMap.find(reqSeqNum)->second;
+  } else {
+    std::vector<long int>& mapVec = logMap.find(reqSeqNum)->second;
     AssertEQ(mapVec.size(), 1);
 
     long int sendTime = mapVec.front();
@@ -275,7 +274,6 @@ void SimpleClientImp::logToMap(uint64_t reqSeqNum){
     mapVec.push_back(nanoReceiveTime);
     mapVec.push_back(sendTime - nanoReceiveTime);
   }
-
 }
 
 OperationResult SimpleClientImp::sendRequest(uint8_t flags,
@@ -311,15 +309,13 @@ OperationResult SimpleClientImp::sendRequest(uint8_t flags,
     return NOT_READY;
   }
 
-  Assert(replysCertificate_.isEmpty());
-  Assert(msgQueue_.empty());
+  //Assert(replysCertificate_.isEmpty());
+  //Assert(msgQueue_.empty());
   Assert(pendingRequest_ == nullptr);
   Assert(timeOfLastTransmission_ == MinTime);
   Assert(numberOfTransmissions_ == 0);
 
   static const std::chrono::milliseconds timersRes(timersResolutionMilli_);
-
-  const Time beginTime = getMonotonicTime();
 
   ClientRequestMsg* reqMsg;
   if (isPreProcessRequired)
@@ -329,110 +325,28 @@ OperationResult SimpleClientImp::sendRequest(uint8_t flags,
     reqMsg =
         new ClientRequestMsg(clientId_, flags, reqSeqNum, lengthOfRequest, request, timeoutMilli, msgCid, span_context);
   pendingRequest_ = reqMsg;
+  assert(pendingRequest_ != nullptr);
 
   sendPendingRequest();
 
   AssertEQ(logMap.count(reqSeqNum), 0);
   logToMap(reqSeqNum);
 
-  if (reqSeqMap.count(reqSeqNum) != 0){
-    LOG_DEBUG(logger_, "Duplicative request sequence number :" << reqSeqNum );
+  if (reqSeqMap.count(reqSeqNum) != 0) {
+    LOG_DEBUG(logger_, "Duplicative request sequence number :" << reqSeqNum);
     return TIMEOUT;
   }
-  reqSeqMap.insert(std::pair<uint64_t, std::set<ReplicaId>> (reqSeqNum, std::set<ReplicaId>()));
-
-  bool requestTimeout = false;
-  bool requestCommitted = false;
+  reqSeqMap.insert(std::pair<uint64_t, std::set<ReplicaId>>(reqSeqNum, std::set<ReplicaId>()));
 
   // collect metrics and update them
   client_metrics_.retransmissionTimer.Get().Set(limitOfExpectedOperationTime_.upperLimit());
   metrics_.UpdateAggregator();
 
-  // protect against spurious wakeups
-  auto predicate = [this] { return !msgQueue_.empty(); };
-  while (true) {
-    std::queue<MessageBase*> newMsgs;
-    bool hasData = false;
-    {
-      std::unique_lock<std::mutex> mlock(lock_);
-      hasData = condVar_.wait_for(mlock, timersRes, predicate);
-      if (hasData) msgQueue_.swap(newMsgs);
-    }
-
-    if (hasData) {
-      while (!newMsgs.empty()) {
-        if (replysCertificate_.isComplete()) {
-          delete newMsgs.front();
-        } else {
-          MessageBase* msg = newMsgs.front();
-          onMessageFromReplica(msg);
-        }
-        newMsgs.pop();
-      }
-
-      if (replysCertificate_.isComplete()) {
-        requestCommitted = true;
-        break;
-      }
-    }
-
-    const Time currTime = getMonotonicTime();
-
-    // If client defined timeout for the request expired?
-    if (timeoutMilli != INFINITE_TIMEOUT &&
-        (uint64_t)duration_cast<milliseconds>(currTime - beginTime).count() > timeoutMilli) {
-      requestTimeout = true;
-      break;
-    }
-
-    if ((uint64_t)duration_cast<milliseconds>(currTime - timeOfLastTransmission_).count() >
-        limitOfExpectedOperationTime_.upperLimit()) {
-      onRetransmission();
-    }
-  }
-
-  if (requestCommitted) {
-    Assert(replysCertificate_.isComplete());
-
-    uint64_t durationMilli = duration_cast<milliseconds>(getMonotonicTime() - beginTime).count();
-    limitOfExpectedOperationTime_.add(durationMilli);
-
-    LOG_DEBUG(logger_,
-              "Client " << clientId_ << " - request " << reqSeqNum
-                        << " has committed "
-                           "(isRO="
-                        << isReadOnly << ", isPreProcess=" << isPreProcessRequired
-                        << ", request size=" << lengthOfRequest
-                        << ",  retransmissionMilli=" << (int)limitOfExpectedOperationTime_.upperLimit() << ") ");
-
-    ClientReplyMsg* correctReply = replysCertificate_.bestCorrectMsg();
-
-    primaryReplicaIsKnown_ = true;
-    knownPrimaryReplica_ = correctReply->currentPrimaryId();
-
-    if (correctReply->replyLength() <= lengthOfReplyBuffer) {
-      memcpy(replyBuffer, correctReply->replyBuf(), correctReply->replyLength());
-      actualReplyLength = correctReply->replyLength();
-      reset();
-      return SUCCESS;
-    } else {
-      reset();
-      return BUFFER_TOO_SMALL;
-    }
-  } else if (requestTimeout) {
-    LOG_DEBUG(logger_, "Client " << clientId_ << " request :" << reqSeqNum << " timeout");
-
-    if (timeoutMilli >= limitOfExpectedOperationTime_.upperLimit()) {
-      LOG_DEBUG(logger_, "Client " << clientId_ << " request :" << reqSeqNum << ", primary is set to UNKNOWN");
-      primaryReplicaIsKnown_ = false;
-      limitOfExpectedOperationTime_.add(timeoutMilli);
-    }
-
-    reset();
-    return TIMEOUT;
-  }
-
-  Assert(false);
+  //Assert(false);
+  delete pendingRequest_;
+  pendingRequest_ = nullptr;
+  timeOfLastTransmission_ = MinTime;
+  numberOfTransmissions_ = 0;
   return SUCCESS;
 }
 
@@ -444,8 +358,8 @@ void SimpleClientImp::reset() {
     std::unique_lock<std::mutex> mlock(lock_);
     msgQueue_.swap(newMsgs);
 
-    delete pendingRequest_;
-    pendingRequest_ = nullptr;
+    //delete pendingRequest_;
+    //pendingRequest_ = nullptr;
   }
 
   while (!newMsgs.empty()) {
@@ -473,7 +387,7 @@ void SimpleClientImp::onNewMessage(NodeNum sourceNode, const char* const message
 
   std::unique_lock<std::mutex> mlock(lock_);
   {
-    if (pendingRequest_ == nullptr) return;
+    //if (pendingRequest_ == nullptr) return;
 
     // create msg object
     MessageBase::Header* msgBody = (MessageBase::Header*)std::malloc(messageLength);
@@ -481,9 +395,96 @@ void SimpleClientImp::onNewMessage(NodeNum sourceNode, const char* const message
     MessageBase* pMsg = new MessageBase(senderId, msgBody, messageLength, true);
 
     msgQueue_.push(pMsg);  // TODO(GG): handle overflow
+
+    const Time beginTime = getMonotonicTime();
+    bool requestTimeout = false;
+    bool requestCommitted = false;
+    const uint64_t timeoutMilli = SimpleClient::INFINITE_TIMEOUT;
+    const uint32_t lengthOfReplyBuffer = sizeof(uint64_t);
+    char replyBuffer[lengthOfReplyBuffer];
+    //uint32_t actualReplyLength = 0;
+    uint64_t reqSeqNum;
+    
+    while (true) {
+      std::queue<MessageBase*> newMsgs;
+      bool hasData = true;
+      msgQueue_.swap(newMsgs);
+
+      if (hasData) {
+        while (!newMsgs.empty()) {
+          if (replysCertificate_.isComplete()) {
+            reqSeqNum = static_cast<ClientReplyMsg*>(newMsgs.front())->reqSeqNum();
+            delete newMsgs.front();
+          } else {
+            MessageBase* msg = newMsgs.front();
+            onMessageFromReplica(msg);
+          }
+          newMsgs.pop();
+        }
+
+        if (replysCertificate_.isComplete()) {
+          requestCommitted = true;
+          break;
+        }
+      }
+
+      const Time currTime = getMonotonicTime();
+
+      // If client defined timeout for the request expired?
+      if (timeoutMilli != INFINITE_TIMEOUT &&
+          (uint64_t)duration_cast<milliseconds>(currTime - beginTime).count() > timeoutMilli) {
+        requestTimeout = true;
+        break;
+      }
+
+      //if ((uint64_t)duration_cast<milliseconds>(currTime - timeOfLastTransmission_).count() >
+      //    limitOfExpectedOperationTime_.upperLimit()) {
+      //  onRetransmission();
+      //}
+    }
+
+    if (requestCommitted) { 
+      Assert(replysCertificate_.isComplete());
+
+      uint64_t durationMilli = duration_cast<milliseconds>(getMonotonicTime() - beginTime).count();
+      limitOfExpectedOperationTime_.add(durationMilli);
+
+      LOG_DEBUG(logger_,
+                "Client " << clientId_ << " - request " << reqSeqNum
+                          << " has committed "
+                          << ",  retransmissionMilli=" << (int)limitOfExpectedOperationTime_.upperLimit() << ") ");
+
+      ClientReplyMsg* correctReply = replysCertificate_.bestCorrectMsg();
+
+      primaryReplicaIsKnown_ = true;
+      knownPrimaryReplica_ = correctReply->currentPrimaryId();
+
+      if (correctReply->replyLength() <= lengthOfReplyBuffer) {
+        memcpy(replyBuffer, correctReply->replyBuf(), correctReply->replyLength());
+        //actualReplyLength = correctReply->replyLength();
+        reset();
+        LOG_DEBUG(logger_, "Client " << clientId_ << " request :" << reqSeqNum << " success");
+      } else 
+      {
+        reset();
+        LOG_DEBUG(logger_, "Client " << clientId_ << " request :" << reqSeqNum << " buffer too small");
+      }
+    } 
+    else if (requestTimeout) {
+      LOG_DEBUG(logger_, "Client " << clientId_ << " request :" << reqSeqNum << " timeout");
+
+      if (timeoutMilli >= limitOfExpectedOperationTime_.upperLimit()) {
+        LOG_DEBUG(logger_, "Client " << clientId_ << " request :" << reqSeqNum << ", primary is set to UNKNOWN");
+        primaryReplicaIsKnown_ = false;
+        limitOfExpectedOperationTime_.add(timeoutMilli);
+      }
+      reset();
+    }
   }
+  //condVar_.notify_one();
+  return;
   // no need to notify within the lock
-  condVar_.notify_one();
+  //condVar_.notify_one();
 }
 
 void SimpleClientImp::onConnectionStatusChanged(const NodeNum node, const ConnectionStatus newStatus) {}
