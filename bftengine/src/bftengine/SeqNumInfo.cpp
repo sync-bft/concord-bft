@@ -201,24 +201,6 @@ bool SeqNumInfo::addMsg(CommitFullMsg* m, bool directAdd) {
   return r;
 }
 
-bool SeqNumInfo::addMsg(VoteMsg* m, bool directAdd) {
-  // Assert(directAdd || replica->getReplicasInfo().myId() != m->senderId());
-  Assert(!forcedCompleted);
-
-  bool retVal;
-  if (!directAdd)
-    retVal = voteSigCollector->addMsgWithVoteSignature(m, replica->getReplicasInfo().myId());
-  else
-    retVal = voteSigCollector->initMsgWithVoteSignature(m, replica->getReplicasInfo().myId());
-  
-  return retVal;
-}
-
-bool SeqNumInfo::canCommit() const {
-  // return forcedCompleted || ((prePrepareMsg != nullptr) && voteSigCollector->isComplete());
-  return voteSigCollector->votesCollected();
-}
-
 void SeqNumInfo::forceComplete() {
   Assert(!forcedCompleted);
   Assert(hasPrePrepareMsg());
@@ -445,14 +427,42 @@ void SeqNumInfo::init(SeqNumInfo& i, void* d) {
 // Sync-HotStuff
 //////////////////////////////////////////////////////////////////////
 
+bool SeqNumInfo::addMsg(VoteMsg* m, bool directAdd) {
+  // Assert(directAdd || replica->getReplicasInfo().myId() != m->senderId());
+  Assert(!forcedCompleted);
+
+  bool retVal;
+  if (!directAdd)
+    retVal = voteSigCollector->addMsgWithVoteSignature(m, m->senderId());
+  else
+    retVal = voteSigCollector->initMsgWithVoteSignature(m, m->senderId());
+  
+  return retVal;
+}
+
+bool SeqNumInfo::canCommit() const {
+  // return forcedCompleted || ((prePrepareMsg != nullptr) && voteSigCollector->isComplete());
+  return voteSigCollector->votesCollected();
+}
+
 ProposalMsg* SeqNumInfo::getProposalMsg() const { return proposalMsg; }
 
 bool SeqNumInfo::addMsg(ProposalMsg* m) {
   if (proposalMsg != nullptr) return false;
 
   Assert(primary == false);
+  Assert(!forcedCompleted);
+  Assert(!voteSigCollector->hasVoteMsgFromReplica(replica->getReplicasInfo().myId()));
 
   proposalMsg = m;
+
+  // set expected
+  Digest tmpDigest;
+  Digest::calcCombination(m->digestOfRequestsSeqNum(), m->viewNumber(), m->seqNumber(), tmpDigest);
+  voteSigCollector->setExpected(m->seqNumber(), m->viewNumber(), tmpDigest); // using backgroud thread
+
+  if (firstSeenFromPrimary == MinTime)  // TODO(GG): remove condition - TBD
+    firstSeenFromPrimary = getMonotonicTime();
 
   return true;
 }
@@ -492,6 +502,7 @@ bool SeqNumInfo::addCombinedSig(const char* sig, uint16_t len){
 void SeqNumInfo::onCompletionOfVoteSignaturesProcessing(SeqNum seqNumber,
                                                         ViewNum viewNumber,
                                                         const std::set<ReplicaId>& replicasWithBadSigs) {
+  LOG_DEBUG(CNSUS, "onCompletionOfVoteSignaturesProcessing() badSigs in SeqNumInfo.cpp");
   voteSigCollector->onCompletionOfSignaturesProcessing(seqNumber, viewNumber, replicasWithBadSigs);
 }
 
@@ -500,6 +511,7 @@ void SeqNumInfo::onCompletionOfVoteSignaturesProcessing(SeqNum seqNumber,
                                                         const char* combinedSig,
                                                         uint16_t combinedSigLen,
                                                         const std::string& span_context) {
+  LOG_DEBUG(CNSUS, "onCompletionOfVoteSignaturesProcessing() combinedSigs in SeqNumInfo.cpp");
   LOG_INFO(CNSUS,
            "seqNum information is as follows ["
                << seqNumber << "]");
@@ -508,6 +520,7 @@ void SeqNumInfo::onCompletionOfVoteSignaturesProcessing(SeqNum seqNumber,
 }
 
 void SeqNumInfo::onCompletionOfCombinedVoteSigVerification(SeqNum seqNumber, ViewNum viewNumber, bool isValid) {
+  LOG_DEBUG(CNSUS, "onCompletionOfCombinedVoteSigVerification() in SeqNumInfo.cpp");
   voteSigCollector->onCompletionOfCombinedSigVerification(seqNumber, viewNumber, isValid);
 }
 
@@ -549,7 +562,8 @@ InternalMessage SeqNumInfo::ExFuncForVoteCollector::createInterVerifyCombinedSig
 uint16_t SeqNumInfo::ExFuncForVoteCollector::numberOfRequiredSignatures(void* context) {
   InternalReplicaApi* r = (InternalReplicaApi*)context;
   const ReplicasInfo& info = r->getReplicasInfo();
-  return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
+  //return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
+  return (uint16_t)(info.fVal() + 1);
 }
 
 IThresholdVerifier* SeqNumInfo::ExFuncForVoteCollector::thresholdVerifier(void* context) {

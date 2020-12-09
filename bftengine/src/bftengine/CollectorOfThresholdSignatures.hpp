@@ -23,6 +23,7 @@
 #include "assertUtils.hpp"
 #include "messages/SignedShareMsgs.hpp"
 #include "InternalReplicaApi.hpp"
+#include "Logger.hpp"
 
 namespace bftEngine {
 namespace impl {
@@ -59,14 +60,18 @@ class CollectorOfThresholdSignatures {
   }
 
   bool addMsgWithVoteSignature(PART* voteSigMsg, ReplicaId repId) {
+    LOG_DEBUG(CNSUS, "on addMsgWithVoteSignature()");
     Assert(voteSigMsg != nullptr);
+    LOG_DEBUG(CNSUS, "combinedValidSignatureMsg != nullptr : " << (combinedValidSignatureMsg != nullptr));
+    LOG_DEBUG(CNSUS, "replicasInfo.count(repId) > 0 : " << (replicasInfo.count(repId) > 0));
     if ((combinedValidSignatureMsg != nullptr) || (replicasInfo.count(repId) > 0)) return false;
+    LOG_DEBUG(CNSUS, "going to increase sig count");
     // add voteSigMsg to replicasInfo
-    VoteInfo info = {voteSigMsg, SigState::Unknown};
-    votersInfo[repId] = info;
-    // numberOfUnknownSignatures++;
-    // trySendToBkThread();
-    numberOfVoteSignatures++;
+    RepInfo info = {voteSigMsg, SigState::Unknown};
+    replicasInfo[repId] = info;
+    numberOfUnknownSignatures++;
+    trySendToBkThread();
+    //numberOfVoteSignatures++;
     return true;
   }
   
@@ -249,15 +254,15 @@ class CollectorOfThresholdSignatures {
     Assert(numberOfUnknownSignatures == 0);  // we can use this method to add at most one PART message
 
     // add voteSigMsg to replicasInfo
-    // RepInfo info = {voteSigMsg, SigState::Unknown};
-    // replicasInfo[repId] = info;
+    RepInfo info = {voteSigMsg, SigState::Unknown};
+    replicasInfo[repId] = info;
 
     // TODO(GG): do we want to verify the partial signature here?
 
-    // numberOfUnknownSignatures++;
+    numberOfUnknownSignatures++;
 
-    // if (numOfRequiredSigs == 0)  // init numOfRequiredSigs
-      // numOfRequiredSigs = ExternalFunc::numberOfRequiredSignatures(context);
+    if (numOfRequiredSigs == 0)  // init numOfRequiredSigs
+      numOfRequiredSigs = ExternalFunc::numberOfRequiredSignatures(context);
 
     // Assert(numberOfUnknownSignatures < numOfRequiredSigs);  // because numOfRequiredSigs > 1
 
@@ -284,9 +289,11 @@ class CollectorOfThresholdSignatures {
  protected:
   void trySendToBkThread() {
     Assert(combinedValidSignatureMsg == nullptr);
-
+    LOG_DEBUG(CNSUS, "On trySendToBkThread()");
     if (numOfRequiredSigs == 0)  // init numOfRequiredSigs
       numOfRequiredSigs = ExternalFunc::numberOfRequiredSignatures(context);
+    LOG_DEBUG(CNSUS, "numOfRequiredSigs" << numOfRequiredSigs);
+    LOG_DEBUG(CNSUS, "numberOfUnknownSignatures" << numberOfUnknownSignatures);
 
     if (processingSignaturesInTheBackground || expectedSeqNumber == 0) return;
 
@@ -379,6 +386,7 @@ class CollectorOfThresholdSignatures {
     }
 
     void add(ReplicaId srcRepId, const char* sigBody, uint16_t sigLength, const std::string& span_context) {
+      LOG_DEBUG(CNSUS, "on add() from SignaturesProcessingJob");
       Assert(numOfDataItems < reqDataItems);
 
       SigData d;
@@ -405,6 +413,7 @@ class CollectorOfThresholdSignatures {
 
     virtual void execute() override {
       Assert(numOfDataItems == reqDataItems);
+      LOG_DEBUG(CNSUS, "on execute() from SignaturesProcessingJob");
 
       // TODO(GG): can utilize several threads (discuss with Alin)
 
@@ -560,15 +569,15 @@ class CollectorOfThresholdSignatures {
   ViewNum expectedView = 0;
   Digest expectedDigest;
 
-  struct VoteInfo {
-    PART* voteSigMsg;
-    SigState state;
-  };
+  //struct VoteInfo {
+  //  PART* voteSigMsg;
+  //  SigState state;
+  //};
 
   // bool processingSignaturesInTheBackground = false;
 
   // uint16_t numberOfUnknownSignatures = 0;
-  std::unordered_map<ReplicaId, VoteInfo> votersInfo;
+ // std::unordered_map<ReplicaId, VoteInfo> votersInfo;
 
   FULL* combinedVoteSignatureMsg = nullptr;
 

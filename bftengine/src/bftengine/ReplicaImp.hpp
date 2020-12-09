@@ -12,6 +12,8 @@
 #pragma once
 
 #include <string>
+#include <map>
+#include <future>
 #include "Replica.hpp"
 #include "ReplicaForStateTransfer.hpp"
 #include "CollectorOfThresholdSignatures.hpp"
@@ -55,6 +57,7 @@ class VoteFullMsg;
 
 using bftEngine::ReplicaConfig;
 using std::shared_ptr;
+using namespace std;
 
 class ReplicaImp : public InternalReplicaApi, public ReplicaForStateTransfer {
  protected:
@@ -425,6 +428,7 @@ class ReplicaImp : public InternalReplicaApi, public ReplicaForStateTransfer {
 
  private:
   void addTimers();
+
 };
 
 }  // namespace bftEngine::impl

@@ -211,39 +211,28 @@ void ReplicaImp::onMessage<ClientRequestMsg>(ClientRequestMsg *m) {
   const ReqId seqNumberOfLastReply = seqNumberOfLastReplyToClient(clientId);
 
   if (seqNumberOfLastReply < reqSeqNum) {
-    if (isCurrentPrimary()) {
+    if (isCurrentPrimary()) { // currently taking all messages
       // TODO(GG): use config/parameter
-      if (requestsQueueOfPrimary.size() >= 700) {
+      /*if (requestsQueueOfPrimary.size() >= 700) {
         LOG_WARN(GL,
                  "ClientRequestMsg dropped. Primary reqeust queue is full. "
                      << KVLOG(clientId, reqSeqNum, requestsQueueOfPrimary.size()));
         delete m;
         return;
+      }*/
+      // no checking clientsManager->noPendingAndRequestCanBecomePending(clientId, reqSeqNum)) 
+      LOG_DEBUG(CNSUS,
+                "Pushing to primary queue, request [" << reqSeqNum << "], client [" << clientId
+                                                      << "], senderId=" << senderId);
+      requestsQueueOfPrimary.push(m);
+      primaryCombinedReqSize += m->size();
+      if (!isPrimaryInitialized || mainLog->get(primaryLastUsedSeqNum).getCombinedSig() != nullptr){
+        LOG_DEBUG(CNSUS, "Sending the first proposal!");
+        //only send proposal for the first client request as no prev certificate needed 
+        //or the prev certificate has been formed
+        tryToSendProposalMsg(true);  //tryToSendPrePrepareMsg(true);
       }
-      if (clientsManager->noPendingAndRequestCanBecomePending(clientId, reqSeqNum)) {
-        LOG_DEBUG(CNSUS,
-                  "Pushing to primary queue, request [" << reqSeqNum << "], client [" << clientId
-                                                        << "], senderId=" << senderId);
-        requestsQueueOfPrimary.push(m);
-        primaryCombinedReqSize += m->size();
-        //tryToSendPrePrepareMsg(true);
-        tryToSendProposalMsg(true);
-        return;
-      } else {
-        /*LOG_INFO(GL,
-                 "ClientRequestMsg is ignored because: request is old, OR primary is current working on a request from "
-                 "the same client. "
-                     << KVLOG(clientId, reqSeqNum));*/
-        LOG_DEBUG(CNSUS,
-                  "[Originally old/currently working on a request from the same client] "
-                  "Pushing to primary queue, request [" << reqSeqNum << "], client [" << clientId
-                                                        << "], senderId=" << senderId);
-        requestsQueueOfPrimary.push(m);
-        primaryCombinedReqSize += m->size();
-        //tryToSendPrePrepareMsg(true);
-        tryToSendProposalMsg(true);
-        return;
-      }
+      return;
     } else {  // not the current primary
       if (clientsManager->noPendingAndRequestCanBecomePending(clientId, reqSeqNum)) {
         clientsManager->addPendingRequest(clientId, reqSeqNum);
@@ -1220,6 +1209,7 @@ void ReplicaImp::onPrepareCombinedSigSucceeded(
   SCOPED_MDC_SEQ_NUM(std::to_string(seqNumber));
   SCOPED_MDC_PATH(CommitPathToMDCString(CommitPath::SLOW));
   LOG_DEBUG(GL, KVLOG(view));
+  LOG_DEBUG(CNSUS, "onPrepareCombinedSigSucceeded");
 
   if ((isCollectingState()) || (!currentViewIsActive()) || (curView != view) ||
       (!mainLog->insideActiveWindow(seqNumber))) {
@@ -1254,6 +1244,7 @@ void ReplicaImp::onPrepareCombinedSigSucceeded(
 
 void ReplicaImp::onPrepareVerifyCombinedSigResult(SeqNum seqNumber, ViewNum view, bool isValid) {
   LOG_DEBUG(GL, KVLOG(view));
+  LOG_DEBUG(CNSUS, "onPrepareVerifyCombinedSigResult");
 
   if ((isCollectingState()) || (!currentViewIsActive()) || (curView != view) ||
       (!mainLog->insideActiveWindow(seqNumber))) {
@@ -1290,6 +1281,7 @@ void ReplicaImp::onCommitCombinedSigFailed(SeqNum seqNumber,
                                            ViewNum view,
                                            const std::set<uint16_t> &replicasWithBadSigs) {
   LOG_DEBUG(GL, KVLOG(seqNumber, view));
+  LOG_DEBUG(CNSUS, "onCommitCombinedSigFailed");
 
   if ((isCollectingState()) || (!currentViewIsActive()) || (curView != view) ||
       (!mainLog->insideActiveWindow(seqNumber))) {
@@ -3504,18 +3496,6 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
 
    if (requestsQueueOfPrimary.empty()) return;
 
-  ClientRequestMsg *first = requestsQueueOfPrimary.front();
-  
-  // TODO(QY): change queue to iterateable structure
-  while (first != nullptr &&
-         !clientsManager->noPendingAndRequestCanBecomePending(first->clientProxyId(), first->requestSeqNum())) {
-    SCOPED_MDC_CID(first->getCid());
-    primaryCombinedReqSize -= first->size();
-    delete first;
-    requestsQueueOfPrimary.pop();
-    first = (!requestsQueueOfPrimary.empty() ? requestsQueueOfPrimary.front() : nullptr);
-  }
-
   const size_t requestsInQueue = requestsQueueOfPrimary.size();
 
   if (requestsInQueue == 0) return;
@@ -3569,24 +3549,26 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
     proposal = new ProposalMsg(
       config_.replicaId, curView, (primaryLastUsedSeqNum + 1), NULL, 0, span_context, primaryCombinedReqSize, isFirstMsg);
   }
-  else{
+  else{ 
     LOG_DEBUG(CNSUS, "Creating non-first proposal msg from primary");
     bool isFirstMsg = false;
     SeqNumInfo &lastSeqNumInfo =  mainLog->get(primaryLastUsedSeqNum);
+    const char* lastCombinedSig = lastSeqNumInfo.getCombinedSig();
+    uint16_t lastCombinedSigLen = lastSeqNumInfo.getCombinedSigLen();
     proposal = new ProposalMsg(
-        config_.replicaId, curView, (primaryLastUsedSeqNum + 1), lastSeqNumInfo.getCombinedSig(), lastSeqNumInfo.getCombinedSigLen(), 
-        span_context, primaryCombinedReqSize, isFirstMsg);
+        config_.replicaId, curView, (primaryLastUsedSeqNum + 1), lastCombinedSig, lastCombinedSigLen, span_context, primaryCombinedReqSize, isFirstMsg);
   }
 
   uint16_t initialStorageForRequests = proposal->remainingSizeForRequests();
   while (nextRequest != nullptr) {
     if (nextRequest->size() <= proposal->remainingSizeForRequests()) {
       SCOPED_MDC_CID(nextRequest->getCid());
-      if (clientsManager->noPendingAndRequestCanBecomePending(nextRequest->clientProxyId(),
-                                                              nextRequest->requestSeqNum())) {
-        proposal->addRequest(nextRequest->body(), nextRequest->size());
-        clientsManager->addPendingRequest(nextRequest->clientProxyId(), nextRequest->requestSeqNum());
-      }
+      //adds as many requests as possible
+      proposal->addRequest(nextRequest->body(), nextRequest->size());
+      //if (clientsManager->noPendingAndRequestCanBecomePending(nextRequest->clientProxyId(), nextRequest->requestSeqNum())) {
+      //  proposal->addRequest(nextRequest->body(), nextRequest->size());
+      //  clientsManager->addPendingRequest(nextRequest->clientProxyId(), nextRequest->requestSeqNum());
+      //}
       primaryCombinedReqSize -= nextRequest->size();
     } else if (nextRequest->size() > initialStorageForRequests) {
       // The message is too big
@@ -3645,7 +3627,7 @@ void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
                               pMsg->digestOfRequestsSeqNum(),
                               config_.thresholdSignerForSlowPathCommit,
                               span_context);
-  seqNumInfo.addMsg(v);
+  seqNumInfo.addMsg(v, false);
 
   if (!isCurrentPrimary()) {
     for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
@@ -3658,10 +3640,10 @@ void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
 
 template<>
 void ReplicaImp::onMessage<VoteMsg>(VoteMsg *msg) {
-  LOG_INFO(CNSUS, "Received VoteMsg");
 
   const SeqNum msgSeqNum = msg->seqNumber();
   SeqNumInfo &seqNumInfo = mainLog->get(msgSeqNum);
+  LOG_INFO(CNSUS, "Received VoteMsg from "<<msg->senderId());
 
   seqNumInfo.addMsg(msg, false);
   /*if (seqNumInfo.canCommit()) {
@@ -3912,6 +3894,7 @@ void ReplicaImp::executeRequestsInProposalMsg(concordUtils::SpanWrapper &parent_
 }
 
 void ReplicaImp::onInternalMsg(InternalMessage &&msg) {
+  LOG_DEBUG(CNSUS, "on Internal Message");
   metric_received_internal_msgs_.Get().Inc();
 
   // vote collector in Sync-HotStuff currently share the same exfunc with prepare collector
@@ -3965,6 +3948,7 @@ void ReplicaImp::onVoteCombinedSigSucceeded(
   //SCOPED_MDC_SEQ_NUM(std::to_string(seqNumber));
   //SCOPED_MDC_PATH(CommitPathToMDCString(CommitPath::SLOW));
   LOG_DEBUG(GL, KVLOG(view));
+  LOG_DEBUG(CNSUS, "onVoteCombinedSigSucceeded");
   AssertNE(combinedSig, nullptr);
 
   if ((isCollectingState()) || (!currentViewIsActive()) || (curView != view) ||
@@ -3980,11 +3964,13 @@ void ReplicaImp::onVoteCombinedSigSucceeded(
   SeqNumInfo &seqNumInfo = mainLog->get(seqNumber);
   seqNumInfo.addCombinedSig(combinedSig, combinedSigLen);
   seqNumInfo.onCompletionOfVoteSignaturesProcessing(seqNumber, view, combinedSig, combinedSigLen, span_context);
-
+  LOG_DEBUG(CNSUS, "Onto the next block proposal!");
+  tryToSendProposalMsg(true); // if request queue is empty, return
 }
 
 void ReplicaImp::onVoteVerifyCombinedSigResult(SeqNum seqNumber, ViewNum view, bool isValid) {
   LOG_DEBUG(GL, KVLOG(view));
+  LOG_DEBUG(CNSUS, "onVoteVerifyCombinedSigResult");
 
   if ((isCollectingState()) || (!currentViewIsActive()) || (curView != view) ||
       (!mainLog->insideActiveWindow(seqNumber))) {
