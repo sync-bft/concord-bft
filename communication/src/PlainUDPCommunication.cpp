@@ -170,6 +170,9 @@ class PlainUDPCommunication::PlainUdpImpl {
     sAddr.sin_addr.s_addr = htonl(INADDR_ANY);
     sAddr.sin_port = htons(udpListenPort);
 
+    int on=1;
+    setsockopt(udpSockFd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on));
+
     // Bind the socket.
     error = ::bind(udpSockFd, (struct sockaddr *)&sAddr, sizeof(Addr));
     if (error < 0) {

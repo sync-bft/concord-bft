@@ -32,6 +32,7 @@
 
 extern logging::Logger GL;
 extern logging::Logger CNSUS;
+extern logging::Logger PlainUDP;
 
 namespace logging {
 
