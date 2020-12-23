@@ -32,12 +32,12 @@ void ProposalMsg::validate(const ReplicasInfo& repInfo) const{
 
     // check digest of client request buffer
     Digest d;
-    const char* buffer = (char*)&(b()->seqNumDigestFill);
+    const char* buffer = (char*)&(b()->numberOfRequests);
     const uint32_t bufferSize = (b()->endLocationOfLastRequest - proposalHeaderPrefix);
 
     DigestUtil::compute(buffer, bufferSize, (char*)&d, sizeof(Digest));
 
-    if (d != b()->digestOfRequestsSeqNum) throw std::runtime_error(__PRETTY_FUNCTION__ + std::string(": digest"));
+    if (d != b()->digestOfRequests) throw std::runtime_error(__PRETTY_FUNCTION__ + std::string(": digest"));
 
     // TODO(QF): check certificates
 
@@ -56,30 +56,37 @@ ProposalMsg::ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* comb
 {
     bool ready = size == 0;
     if (!ready) {
-        b()->digestOfRequestsSeqNum.makeZero();
+        b()->digestOfRequests.makeZero();
     } else {
-        b()->digestOfRequestsSeqNum = nullDigest;
+        b()->digestOfRequests = nullDigest;
     }
 
-    b()->endLocationOfLastRequest = requestsPayloadShift();
+    //LOG_DEBUG(CNSUS, "[init before memcpy] end location of last request = " << b()->endLocationOfLastRequest);
+    //LOG_DEBUG(CNSUS, "[init before memcpy] request starts at = " << requestsPayloadShift());
+
     b()->flags = computeFlagsForProposalMsg(ready, ready);
     b()->numberOfRequests = 0;
     b()->seqNum = s;
     b()->viewNum = v;
     b()->isFirstMsg = isFirst;
     b()->isForwardedMsg = false;
-    b()->seqNumDigestFill = s;
+    //b()->seqNumDigestFill = s;
     b()->combinedSigLen = combinedSigLength;
+    b()->endLocationOfLastRequest = requestsPayloadShift();
 
     char* position = body() + sizeof(Header);
     memcpy(position, spanContext.data(), b()->header.spanContextSize);
     position = body() + sizeof(Header) +  b()->header.spanContextSize;
     memcpy(position, combinedSigBody, b()->combinedSigLen); 
+    //LOG_DEBUG(CNSUS, "[init after memcpy] end location of last request = " << b()->endLocationOfLastRequest);
+    //LOG_DEBUG(CNSUS, "[init after memcpy] request starts at = " << requestsPayloadShift());
 }
 
 uint32_t ProposalMsg::remainingSizeForRequests() const {
   Assert(!isReady());
   Assert(!isNull());
+  //LOG_DEBUG(CNSUS, "end location of last request = " << b()->endLocationOfLastRequest);
+  //LOG_DEBUG(CNSUS, "request starts at = " << requestsPayloadShift());
   Assert(b()->endLocationOfLastRequest >= requestsPayloadShift());
 
   return (internalStorageSize() - b()->endLocationOfLastRequest);
@@ -96,6 +103,7 @@ void ProposalMsg::addRequest(const char* pRequest, uint32_t requestSize) {
 
   b()->endLocationOfLastRequest += requestSize;
   b()->numberOfRequests++;
+  //LOG_DEBUG(CNSUS, "num req " << b()->numberOfRequests << ", current end loc of last req " << b()->endLocationOfLastRequest);
 }
 
 void ProposalMsg::finishAddingRequests() {
@@ -103,7 +111,7 @@ void ProposalMsg::finishAddingRequests() {
   Assert(!isReady());
   Assert(b()->numberOfRequests > 0);
   Assert(b()->endLocationOfLastRequest > requestsPayloadShift());
-  Assert(b()->digestOfRequestsSeqNum.isZero());
+  Assert(b()->digestOfRequests.isZero());
 
   // check requests (for debug - consider to remove)
   // Assert(checkRequests());
@@ -114,10 +122,10 @@ void ProposalMsg::finishAddingRequests() {
 
   // compute and set digest
   Digest d;
-  const char* buffer = (char*)&(b()->seqNumDigestFill);
+  const char* buffer = (char*)&(b()->numberOfRequests);
   const uint32_t bufferSize = (b()->endLocationOfLastRequest - proposalHeaderPrefix);
   DigestUtil::compute(buffer, bufferSize, (char*)&d, sizeof(Digest));
-  b()->digestOfRequestsSeqNum = d;
+  b()->digestOfRequests = d;
 
   // size
   setMsgSize(b()->endLocationOfLastRequest);

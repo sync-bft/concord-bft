@@ -60,12 +60,12 @@ class CollectorOfThresholdSignatures {
   }
 
   bool addMsgWithVoteSignature(PART* voteSigMsg, ReplicaId repId) {
-    LOG_DEBUG(CNSUS, "on addMsgWithVoteSignature()");
+    //LOG_DEBUG(CNSUS, "on addMsgWithVoteSignature()");
     Assert(voteSigMsg != nullptr);
-    LOG_DEBUG(CNSUS, "combinedValidSignatureMsg != nullptr : " << (combinedValidSignatureMsg != nullptr));
-    LOG_DEBUG(CNSUS, "replicasInfo.count(repId) > 0 : " << (replicasInfo.count(repId) > 0));
+    //LOG_DEBUG(CNSUS, "combinedValidSignatureMsg != nullptr : " << (combinedValidSignatureMsg != nullptr));
+    //LOG_DEBUG(CNSUS, "replicasInfo.count(repId) > 0 : " << (replicasInfo.count(repId) > 0));
     if ((combinedValidSignatureMsg != nullptr) || (replicasInfo.count(repId) > 0)) return false;
-    LOG_DEBUG(CNSUS, "going to increase sig count");
+    //LOG_DEBUG(CNSUS, "going to increase sig count");
     // add voteSigMsg to replicasInfo
     RepInfo info = {voteSigMsg, SigState::Unknown};
     replicasInfo[repId] = info;
@@ -263,7 +263,7 @@ class CollectorOfThresholdSignatures {
 
     if (numOfRequiredSigs == 0)  // init numOfRequiredSigs
       numOfRequiredSigs = ExternalFunc::numberOfRequiredSignatures(context);
-
+    
     // Assert(numberOfUnknownSignatures < numOfRequiredSigs);  // because numOfRequiredSigs > 1
 
     return true;
@@ -289,11 +289,11 @@ class CollectorOfThresholdSignatures {
  protected:
   void trySendToBkThread() {
     Assert(combinedValidSignatureMsg == nullptr);
-    LOG_DEBUG(CNSUS, "On trySendToBkThread()");
+    //LOG_DEBUG(CNSUS, "On trySendToBkThread()");
     if (numOfRequiredSigs == 0)  // init numOfRequiredSigs
       numOfRequiredSigs = ExternalFunc::numberOfRequiredSignatures(context);
-    LOG_DEBUG(CNSUS, "numOfRequiredSigs" << numOfRequiredSigs);
-    LOG_DEBUG(CNSUS, "numberOfUnknownSignatures" << numberOfUnknownSignatures);
+    //LOG_DEBUG(CNSUS, "[CollectorOfThresholdSignatures] numOfRequiredSigs " << numOfRequiredSigs);
+    //LOG_DEBUG(CNSUS, "[CollectorOfThresholdSignatures] numberOfUnknownSignatures " << numberOfUnknownSignatures);
 
     if (processingSignaturesInTheBackground || expectedSeqNumber == 0) return;
 
@@ -311,6 +311,8 @@ class CollectorOfThresholdSignatures {
 
       ExternalFunc::threadPool(context).add(bkJob);
     } else if (numberOfUnknownSignatures >= numOfRequiredSigs) {
+      //LOG_DEBUG(CNSUS, "[Collector] numberOfUnknownSignatures >= numOfRequiredSigs");
+
       processingSignaturesInTheBackground = true;
 
       SignaturesProcessingJob* bkJob = new SignaturesProcessingJob(ExternalFunc::thresholdVerifier(context),
@@ -324,6 +326,7 @@ class CollectorOfThresholdSignatures {
       uint16_t numOfPartSigsInJob = 0;
       for (std::pair<uint16_t, RepInfo>&& info : replicasInfo) {
         if (info.second.state != SigState::Invalid) {
+          //LOG_DEBUG(CNSUS, "From " << info.first << ": State is not invalid");
           auto msg = info.second.partialSigMsg;
           auto sig = msg->signatureBody();
           auto len = msg->signatureLen();
@@ -336,6 +339,7 @@ class CollectorOfThresholdSignatures {
       }
 
       Assert(numOfPartSigsInJob == numOfRequiredSigs);
+      //LOG_DEBUG(CNSUS, "[CollectorOfThresholdSignatures] number of required signatures is "<<numOfRequiredSigs);
 
       ExternalFunc::threadPool(context).add(bkJob);
     }
@@ -386,7 +390,7 @@ class CollectorOfThresholdSignatures {
     }
 
     void add(ReplicaId srcRepId, const char* sigBody, uint16_t sigLength, const std::string& span_context) {
-      LOG_DEBUG(CNSUS, "on add() from SignaturesProcessingJob");
+      //LOG_DEBUG(CNSUS, "on add() from SignaturesProcessingJob");
       Assert(numOfDataItems < reqDataItems);
 
       SigData d;
@@ -413,7 +417,7 @@ class CollectorOfThresholdSignatures {
 
     virtual void execute() override {
       Assert(numOfDataItems == reqDataItems);
-      LOG_DEBUG(CNSUS, "on execute() from SignaturesProcessingJob");
+      //LOG_DEBUG(CNSUS, "on execute() from SignaturesProcessingJob");
 
       // TODO(GG): can utilize several threads (discuss with Alin)
 
@@ -437,6 +441,8 @@ class CollectorOfThresholdSignatures {
       }
 
       bool succ = verifier->verify((char*)&expectedDigest, sizeof(Digest), bufferForSigComputations, bufferSize);
+
+      //expectedDigest.print();
 
       if (!succ) {
         std::set<ReplicaId> replicasWithBadSigs;

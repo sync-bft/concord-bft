@@ -52,7 +52,8 @@ IThresholdAccumulator *BlsMultisigVerifier::newAccumulator(bool withShareVerific
   if (reqSigners_ == numSigners_ && withShareVerification) {
     LOG_WARN(GL,
              "BLS n-out-of-n multisig typically has share verification "
-             "disabled in Concord. Are you sure you need this?");
+             "disabled in Concord. Are you sure you need this? reqSigners = " << reqSigners_ << ", numSigners_ = " <<
+             numSigners_);
   }
   return new BlsMultisigAccumulator(publicKeysVector_, reqSigners_, numSigners_, withShareVerification);
 }
@@ -75,7 +76,9 @@ int BlsMultisigVerifier::requiredLengthForSignedData() const {
 
 bool BlsMultisigVerifier::verify(const char *msg, int msgLen, const char *sigBuf, int sigLen) const {
   // Parse the signer IDs from sigBuf and adjust the PK
+  LOG_DEBUG(CNSUS, "reqSigners_ = " << reqSigners_ << " and numSigners_ = " << numSigners_);
   if (reqSigners_ != numSigners_) {
+    LOG_DEBUG(CNSUS, "reqSigners != numSigners_");
     if (sigLen != requiredLengthForSignedData()) {
       throw runtime_error("Signature does not have the right size");
     }

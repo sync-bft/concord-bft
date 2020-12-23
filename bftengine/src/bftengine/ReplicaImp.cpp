@@ -3487,12 +3487,12 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
     return;
   }
 
-  if (primaryLastUsedSeqNum > lastExecutedSeqNum + 1){//config_.concurrencyLevel) { //  config_.concurrencyLevel
-    LOG_INFO(GL,
-             "Will not send Proposal since next sequence number ["
-                 << primaryLastUsedSeqNum + 1 << "] exceeds the next executed sequence number [" << lastExecutedSeqNum << "]");
-    return;  // TODO(GG): should also be checked by the non-primary replicas
-  }
+  //if (primaryLastUsedSeqNum > lastExecutedSeqNum + 1){//config_.concurrencyLevel) { //  config_.concurrencyLevel
+  //  LOG_INFO(GL,
+  //           "Will not send Proposal since next sequence number ["
+  //               << primaryLastUsedSeqNum + 1 << "] exceeds the next executed sequence number [" << lastExecutedSeqNum << "]");
+  //  return;  // TODO(GG): should also be checked by the non-primary replicas
+  //}
 
    if (requestsQueueOfPrimary.empty()) return;
 
@@ -3564,6 +3564,7 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
     if (nextRequest->size() <= proposal->remainingSizeForRequests()) {
       SCOPED_MDC_CID(nextRequest->getCid());
       //adds as many requests as possible
+      //LOG_DEBUG(CNSUS, "Adding request in the proposal message");
       proposal->addRequest(nextRequest->body(), nextRequest->size());
       //if (clientsManager->noPendingAndRequestCanBecomePending(nextRequest->clientProxyId(), nextRequest->requestSeqNum())) {
       //  proposal->addRequest(nextRequest->body(), nextRequest->size());
@@ -3603,6 +3604,16 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
     sendRetransmittableMsgToReplica(proposal, x, primaryLastUsedSeqNum);
   }
 
+  // add self-vote:
+  const auto &vote_span_context = proposal->spanContext<std::remove_pointer<decltype(proposal)>::type>();
+  VoteMsg *v = VoteMsg::create(curView,
+                              proposal->seqNumber(),
+                              config_.replicaId,
+                              proposal->digestOfRequestsSeqNum(),
+                              config_.thresholdSignerForSlowPathCommit,
+                              vote_span_context);
+  currSeqNumInfo.addSelfMsg(v, false);
+
   if (!isPrimaryInitialized) isPrimaryInitialized = true;
 
   // Start commit timer for primary.
@@ -3627,7 +3638,7 @@ void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
                               pMsg->digestOfRequestsSeqNum(),
                               config_.thresholdSignerForSlowPathCommit,
                               span_context);
-  seqNumInfo.addMsg(v, false);
+  seqNumInfo.addSelfMsg(v, false);
 
   if (!isCurrentPrimary()) {
     for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
@@ -3852,11 +3863,11 @@ void ReplicaImp::executeRequestsInProposalMsg(concordUtils::SpanWrapper &parent_
       AssertGT(actualReplyLength,
                0);  // TODO(GG): TBD - how do we want to support empty replies? (actualReplyLength==0)
 
-      ClientReplyMsg *replyMsg = clientsManager->allocateNewReplyMsgAndWriteToStorage(
-          clientId, req.requestSeqNum(), currentPrimary(), replyBuffer, actualReplyLength);
+      ClientReplyMsg* const replyMsg = new ClientReplyMsg(req.requestSeqNum(), req.requestSeqNum(), replyBuffer, actualReplyLength);
+      replyMsg->setPrimaryId(currentPrimary());
       send(replyMsg, clientId);
       delete replyMsg;
-      clientsManager->removePendingRequestOfClient(clientId);
+      //clientsManager->removePendingRequestOfClient(clientId);
     }
   }
 
@@ -3894,7 +3905,7 @@ void ReplicaImp::executeRequestsInProposalMsg(concordUtils::SpanWrapper &parent_
 }
 
 void ReplicaImp::onInternalMsg(InternalMessage &&msg) {
-  LOG_DEBUG(CNSUS, "on Internal Message");
+  //LOG_DEBUG(CNSUS, "on Internal Message");
   metric_received_internal_msgs_.Get().Inc();
 
   // vote collector in Sync-HotStuff currently share the same exfunc with prepare collector
@@ -3926,7 +3937,7 @@ void ReplicaImp::onInternalMsg(InternalMessage &&msg) {
 void ReplicaImp::onVoteCombinedSigFailed(SeqNum seqNumber,
                                             ViewNum view,
                                             const std::set<uint16_t> &replicasWithBadSigs) {
-  LOG_DEBUG(GL, KVLOG(seqNumber, view));
+  //LOG_DEBUG(GL, KVLOG(seqNumber, view));
 
   if ((isCollectingState()) || (!currentViewIsActive()) || (curView != view) ||
       (!mainLog->insideActiveWindow(seqNumber))) {
@@ -3936,6 +3947,14 @@ void ReplicaImp::onVoteCombinedSigFailed(SeqNum seqNumber,
   }
 
   SeqNumInfo &seqNumInfo = mainLog->get(seqNumber);
+  LOG_DEBUG(CNSUS, "onVoteCombinedSig Failed with sequence number " << seqNumber);
+  
+  auto it = replicasWithBadSigs.begin();
+  while (it != replicasWithBadSigs.end())
+  {
+    LOG_DEBUG(CNSUS, "Replica with Bad Sig: " << (*it));
+    it++;
+  }
 
   seqNumInfo.onCompletionOfVoteSignaturesProcessing(seqNumber, view, replicasWithBadSigs);
 
@@ -3964,7 +3983,7 @@ void ReplicaImp::onVoteCombinedSigSucceeded(
   SeqNumInfo &seqNumInfo = mainLog->get(seqNumber);
   seqNumInfo.addCombinedSig(combinedSig, combinedSigLen);
   seqNumInfo.onCompletionOfVoteSignaturesProcessing(seqNumber, view, combinedSig, combinedSigLen, span_context);
-  LOG_DEBUG(CNSUS, "Onto the next block proposal!");
+  LOG_DEBUG(CNSUS, "SeqNum : " << seqNumber << ", Onto the next block proposal!");
   tryToSendProposalMsg(true); // if request queue is empty, return
 }
 

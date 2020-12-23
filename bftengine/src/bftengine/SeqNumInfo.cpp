@@ -428,7 +428,7 @@ void SeqNumInfo::init(SeqNumInfo& i, void* d) {
 //////////////////////////////////////////////////////////////////////
 
 bool SeqNumInfo::addMsg(VoteMsg* m, bool directAdd) {
-  // Assert(directAdd || replica->getReplicasInfo().myId() != m->senderId());
+  Assert(replica->getReplicasInfo().myId() != m->senderId());
   Assert(!forcedCompleted);
 
   bool retVal;
@@ -438,6 +438,22 @@ bool SeqNumInfo::addMsg(VoteMsg* m, bool directAdd) {
     retVal = voteSigCollector->initMsgWithVoteSignature(m, m->senderId());
   
   return retVal;
+}
+
+bool SeqNumInfo::addSelfMsg(VoteMsg* m, bool directAdd) {
+  Assert(replica->getReplicasInfo().myId() == m->senderId());
+  Assert(!forcedCompleted);
+
+  bool r;
+
+  if (!directAdd)
+    r = voteSigCollector->addMsgWithVoteSignature(m, m->senderId());
+  else
+    r = voteSigCollector->initMsgWithVoteSignature(m, m->senderId());
+
+  Assert(r);
+
+  return true;
 }
 
 bool SeqNumInfo::canCommit() const {
@@ -562,8 +578,8 @@ InternalMessage SeqNumInfo::ExFuncForVoteCollector::createInterVerifyCombinedSig
 uint16_t SeqNumInfo::ExFuncForVoteCollector::numberOfRequiredSignatures(void* context) {
   InternalReplicaApi* r = (InternalReplicaApi*)context;
   const ReplicasInfo& info = r->getReplicasInfo();
-  //return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
-  return (uint16_t)(info.fVal() + 1);
+  return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
+  //return (uint16_t)(info.fVal() + 1);
 }
 
 IThresholdVerifier* SeqNumInfo::ExFuncForVoteCollector::thresholdVerifier(void* context) {
