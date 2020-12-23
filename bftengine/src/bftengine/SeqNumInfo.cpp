@@ -201,19 +201,6 @@ bool SeqNumInfo::addMsg(CommitFullMsg* m, bool directAdd) {
   return r;
 }
 
-bool SeqNumInfo::addMsg(VoteMsg* m, bool directAdd) {
-  // Assert(directAdd || replica->getReplicasInfo().myId() != m->senderId());
-  Assert(!forcedCompleted);
-
-  bool retVal;
-  if (!directAdd)
-    retVal = voteSigCollector->addMsgWithVoteSignature(m, replica->getReplicasInfo().myId());
-  else
-    retVal = voteSigCollector->initMsgWithVoteSignature(m, replica->getReplicasInfo().myId());
-  
-  return retVal;
-}
-
 bool SeqNumInfo::canCommit() const {
   // return forcedCompleted || ((prePrepareMsg != nullptr) && voteSigCollector->isComplete());
   return voteSigCollector->votesCollected();
@@ -451,10 +438,32 @@ bool SeqNumInfo::addMsg(ProposalMsg* m) {
   if (proposalMsg != nullptr) return false;
 
   Assert(primary == false);
+  Assert(!forcedCompleted);
+  Assert(!voteSigCollector->hasVoteMsgFromReplica(replica->getReplicasInfo().myId()));
 
   proposalMsg = m;
 
+  Digest tmpDigest;
+  Digest::calcCombination(m->digestOfRequestsSeqNum(), m->viewNumber(), m->seqNumber(), tmpDigest);
+  voteSigCollector->setExpected(m->seqNumber(), m->viewNumber(), tmpDigest); // using backgroud thread
+
+  if (firstSeenFromPrimary == MinTime)  // TODO(GG): remove condition - TBD
+    firstSeenFromPrimary = getMonotonicTime();
+
   return true;
+}
+
+bool SeqNumInfo::addMsg(VoteMsg* m, bool directAdd) {
+  Assert(replica->getReplicasInfo().myId() != m->senderId());
+  Assert(!forcedCompleted);
+
+  bool retVal;
+  if (!directAdd)
+    retVal = voteSigCollector->addMsgWithVoteSignature(m, replica->getReplicasInfo().myId());
+  else
+    retVal = voteSigCollector->initMsgWithVoteSignature(m, replica->getReplicasInfo().myId());
+  
+  return retVal;
 }
 
 bool SeqNumInfo::addSelfMsg(ProposalMsg* m, bool directAdd, bool primaryFirstMsg) {
@@ -479,6 +488,22 @@ bool SeqNumInfo::addSelfMsg(ProposalMsg* m, bool directAdd, bool primaryFirstMsg
 
   if (firstSeenFromPrimary == MinTime)  // TODO(GG): remove condition - TBD
     firstSeenFromPrimary = getMonotonicTime();
+
+  return true;
+}
+
+bool SeqNumInfo::addSelfMsg(VoteMsg* m, bool directAdd) {
+  Assert(replica->getReplicasInfo().myId() == m->senderId());
+  Assert(!forcedCompleted);
+
+  bool r;
+
+  if (!directAdd)
+    r = voteSigCollector->addMsgWithVoteSignature(m, m->senderId());
+  else
+    r = voteSigCollector->initMsgWithVoteSignature(m, m->senderId());
+
+  Assert(r);
 
   return true;
 }

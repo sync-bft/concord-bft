@@ -62,11 +62,11 @@ class CollectorOfThresholdSignatures {
     Assert(voteSigMsg != nullptr);
     if ((combinedValidSignatureMsg != nullptr) || (replicasInfo.count(repId) > 0)) return false;
     // add voteSigMsg to replicasInfo
-    VoteInfo info = {voteSigMsg, SigState::Unknown};
-    votersInfo[repId] = info;
-    // numberOfUnknownSignatures++;
-    // trySendToBkThread();
-    numberOfVoteSignatures++;
+    RepInfo info = {voteSigMsg, SigState::Unknown};
+    replicasInfo[repId] = info;
+    numberOfUnknownSignatures++;
+    trySendToBkThread();
+    //numberOfVoteSignatures++;
     return true;
   }
   
@@ -249,15 +249,15 @@ class CollectorOfThresholdSignatures {
     Assert(numberOfUnknownSignatures == 0);  // we can use this method to add at most one PART message
 
     // add voteSigMsg to replicasInfo
-    // RepInfo info = {voteSigMsg, SigState::Unknown};
-    // replicasInfo[repId] = info;
+    RepInfo info = {voteSigMsg, SigState::Unknown};
+    replicasInfo[repId] = info;
 
     // TODO(GG): do we want to verify the partial signature here?
 
-    // numberOfUnknownSignatures++;
+    numberOfUnknownSignatures++;
 
-    // if (numOfRequiredSigs == 0)  // init numOfRequiredSigs
-      // numOfRequiredSigs = ExternalFunc::numberOfRequiredSignatures(context);
+    if (numOfRequiredSigs == 0)  // init numOfRequiredSigs
+      numOfRequiredSigs = ExternalFunc::numberOfRequiredSignatures(context);
 
     // Assert(numberOfUnknownSignatures < numOfRequiredSigs);  // because numOfRequiredSigs > 1
 
@@ -560,15 +560,15 @@ class CollectorOfThresholdSignatures {
   ViewNum expectedView = 0;
   Digest expectedDigest;
 
-  struct VoteInfo {
-    PART* voteSigMsg;
-    SigState state;
-  };
+  //struct VoteInfo {
+  //  PART* voteSigMsg;
+  //  SigState state;
+  //};
 
   // bool processingSignaturesInTheBackground = false;
 
   // uint16_t numberOfUnknownSignatures = 0;
-  std::unordered_map<ReplicaId, VoteInfo> votersInfo;
+  //std::unordered_map<ReplicaId, VoteInfo> votersInfo;
 
   FULL* combinedVoteSignatureMsg = nullptr;
 

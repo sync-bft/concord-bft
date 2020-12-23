@@ -27,11 +27,11 @@ class ProposalMsg : public MessageBase{
             uint16_t flags;
             bool isFirstMsg;
             bool isForwardedMsg;
-            Digest digestOfRequestsSeqNum;
-
             uint16_t combinedSigLen;
 
-            SeqNum seqNumDigestFill;  // used to calculate digest
+            Digest digestOfRequests;
+
+            //SeqNum seqNumDigestFill;  // used to calculate digest
             uint16_t numberOfRequests;
             uint32_t endLocationOfLastRequest;
 
@@ -42,11 +42,9 @@ class ProposalMsg : public MessageBase{
         };
 
     #pragma pack(pop)
-      static_assert(sizeof(Header) == (6 + 8 + 8 + 2 + 1 + 1 + DIGEST_SIZE + 2 + 8 + 2 + 4), "Header is 74B");
+      static_assert(sizeof(Header) == (6 + 8 + 8 + 2 + 1 + 1 + 2 + DIGEST_SIZE + 2 + 4), "Header is 74B");
 
-      static const size_t proposalHeaderPrefix =
-        sizeof(Header) - sizeof(Header::seqNumDigestFill) - sizeof(Header::numberOfRequests) - sizeof(Header::endLocationOfLastRequest);
-
+      static const size_t proposalHeaderPrefix = sizeof(Header) - sizeof(Header::numberOfRequests) - sizeof(Header::endLocationOfLastRequest);
     
     public:
 
@@ -76,7 +74,7 @@ class ProposalMsg : public MessageBase{
         
         uint16_t numberOfRequests() const { return b()->numberOfRequests; }
 
-        Digest& digestOfRequestsSeqNum() const {return b()->digestOfRequestsSeqNum;}
+        Digest& digestOfRequestsSeqNum() const {return b()->digestOfRequests;}
     
         size_t combinedSigLength() const {return combinedSigLen;}
 

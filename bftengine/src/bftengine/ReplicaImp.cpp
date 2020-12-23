@@ -3608,6 +3608,16 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
     sendRetransmittableMsgToReplica(proposal, x, primaryLastUsedSeqNum);
   }
 
+  // add self-vote:
+  const auto &vote_span_context = proposal->spanContext<std::remove_pointer<decltype(proposal)>::type>();
+  VoteMsg *v = VoteMsg::create(curView,
+                              proposal->seqNumber(),
+                              config_.replicaId,
+                              proposal->digestOfRequestsSeqNum(),
+                              config_.thresholdSignerForSlowPathCommit,
+                              vote_span_context);
+  currSeqNumInfo.addSelfMsg(v, false);
+
   if (!isPrimaryInitialized) isPrimaryInitialized = true;
 
   // Start commit timer for primary.
@@ -3632,7 +3642,7 @@ void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
                               pMsg->digestOfRequestsSeqNum(),
                               config_.thresholdSignerForSlowPathCommit,
                               span_context);
-  seqNumInfo.addMsg(v);
+   seqNumInfo.addSelfMsg(v, false);
 
   if (!isCurrentPrimary()) {
     for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
