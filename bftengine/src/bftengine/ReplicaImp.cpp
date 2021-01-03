@@ -115,6 +115,7 @@ void ReplicaImp::registerMsgHandlers() {
 
   msgHandlers_->registerInternalMsgHandler([this](InternalMessage &&msg) { onInternalMsg(std::move(msg)); });
 
+  //register the message handlers for vote and proposal messages
   msgHandlers_->registerMsgHandler(MsgCode::Proposal,
                                    bind(&ReplicaImp::messageHandler<ProposalMsg>, this, _1));
 
@@ -227,7 +228,7 @@ void ReplicaImp::onMessage<ClientRequestMsg>(ClientRequestMsg *m) {
         requestsQueueOfPrimary.push(m);
         primaryCombinedReqSize += m->size();
         //tryToSendPrePrepareMsg(true);
-        tryToSendProposalMsg(true);
+        tryToSendProposalMsg(true); //use proposal message instead
         return;
       } else {
         LOG_INFO(GL,
@@ -3467,6 +3468,7 @@ IncomingMsgsStorage &ReplicaImp::getIncomingMsgsStorage() { return *msgsCommunic
 // Sync-HotStuff
 //////////////////////////////////////////////////////////////////////
 
+//send proposal message for sync-bft. This is analogous to tryToSendPreprepareMsg
 void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
 
   Assert(isCurrentPrimary());
@@ -3627,6 +3629,7 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
 
 }
 
+//send vote message
 void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
   Assert(currentViewIsActive());
 
@@ -3653,6 +3656,7 @@ void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
 
 }
 
+//handling receiving a vote message. Analogous to all functions using the onMessage template
 template<>
 void ReplicaImp::onMessage<VoteMsg>(VoteMsg *msg) {
   LOG_INFO(CNSUS, "Received VoteMsg");
@@ -3669,6 +3673,7 @@ void ReplicaImp::onMessage<VoteMsg>(VoteMsg *msg) {
   }*/
 }
 
+//handling receiving a proposal message. Analogous to all functions using the onMessage template (onMessage<PrePrepareMsg>)
 template<>
 void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalMsg
 

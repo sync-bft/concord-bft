@@ -272,6 +272,7 @@ void ControllerWithSimpleHistory::onMessage(const PreparePartialMsg* m) {
 // Sync-HotStuff
 //////////////////////////////////////////////////////////////////////
 
+//get millisecond timestamp since proposal
 int ControllerWithSimpleHistory::durationSinceProposal(SeqNum n) {
   if (!isPrimary || !recentActivity.insideActiveWindow(n)) return -1;
 
@@ -279,6 +280,7 @@ int ControllerWithSimpleHistory::durationSinceProposal(SeqNum n) {
   return std::chrono::duration_cast<std::chrono::milliseconds>(getMonotonicTime() - s.proposalTime).count();
 }
 
+//set proposal time
 void ControllerWithSimpleHistory::onSendingProposal(SeqNum n) {
   onSendingProposal(n, getMonotonicTime());
 }

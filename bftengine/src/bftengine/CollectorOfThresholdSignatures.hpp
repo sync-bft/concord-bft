@@ -52,12 +52,14 @@ class CollectorOfThresholdSignatures {
     return true;
   }
 
+  //return whether votes collected are sufficient
   bool votesCollected() const {
     InternalReplicaApi* r = (InternalReplicaApi*)context;
     const ReplicasInfo& info = r->getReplicasInfo();
     return (numberOfVoteSignatures > info.fVal());
   }
 
+  //adding vote signature to replica info
   bool addMsgWithVoteSignature(PART* voteSigMsg, ReplicaId repId) {
     Assert(voteSigMsg != nullptr);
     if ((combinedValidSignatureMsg != nullptr) || (replicasInfo.count(repId) > 0)) return false;
@@ -123,6 +125,7 @@ class CollectorOfThresholdSignatures {
 
   bool hasVoteMsgFromReplica(ReplicaId repId) const { return (replicasInfo.count(repId) > 0); }
 
+  //vote getter function
   PART* getVoteMsgFromReplica(ReplicaId repId) const {
     if (replicasInfo.count(repId) == 0) return nullptr;
 
@@ -246,7 +249,8 @@ class CollectorOfThresholdSignatures {
     Assert(combinedValidSignatureMsg == nullptr);
     Assert(candidateCombinedSignatureMsg == nullptr);
     Assert(replicasInfo.count(repId) == 0);
-    Assert(numberOfUnknownSignatures == 0);  // we can use this method to add at most one PART message
+    Assert(numberOfUnknownSignatures == 0);  
+    // we can use this method to add at most one PART message
 
     // add voteSigMsg to replicasInfo
     RepInfo info = {voteSigMsg, SigState::Unknown};

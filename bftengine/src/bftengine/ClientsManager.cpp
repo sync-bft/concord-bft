@@ -96,6 +96,7 @@ ReqId ClientsManager::seqNumberOfLastReplyToClient(NodeIdType clientId) {
   return retVal;
 }
 
+//add debug info, can comment out later
 bool ClientsManager::isValidClient(NodeIdType clientId) const { 
   for(auto it = clientIdToIndex_.begin(); it != clientIdToIndex_.end(); ++it)
     {
