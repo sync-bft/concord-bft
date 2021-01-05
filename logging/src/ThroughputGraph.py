@@ -1,6 +1,8 @@
 from altair as alt
 from altair_saver import save
 
+#generate throughput graph based on logging file
+
 nanosec_to_sec = 1e9
 interval_sec = 1.0
 exp_num = 6

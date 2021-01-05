@@ -201,6 +201,7 @@ bool SeqNumInfo::addMsg(CommitFullMsg* m, bool directAdd) {
   return r;
 }
 
+//get votesCollected status to dtermine whether can start commit
 bool SeqNumInfo::canCommit() const {
   // return forcedCompleted || ((prePrepareMsg != nullptr) && voteSigCollector->isComplete());
   return voteSigCollector->votesCollected();
@@ -233,6 +234,7 @@ PrepareFullMsg* SeqNumInfo::getValidPrepareFullMsg() const {
   return prepareSigCollector->getMsgWithValidCombinedSignature();
 }
 
+//get vote message from self
 VoteMsg* SeqNumInfo::getSelfVoteMsg() const {
   VoteMsg* p = voteSigCollector->getVoteMsgFromReplica(replica->getReplicasInfo().myId());
   return p;
@@ -432,8 +434,10 @@ void SeqNumInfo::init(SeqNumInfo& i, void* d) {
 // Sync-HotStuff
 //////////////////////////////////////////////////////////////////////
 
+//getter function for proposal message
 ProposalMsg* SeqNumInfo::getProposalMsg() const { return proposalMsg; }
 
+//add proposal message
 bool SeqNumInfo::addMsg(ProposalMsg* m) {
   if (proposalMsg != nullptr) return false;
 
@@ -453,6 +457,7 @@ bool SeqNumInfo::addMsg(ProposalMsg* m) {
   return true;
 }
 
+//add vote message
 bool SeqNumInfo::addMsg(VoteMsg* m, bool directAdd) {
   Assert(replica->getReplicasInfo().myId() != m->senderId());
   Assert(!forcedCompleted);
@@ -466,6 +471,7 @@ bool SeqNumInfo::addMsg(VoteMsg* m, bool directAdd) {
   return retVal;
 }
 
+//add proposal message to self
 bool SeqNumInfo::addSelfMsg(ProposalMsg* m, bool directAdd, bool primaryFirstMsg) {
   
   primary = primaryFirstMsg? true:primary;
@@ -492,6 +498,7 @@ bool SeqNumInfo::addSelfMsg(ProposalMsg* m, bool directAdd, bool primaryFirstMsg
   return true;
 }
 
+//add vote message to replica itself
 bool SeqNumInfo::addSelfMsg(VoteMsg* m, bool directAdd) {
   Assert(replica->getReplicasInfo().myId() == m->senderId());
   Assert(!forcedCompleted);
@@ -508,18 +515,23 @@ bool SeqNumInfo::addSelfMsg(VoteMsg* m, bool directAdd) {
   return true;
 }
 
+//add combined signature
 bool SeqNumInfo::addCombinedSig(const char* sig, uint16_t len){
   combinedSig = sig;
   combinedSigLen = len;
   return true;
 }
 
+//TODO: not sure about this function
+//analogous to onCompletionOfPrepareSignaturesProcessing
 void SeqNumInfo::onCompletionOfVoteSignaturesProcessing(SeqNum seqNumber,
                                                         ViewNum viewNumber,
                                                         const std::set<ReplicaId>& replicasWithBadSigs) {
   voteSigCollector->onCompletionOfSignaturesProcessing(seqNumber, viewNumber, replicasWithBadSigs);
 }
 
+//TODO: not sure about this function
+//analogous to onCompletionOfPrepareSignaturesProcessing
 void SeqNumInfo::onCompletionOfVoteSignaturesProcessing(SeqNum seqNumber,
                                                         ViewNum viewNumber,
                                                         const char* combinedSig,
@@ -532,6 +544,8 @@ void SeqNumInfo::onCompletionOfVoteSignaturesProcessing(SeqNum seqNumber,
       seqNumber, viewNumber, combinedSig, combinedSigLen, span_context);
 }
 
+//verify vote signature and pass the process to block thread
+//analogous to onCompletionOfCombinedPrepareSigVerification
 void SeqNumInfo::onCompletionOfCombinedVoteSigVerification(SeqNum seqNumber, ViewNum viewNumber, bool isValid) {
   voteSigCollector->onCompletionOfCombinedSigVerification(seqNumber, viewNumber, isValid);
 }
@@ -540,6 +554,7 @@ void SeqNumInfo::onCompletionOfCombinedVoteSigVerification(SeqNum seqNumber, Vie
 // class SeqNumInfo::ExFuncForVoteCollector
 ///////////////////////////////////////////////////////////////////////////////
 
+//create combined signature message
 VoteFullMsg* SeqNumInfo::ExFuncForVoteCollector::createCombinedSignatureMsg(void* context,
                                                                             SeqNum seqNumber,
                                                                             ViewNum viewNumber,
@@ -565,28 +580,33 @@ InternalMessage SeqNumInfo::ExFuncForVoteCollector::createInterCombinedSigSuccee
   return CombinedSigSucceededInternalMsg(seqNumber, viewNumber, combinedSig, combinedSigLen, span_context);
 }
 
+//verify combine sig result
 InternalMessage SeqNumInfo::ExFuncForVoteCollector::createInterVerifyCombinedSigResult(SeqNum seqNumber,
                                                                                           ViewNum viewNumber,
                                                                                           bool isValid) {
   return VerifyCombinedSigResultInternalMsg(seqNumber, viewNumber, isValid);
 }
 
+//calculate the number of requried signatures
 uint16_t SeqNumInfo::ExFuncForVoteCollector::numberOfRequiredSignatures(void* context) {
   InternalReplicaApi* r = (InternalReplicaApi*)context;
   const ReplicasInfo& info = r->getReplicasInfo();
   return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
 }
 
+//verify threshhold
 IThresholdVerifier* SeqNumInfo::ExFuncForVoteCollector::thresholdVerifier(void* context) {
   InternalReplicaApi* r = (InternalReplicaApi*)context;
   return r->getThresholdVerifierForSlowPathCommit();
 }
 
+//TODO: not sure about the thread pool
 util::SimpleThreadPool& SeqNumInfo::ExFuncForVoteCollector::threadPool(void* context) {
   InternalReplicaApi* r = (InternalReplicaApi*)context;
   return r->getInternalThreadPool();
 }
 
+//get incoming message storage
 IncomingMsgsStorage& SeqNumInfo::ExFuncForVoteCollector::incomingMsgsStorage(void* context) {
   InternalReplicaApi* r = (InternalReplicaApi*)context;
   return r->getIncomingMsgsStorage();

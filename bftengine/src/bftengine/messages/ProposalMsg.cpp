@@ -4,6 +4,7 @@
 #include "Crypto.hpp"
 #include "ClientRequestMsg.hpp"
 #include "ReplicaConfig.hpp"
+//changes: added proposal message class
 
 namespace bftEngine {
 namespace impl {

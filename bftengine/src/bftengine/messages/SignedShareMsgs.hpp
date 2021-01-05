@@ -13,6 +13,7 @@
 
 #include "Digest.hpp"
 #include "MessageBase.hpp"
+//changes: add vote message class
 
 class IThresholdSigner;
 

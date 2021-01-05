@@ -1,6 +1,8 @@
 import argparse
 import os
 
+#CLI for generating config file with required format
+
 def GenReplicas(filePointer, args):
     filePointer.write("replicas_config:\n")
     filePointer.write("-{}:{}\n".format(args.replica1, 3410))

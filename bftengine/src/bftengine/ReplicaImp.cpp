@@ -3761,6 +3761,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
                                    [this, msgSeqNum](Timers::Handle h) { onStartCommitTimer(h, msgSeqNum); });
 }
 
+//wait for 2 delta time before committing
 void ReplicaImp::onStartCommitTimer(Timers::Handle timer, SeqNum msgSeqNum) {
   LOG_INFO(CNSUS, "Start commit Timer " << msgSeqNum);
   for (SeqNum msgIterator = lastExecutedSeqNum + 1; msgIterator <= msgSeqNum; msgIterator++){
@@ -3773,6 +3774,7 @@ void ReplicaImp::onStartCommitTimer(Timers::Handle timer, SeqNum msgSeqNum) {
 }
 
 
+//execute the request, analagous to executeRequestsInPrePrepareMsg
 void ReplicaImp::executeRequestsInProposalMsg(concordUtils::SpanWrapper &parent_span,
                                               ProposalMsg *pMsg,
                                               bool recoverFromErrorInRequestsExecution) {
@@ -3913,6 +3915,7 @@ void ReplicaImp::executeRequestsInProposalMsg(concordUtils::SpanWrapper &parent_
   }
 }
 
+// handling internal message for vote collector
 void ReplicaImp::onInternalMsg(InternalMessage &&msg) {
   metric_received_internal_msgs_.Get().Inc();
 
@@ -3942,6 +3945,7 @@ void ReplicaImp::onInternalMsg(InternalMessage &&msg) {
   assert(false);
 }
 
+//drop failed sig, analagous to onPrepareCombinedSigFailed
 void ReplicaImp::onVoteCombinedSigFailed(SeqNum seqNumber,
                                             ViewNum view,
                                             const std::set<uint16_t> &replicasWithBadSigs) {
@@ -3961,6 +3965,7 @@ void ReplicaImp::onVoteCombinedSigFailed(SeqNum seqNumber,
   // TODO(GG): add logic that handles bad replicas ...
 }
 
+//mark completion of vote signature, analogous to onPrepareCombinedSigSucceeded
 void ReplicaImp::onVoteCombinedSigSucceeded(
     SeqNum seqNumber, ViewNum view, const char *combinedSig, uint16_t combinedSigLen, const std::string &span_context) {
   //SCOPED_MDC_PRIMARY(std::to_string(currentPrimary()));
@@ -3985,6 +3990,8 @@ void ReplicaImp::onVoteCombinedSigSucceeded(
 
 }
 
+//verify combine signature result, induce view-change protocol if anomoly detected
+//analagours to onPrepareVerifyCombinedSigResult
 void ReplicaImp::onVoteVerifyCombinedSigResult(SeqNum seqNumber, ViewNum view, bool isValid) {
   LOG_DEBUG(GL, KVLOG(view));
 

@@ -36,6 +36,7 @@ using std::ifstream;
 using std::pair;
 using std::vector;
 
+//fixed preexisting bug
 bool ConfigFileParser::Parse() {
   ifstream stream(file_name_, std::ios::binary);
   if (!stream.is_open()) {

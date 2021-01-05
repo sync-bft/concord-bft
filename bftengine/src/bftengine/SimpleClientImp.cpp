@@ -38,6 +38,9 @@
 #include "DynamicUpperLimitWithSimpleFilter.hpp"
 #include "Logger.hpp"
 
+//Changes for Sync-BFT:
+// added logging feature for clients, logs will be saved upon interrupt signal
+
 using namespace std::chrono;
 using namespace bft::communication;
 using namespace std;

@@ -3,6 +3,8 @@ from fabric import Connection
 from getpass import getpass
 import argparse
 
+#CLI for batch remote testing
+
 def connect(hostIP, hostUsername):
     hostPassword = getpass()
     connection = Connection(host = str(hostIP), port = 22, user = str(hostUsername), connect_kwargs = {'password': str(hostPassword)})
