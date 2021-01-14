@@ -337,7 +337,8 @@ InternalMessage SeqNumInfo::ExFuncForPrepareCollector::createInterVerifyCombined
 uint16_t SeqNumInfo::ExFuncForPrepareCollector::numberOfRequiredSignatures(void* context) {
   InternalReplicaApi* r = (InternalReplicaApi*)context;
   const ReplicasInfo& info = r->getReplicasInfo();
-  return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
+  //return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
+  return (uint16_t)(info.fVal()  + info.cVal() + 1);
 }
 
 IThresholdVerifier* SeqNumInfo::ExFuncForPrepareCollector::thresholdVerifier(void* context) {
@@ -392,7 +393,8 @@ InternalMessage SeqNumInfo::ExFuncForCommitCollector::createInterVerifyCombinedS
 uint16_t SeqNumInfo::ExFuncForCommitCollector::numberOfRequiredSignatures(void* context) {
   InternalReplicaApi* r = (InternalReplicaApi*)context;
   const ReplicasInfo& info = r->getReplicasInfo();
-  return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
+  //return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
+  return (uint16_t)(info.fVal() + info.cVal() + 1);
 }
 
 IThresholdVerifier* SeqNumInfo::ExFuncForCommitCollector::thresholdVerifier(void* context) {

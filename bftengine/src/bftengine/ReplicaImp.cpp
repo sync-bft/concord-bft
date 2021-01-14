@@ -3562,7 +3562,7 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
     SeqNumInfo &lastSeqNumInfo =  mainLog->get(primaryLastUsedSeqNum);
     proposal = new ProposalMsg(
         config_.replicaId, curView, (primaryLastUsedSeqNum + 1), lastSeqNumInfo.getCombinedSig(), lastSeqNumInfo.getCombinedSigLen(), 
-        span_context, primaryCombinedReqSize, isFirstMsg);
+        span_context, primaryCombinedReqSize + lastSeqNumInfo.getCombinedSigLen(), isFirstMsg);
   }
 
   uint16_t initialStorageForRequests = proposal->remainingSizeForRequests();

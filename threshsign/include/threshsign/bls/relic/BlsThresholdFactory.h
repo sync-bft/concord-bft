@@ -38,7 +38,7 @@ class BlsThresholdFactory : public IThresholdFactory {
    * @param params        the public parameters for the BLS-based scheme (e.g., elliptic curve groups)
    * @param useMultisig   creates a multisig-based threshold scheme, rather than a secret-sharing-based threshold scheme
    */
-  BlsThresholdFactory(const BlsPublicParameters& params, bool useMultisig = false);
+  BlsThresholdFactory(const BlsPublicParameters& params, bool useMultisig = true);
 
   virtual ~BlsThresholdFactory() {}
 
