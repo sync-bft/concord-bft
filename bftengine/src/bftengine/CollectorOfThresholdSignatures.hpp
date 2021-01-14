@@ -292,8 +292,8 @@ class CollectorOfThresholdSignatures {
     //LOG_DEBUG(CNSUS, "On trySendToBkThread()");
     if (numOfRequiredSigs == 0)  // init numOfRequiredSigs
       numOfRequiredSigs = ExternalFunc::numberOfRequiredSignatures(context);
-    //LOG_DEBUG(CNSUS, "[CollectorOfThresholdSignatures] numOfRequiredSigs " << numOfRequiredSigs);
-    //LOG_DEBUG(CNSUS, "[CollectorOfThresholdSignatures] numberOfUnknownSignatures " << numberOfUnknownSignatures);
+    LOG_DEBUG(CNSUS, "[CollectorOfThresholdSignatures] numOfRequiredSigs " << numOfRequiredSigs);
+    LOG_DEBUG(CNSUS, "[CollectorOfThresholdSignatures] numberOfUnknownSignatures " << numberOfUnknownSignatures);
 
     if (processingSignaturesInTheBackground || expectedSeqNumber == 0) return;
 

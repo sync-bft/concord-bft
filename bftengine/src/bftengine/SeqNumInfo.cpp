@@ -332,7 +332,8 @@ InternalMessage SeqNumInfo::ExFuncForPrepareCollector::createInterVerifyCombined
 uint16_t SeqNumInfo::ExFuncForPrepareCollector::numberOfRequiredSignatures(void* context) {
   InternalReplicaApi* r = (InternalReplicaApi*)context;
   const ReplicasInfo& info = r->getReplicasInfo();
-  return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
+  //return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
+  return (uint16_t)(info.fVal() + 1);
 }
 
 IThresholdVerifier* SeqNumInfo::ExFuncForPrepareCollector::thresholdVerifier(void* context) {
@@ -578,13 +579,15 @@ InternalMessage SeqNumInfo::ExFuncForVoteCollector::createInterVerifyCombinedSig
 uint16_t SeqNumInfo::ExFuncForVoteCollector::numberOfRequiredSignatures(void* context) {
   InternalReplicaApi* r = (InternalReplicaApi*)context;
   const ReplicasInfo& info = r->getReplicasInfo();
-  return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
-  //return (uint16_t)(info.fVal() + 1);
+  //return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
+  return (uint16_t)(info.fVal() + 1);
 }
 
 IThresholdVerifier* SeqNumInfo::ExFuncForVoteCollector::thresholdVerifier(void* context) {
   InternalReplicaApi* r = (InternalReplicaApi*)context;
   return r->getThresholdVerifierForSlowPathCommit();
+  //LOG_DEBUG(CNSUS, "[SeqNumInfo::ExFuncForVoteCollector::thresholdVerifier] get the number of required signatures in the verifier" <<  r->getThresholdVerifierForExecution()->getRequiredSigNum());
+  //return r->getThresholdVerifierForExecution();
 }
 
 util::SimpleThreadPool& SeqNumInfo::ExFuncForVoteCollector::threadPool(void* context) {

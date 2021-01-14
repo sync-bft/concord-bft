@@ -54,6 +54,7 @@ ProposalMsg::ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* comb
                        ? (size + sizeof(Header))
                        : maxMessageSize<ProposalMsg>() - spanContext.size()))
 {
+    LOG_DEBUG(CNSUS, "[ProposalMsg]: size = "<<size);
     bool ready = size == 0;
     if (!ready) {
         b()->digestOfRequests.makeZero();
@@ -85,8 +86,8 @@ ProposalMsg::ProposalMsg(ReplicaId sender, ViewNum v, SeqNum s, const char* comb
 uint32_t ProposalMsg::remainingSizeForRequests() const {
   Assert(!isReady());
   Assert(!isNull());
-  //LOG_DEBUG(CNSUS, "end location of last request = " << b()->endLocationOfLastRequest);
-  //LOG_DEBUG(CNSUS, "request starts at = " << requestsPayloadShift());
+  LOG_DEBUG(CNSUS, "end location of last request = " << b()->endLocationOfLastRequest);
+  LOG_DEBUG(CNSUS, "request starts at = " << requestsPayloadShift());
   Assert(b()->endLocationOfLastRequest >= requestsPayloadShift());
 
   return (internalStorageSize() - b()->endLocationOfLastRequest);
@@ -103,7 +104,7 @@ void ProposalMsg::addRequest(const char* pRequest, uint32_t requestSize) {
 
   b()->endLocationOfLastRequest += requestSize;
   b()->numberOfRequests++;
-  //LOG_DEBUG(CNSUS, "num req " << b()->numberOfRequests << ", current end loc of last req " << b()->endLocationOfLastRequest);
+  LOG_DEBUG(CNSUS, "num req " << b()->numberOfRequests << ", current end loc of last req " << b()->endLocationOfLastRequest);
 }
 
 void ProposalMsg::finishAddingRequests() {
@@ -128,6 +129,7 @@ void ProposalMsg::finishAddingRequests() {
   b()->digestOfRequests = d;
 
   // size
+  LOG_DEBUG(CNSUS, "[finishAddingRequests] endLocationOfLastRequst = "<<b()->endLocationOfLastRequest);
   setMsgSize(b()->endLocationOfLastRequest);
   shrinkToFit();
 }

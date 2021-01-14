@@ -76,9 +76,8 @@ int BlsMultisigVerifier::requiredLengthForSignedData() const {
 
 bool BlsMultisigVerifier::verify(const char *msg, int msgLen, const char *sigBuf, int sigLen) const {
   // Parse the signer IDs from sigBuf and adjust the PK
-  LOG_DEBUG(CNSUS, "reqSigners_ = " << reqSigners_ << " and numSigners_ = " << numSigners_);
+  
   if (reqSigners_ != numSigners_) {
-    LOG_DEBUG(CNSUS, "reqSigners != numSigners_");
     if (sigLen != requiredLengthForSignedData()) {
       throw runtime_error("Signature does not have the right size");
     }

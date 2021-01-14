@@ -3556,15 +3556,14 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
     const char* lastCombinedSig = lastSeqNumInfo.getCombinedSig();
     uint16_t lastCombinedSigLen = lastSeqNumInfo.getCombinedSigLen();
     proposal = new ProposalMsg(
-        config_.replicaId, curView, (primaryLastUsedSeqNum + 1), lastCombinedSig, lastCombinedSigLen, span_context, primaryCombinedReqSize, isFirstMsg);
+        config_.replicaId, curView, (primaryLastUsedSeqNum + 1), lastCombinedSig, lastCombinedSigLen, span_context, primaryCombinedReqSize + lastCombinedSigLen, isFirstMsg);
   }
-
+ 
   uint16_t initialStorageForRequests = proposal->remainingSizeForRequests();
+  
   while (nextRequest != nullptr) {
     if (nextRequest->size() <= proposal->remainingSizeForRequests()) {
-      SCOPED_MDC_CID(nextRequest->getCid());
       //adds as many requests as possible
-      //LOG_DEBUG(CNSUS, "Adding request in the proposal message");
       proposal->addRequest(nextRequest->body(), nextRequest->size());
       //if (clientsManager->noPendingAndRequestCanBecomePending(nextRequest->clientProxyId(), nextRequest->requestSeqNum())) {
       //  proposal->addRequest(nextRequest->body(), nextRequest->size());
@@ -3612,7 +3611,10 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
                               proposal->digestOfRequestsSeqNum(),
                               config_.thresholdSignerForSlowPathCommit,
                               vote_span_context);
-  currSeqNumInfo.addSelfMsg(v, false);
+  for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
+    sendRetransmittableMsgToReplica(v, x, primaryLastUsedSeqNum);
+  }
+  //currSeqNumInfo.addSelfMsg(v, true);
 
   if (!isPrimaryInitialized) isPrimaryInitialized = true;
 
@@ -3638,7 +3640,7 @@ void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
                               pMsg->digestOfRequestsSeqNum(),
                               config_.thresholdSignerForSlowPathCommit,
                               span_context);
-  seqNumInfo.addSelfMsg(v, false);
+  //seqNumInfo.addSelfMsg(v, true);
 
   if (!isCurrentPrimary()) {
     for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
@@ -3967,7 +3969,7 @@ void ReplicaImp::onVoteCombinedSigSucceeded(
   //SCOPED_MDC_SEQ_NUM(std::to_string(seqNumber));
   //SCOPED_MDC_PATH(CommitPathToMDCString(CommitPath::SLOW));
   LOG_DEBUG(GL, KVLOG(view));
-  LOG_DEBUG(CNSUS, "onVoteCombinedSigSucceeded");
+  //LOG_DEBUG(CNSUS, "onVoteCombinedSigSucceeded");
   AssertNE(combinedSig, nullptr);
 
   if ((isCollectingState()) || (!currentViewIsActive()) || (curView != view) ||
@@ -3983,8 +3985,10 @@ void ReplicaImp::onVoteCombinedSigSucceeded(
   SeqNumInfo &seqNumInfo = mainLog->get(seqNumber);
   seqNumInfo.addCombinedSig(combinedSig, combinedSigLen);
   seqNumInfo.onCompletionOfVoteSignaturesProcessing(seqNumber, view, combinedSig, combinedSigLen, span_context);
-  LOG_DEBUG(CNSUS, "SeqNum : " << seqNumber << ", Onto the next block proposal!");
-  tryToSendProposalMsg(true); // if request queue is empty, return
+  if (isCurrentPrimary()){
+    LOG_DEBUG(CNSUS, "SeqNum : " << seqNumber << ", Onto the next block proposal!");
+    tryToSendProposalMsg(true); // if request queue is empty, return
+  }
 }
 
 void ReplicaImp::onVoteVerifyCombinedSigResult(SeqNum seqNumber, ViewNum view, bool isValid) {
