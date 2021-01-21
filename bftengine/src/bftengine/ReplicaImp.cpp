@@ -3476,6 +3476,7 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
 
   LOG_INFO(CNSUS, "On tryToSendProposalMsg");
 
+  // Filters out seqNums that are not in the window
   if (primaryLastUsedSeqNum + 1 > lastStableSeqNum + kWorkWindowSize) {
     LOG_INFO(GL,
              "Will not send Proposal since next sequence number ["
@@ -3484,6 +3485,7 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
     return;
   }
 
+  // Filters out nonconsecutive seqNums
   if (primaryLastUsedSeqNum > lastExecutedSeqNum + 1){//config_.concurrencyLevel) { //  config_.concurrencyLevel
     LOG_INFO(GL,
              "Will not send Proposal since next sequence number ["
@@ -3552,12 +3554,14 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
   const auto &span_context = nextRequest ? nextRequest->spanContext<ClientRequestMsg>() : std::string{};
   
   ProposalMsg *proposal = nullptr;
+  // The first proposal message from the primary does not need to be checked for leader equivocation
   if (!isPrimaryInitialized){
     LOG_DEBUG(CNSUS, "Creating first proposal msg from primary");
     bool isFirstMsg = true;
     proposal = new ProposalMsg(
       config_.replicaId, curView, (primaryLastUsedSeqNum + 1), NULL, 0, span_context, primaryCombinedReqSize, isFirstMsg);
   }
+  // Otherwise the proposal message needs to be checked for leader equivocation later
   else{
     LOG_DEBUG(CNSUS, "Creating non-first proposal msg from primary");
     bool isFirstMsg = false;
@@ -3606,6 +3610,7 @@ void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
 
   // skip ps_
 
+  // send proposal to all replicas
   for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
     sendRetransmittableMsgToReplica(proposal, x, primaryLastUsedSeqNum);
   }
@@ -3647,7 +3652,9 @@ void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
                               span_context);
    seqNumInfo.addSelfMsg(v, false);
 
+  //primary replica already added self-vote upon creation of the proposal
   if (!isCurrentPrimary()) {
+    //send votes to all peer replicas
     for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
       sendRetransmittableMsgToReplica(v, x, primaryLastUsedSeqNum);
       LOG_INFO(CNSUS, "Vote sent to replica");
@@ -3725,6 +3732,7 @@ void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalM
   
   if (msgSeqNum > lastStableSeqNum) {
     msg->setForwardedMsg(true);
+    // forward message to peer replicas
     for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
       sendRetransmittableMsgToReplica(msg, x, msgSeqNum);
     }
