@@ -8,8 +8,8 @@ def connect(hostIP, hostUsername):
     connection = Connection(host = str(hostIP), port = 22, user = str(hostUsername), connect_kwargs = {'password': str(hostPassword)})
     return connection
 
-def executeCommand(username, ip, numReplicas, numClients, connection):
-    command = "ssh " + str(username) + "@" + str(ip) + " 'bash -s' < ~/concord-bft/build/tests/simpleTest/scripts/runMultipleClients.sh " + str(numReplicas) + " " + str(numClients)
+def executeCommand(username, ip, numReplicas, numClients, startingReplica, startingClient, connection):
+    command = "ssh " + str(username) + "@" + str(ip) + " 'bash -s' < ~/concord-bft/build/tests/simpleTest/scripts/runMultipleClients.sh " + str(numReplicas) + " " + str(numClients) + " " + str(startingReplica) + " " + str(startingClient)
     connection.run(command, warn=True)
 
 # example command: "ssh umm420_gmail_com@35.196.156.226 'bash -s' < ~/concord-bft/build/tests/simpleTest/scripts/runMultipleClients.sh 3 3"
@@ -22,8 +22,10 @@ if __name__ == "__main__":
      parser.add_argument("-ur", "--remoteusn", help = "username of remote")
      parser.add_argument("-r", "--replicas", help = "number of replicas", type = int)
      parser.add_argument("-c", "--clients", help = "number of clients", type = int)
+     parser.add_argument("-sr", "--startingReplica", help = "starting replica number", type = int)
+     parser.add_argument("-sc", "--startingClient", help = "starting client number", type = int)
      args = parser.parse_args()
      connection = connect(args.hostip, args.hostusn)
-     executeCommand(args.remoteusn, args.remoteip, args.replicas, args.clients, connection)
+     executeCommand(args.remoteusn, args.remoteip, args.replicas, args.clients, args.startingReplica, args.startingClient, connection)
 
 # to call the the script, run python3 fabfile.py -ih *hostip* -uh *hostusn* -ir *remoteip* -ur *remoteusn* -r *replicas* -c *clients* in terminal and type the host's password when prompted.
