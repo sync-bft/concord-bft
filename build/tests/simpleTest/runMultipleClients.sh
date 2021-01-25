@@ -11,7 +11,7 @@ replicaCounter=1
 
 while [ $replicaCounter -le $1 ]
 do
-    concord-bft/build/tests/simpleTest/server -id $counter -cf concord-bft/build/tests/simpleTest/scripts/remote_config.txt &
+    ~/concord-bft/build/tests/simpleTest/server -id $counter -cf ~/concord-bft/build/tests/simpleTest/scripts/remote_config.txt &
     processID=$!
     let counter=counter+1
     let replicaCounter=replicaCounter+1
@@ -21,7 +21,7 @@ clientCounter=1
 
 while [ $clientCounter -le $2 ]    
 do
-    concord-bft/build/tests/simpleTest/client -id $counter -cf concord-bft/build/tests/simpleTest/scripts/remote_config.txt &
+    ~/concord-bft/build/tests/simpleTest/client -id $counter -cf ~/concord-bft/build/tests/simpleTest/scripts/remote_config.txt &
     processID=$!
     let counter=counter+1
     let clientCounter=clientCounter+1
