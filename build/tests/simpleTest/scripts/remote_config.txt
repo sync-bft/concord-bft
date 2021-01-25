@@ -1,4 +1,4 @@
-servers_config:
+replicas_config:
 -35.208.173.108:3410
 replicas_config:
 -35.196.156.226:3420
@@ -8,8 +8,6 @@ replicas_config:
 clients_config:
 -35.208.173.108:4000
 clients_config:
--35.208.173.108:4010
+-35.196.156.226:4010
 clients_config:
--35.208.173.108:4020
-clients_config:
--35.208.173.108:4030
+-34.69.5.127:4020
