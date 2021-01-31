@@ -8,11 +8,11 @@ def connect(hostIP, hostUsername):
     connection = Connection(host = str(hostIP), port = 22, user = str(hostUsername), connect_kwargs = {'password': str(hostPassword)})
     return connection
 
-def executeCommand(username, ip, numReplicas, numClients, startingReplica, startingClient, connection):
-    command = "ssh " + str(username) + "@" + str(ip) + " 'bash -s' < ~/concord-bft/build/tests/simpleTest/scripts/runMultipleClients.sh " + str(numReplicas) + " " + str(numClients)
+def executeCommand(username, ip, numReplicas, numClients, connection):
+    command = "ssh " + str(username) + "@" + str(ip) + " 'bash -s' < ~/concord-bft/build/tests/simpleTest/runMultipleClients.sh " + str(numReplicas) + " " + str(numClients)
     connection.run(command, warn=True)
 
-# example command: "ssh umm420_gmail_com@35.196.156.226 'bash -s' < ~/concord-bft/build/tests/simpleTest/scripts/runMultipleClients.sh 3 3"
+# example command: "ssh umm420_gmail_com@35.196.156.226 'bash -s' < ~/concord-bft/build/tests/simpleTest/runMultipleClients.sh 3 3"
 
 if __name__ == "__main__":
      parser = argparse.ArgumentParser()

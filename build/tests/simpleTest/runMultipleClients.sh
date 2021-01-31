@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# arg 1 is number of replicas and arg 2 is number of clients and arg 3 is starting replica # and arg 4 is starting client #
-# e.g.: ./runMultipleClients.sh 3 3 0 0
-# will run 3 replicas and 3 clients starting from replica 0 and client 0
+# arg 1 is number of replicas and arg 2 is number of clients
+# e.g.: ./runMultipleClients.sh 3 3
+# will run 3 replicas and 3 clients
 
 set -e
 
@@ -27,7 +27,7 @@ do
     let clientCounter=clientCounter+1
 done
 
-sleep 10
+sleep 2
 
 pkill client
 pkill server
