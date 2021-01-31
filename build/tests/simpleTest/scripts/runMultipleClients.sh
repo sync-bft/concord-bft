@@ -6,7 +6,7 @@
 
 set -e
 
-counter=$3
+counter=0
 replicaCounter=1
 
 while [ $replicaCounter -le $1 ]
@@ -17,14 +17,13 @@ do
     let replicaCounter=replicaCounter+1
 done
 
-secondCounter=$4
 clientCounter=1
 
 while [ $clientCounter -le $2 ]    
 do
-    ~/concord-bft/build/tests/simpleTest/client -id $secondCounter -cf ~/concord-bft/build/tests/simpleTest/scripts/remote_config.txt &
+    ~/concord-bft/build/tests/simpleTest/client -id $counter -cf ~/concord-bft/build/tests/simpleTest/scripts/remote_config.txt &
     processID=$!
-    let secondCounter=secondCounter+1
+    let counter=counter+1
     let clientCounter=clientCounter+1
 done
 
