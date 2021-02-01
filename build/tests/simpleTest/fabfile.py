@@ -11,10 +11,10 @@ def connect(ip, username):
 def executeCommand(numReplicas, numClients, startingReplica, startingClient, connection):
     #connection.run('pkill server')
     #connection.run('pkill client')
-    command = "./runMultipleClients.sh " + str(numReplicas) + " " + str(numClients) + " " + str(startingReplica) + " " + str(startingClient) + " | grep Consensus"
+    command = "./runMultipleClients.sh " + str(numReplicas) + " " + str(numClients) + " " + str(startingReplica) + " " + str(startingClient)
     connection.run(command, warn=True)
 
-# example command: "./runMultipleClients.sh 3 3 0 3| grep consensus"
+# example command: "./runMultipleClients.sh 3 3 0 3"
 
 if __name__ == "__main__":
      parser = argparse.ArgumentParser()

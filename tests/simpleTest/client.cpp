@@ -151,8 +151,8 @@ void parse_params(int argc, char **argv, ClientParams &cp, bftEngine::SimpleClie
 }
 
 int main(int argc, char **argv) {
-  clientLogger.setLogLevel(logging::debug);
-  logger_.setLogLevel(logging::debug);
+  clientLogger.setLogLevel(logging::info);
+  logger_.setLogLevel(logging::info);
   // TODO(IG:) configure Log4Cplus's output format, using default for now
 
   ClientParams cp;
