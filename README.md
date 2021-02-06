@@ -79,7 +79,7 @@ In addition to the client non-waiting request sending, replica side has also bee
 
 The original implementation used ``ClientsManager`` to keep track of message status from each client, dropping recently received requests if pending messages are in the manage. We simplified this pending process by using a buffer container  to keep track all messages orderly without proposing. To  ensure the block chaining correctness, a callback mechanism is utilized in combining signatures, as when the certificate  formation callback is invoked, the replica proposes a new block.  
 
-Changes can be found at ``bftengine/src/bftengine/ReplicaImp.hpp`` in ``async_clients_n_commands`` branch.
+Changes can be found at ``bftengine/src/bftengine/ReplicaImp.cpp`` in ``async_clients_n_commands`` branch.
 
 ## Evaluation Pipeline
 To achieve direct performance comparison between Sync-HotStuff and SBFT protocol, this repo also includes a pipelining process of evaluation in the ``simpleTests`` mode, including:
