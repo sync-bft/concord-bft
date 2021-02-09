@@ -43,9 +43,9 @@ constexpr int MaxNumberOfReplicas = 64;
 // Work windows and intervals
 ///////////////////////////////////////////////////////////////////////////////
 
-constexpr uint16_t kWorkWindowSize = 300;
+constexpr uint16_t kWorkWindowSize = 3000;
 
-constexpr uint16_t checkpointWindowSize = 150;
+constexpr uint16_t checkpointWindowSize = 1500;
 static_assert(kWorkWindowSize == 2 * checkpointWindowSize, "kWorkWindowSize != 2 * checkpointWindowSize");
 
 // TODO(GG): check the value in config:
@@ -82,6 +82,8 @@ constexpr int sendStatusPeriodMilli = 0;  // if 0, this value is taken from conf
 constexpr bool retransmissionsLogicEnabled = false;
 
 constexpr int retransmissionsTimerMilli = 40;
+
+constexpr int commitReportMilli = 1000;
 
 ///////////////////////////////////////////////////////////////////////////////
 // View Change

@@ -19,6 +19,7 @@ namespace impl {
 SeqNumInfo::SeqNumInfo()
     : replica(nullptr),
       prePrepareMsg(nullptr),
+      proposalMsg(nullptr),
       prepareSigCollector(nullptr),
       commitMsgsCollector(nullptr),
       partialProofsSet(nullptr),
@@ -33,6 +34,7 @@ SeqNumInfo::~SeqNumInfo() {
   resetAndFree();
 
   delete prepareSigCollector;
+  delete voteSigCollector;
   delete commitMsgsCollector;
   delete partialProofsSet;
 }
@@ -42,6 +44,7 @@ void SeqNumInfo::resetAndFree() {
   prePrepareMsg = nullptr;
 
   prepareSigCollector->resetAndFree();
+  voteSigCollector->resetAndFree();
   commitMsgsCollector->resetAndFree();
   partialProofsSet->resetAndFree();
 
@@ -198,6 +201,11 @@ bool SeqNumInfo::addMsg(CommitFullMsg* m, bool directAdd) {
   return r;
 }
 
+bool SeqNumInfo::canCommit() const {
+  // return forcedCompleted || ((prePrepareMsg != nullptr) && voteSigCollector->isComplete());
+  return voteSigCollector->votesCollected();
+}
+
 void SeqNumInfo::forceComplete() {
   Assert(!forcedCompleted);
   Assert(hasPrePrepareMsg());
@@ -223,6 +231,11 @@ PreparePartialMsg* SeqNumInfo::getSelfPreparePartialMsg() const {
 
 PrepareFullMsg* SeqNumInfo::getValidPrepareFullMsg() const {
   return prepareSigCollector->getMsgWithValidCombinedSignature();
+}
+
+VoteMsg* SeqNumInfo::getSelfVoteMsg() const {
+  VoteMsg* p = voteSigCollector->getVoteMsgFromReplica(replica->getReplicasInfo().myId());
+  return p;
 }
 
 CommitPartialMsg* SeqNumInfo::getSelfCommitPartialMsg() const {
@@ -324,7 +337,8 @@ InternalMessage SeqNumInfo::ExFuncForPrepareCollector::createInterVerifyCombined
 uint16_t SeqNumInfo::ExFuncForPrepareCollector::numberOfRequiredSignatures(void* context) {
   InternalReplicaApi* r = (InternalReplicaApi*)context;
   const ReplicasInfo& info = r->getReplicasInfo();
-  return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
+  //return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
+  return (uint16_t)(info.fVal()  + info.cVal() + 1);
 }
 
 IThresholdVerifier* SeqNumInfo::ExFuncForPrepareCollector::thresholdVerifier(void* context) {
@@ -379,7 +393,8 @@ InternalMessage SeqNumInfo::ExFuncForCommitCollector::createInterVerifyCombinedS
 uint16_t SeqNumInfo::ExFuncForCommitCollector::numberOfRequiredSignatures(void* context) {
   InternalReplicaApi* r = (InternalReplicaApi*)context;
   const ReplicasInfo& info = r->getReplicasInfo();
-  return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
+  //return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
+  return (uint16_t)(info.fVal() + info.cVal() + 1);
 }
 
 IThresholdVerifier* SeqNumInfo::ExFuncForCommitCollector::thresholdVerifier(void* context) {
@@ -408,10 +423,178 @@ void SeqNumInfo::init(SeqNumInfo& i, void* d) {
 
   i.prepareSigCollector =
       new CollectorOfThresholdSignatures<PreparePartialMsg, PrepareFullMsg, ExFuncForPrepareCollector>(context);
+  i.voteSigCollector =
+      new CollectorOfThresholdSignatures<VoteMsg, VoteFullMsg, ExFuncForVoteCollector>(context);
   i.commitMsgsCollector =
       new CollectorOfThresholdSignatures<CommitPartialMsg, CommitFullMsg, ExFuncForCommitCollector>(context);
   i.partialProofsSet = new PartialProofsSet((InternalReplicaApi*)r);
 }
+
+//////////////////////////////////////////////////////////////////////
+// Sync-HotStuff
+//////////////////////////////////////////////////////////////////////
+
+ProposalMsg* SeqNumInfo::getProposalMsg() const { return proposalMsg; }
+
+bool SeqNumInfo::addMsg(ProposalMsg* m) {
+  if (proposalMsg != nullptr) return false;
+
+  Assert(primary == false);
+  Assert(!forcedCompleted);
+  Assert(!voteSigCollector->hasVoteMsgFromReplica(replica->getReplicasInfo().myId()));
+
+  proposalMsg = m;
+
+  Digest tmpDigest;
+  Digest::calcCombination(m->digestOfRequestsSeqNum(), m->viewNumber(), m->seqNumber(), tmpDigest);
+  voteSigCollector->setExpected(m->seqNumber(), m->viewNumber(), tmpDigest); // using backgroud thread
+
+  if (firstSeenFromPrimary == MinTime)  // TODO(GG): remove condition - TBD
+    firstSeenFromPrimary = getMonotonicTime();
+
+  return true;
+}
+
+bool SeqNumInfo::addMsg(VoteMsg* m, bool directAdd) {
+  Assert(replica->getReplicasInfo().myId() != m->senderId());
+  Assert(!forcedCompleted);
+
+  bool retVal;
+  if (!directAdd)
+    retVal = voteSigCollector->addMsgWithVoteSignature(m, replica->getReplicasInfo().myId());
+  else
+    retVal = voteSigCollector->initMsgWithVoteSignature(m, replica->getReplicasInfo().myId());
+  
+  return retVal;
+}
+
+bool SeqNumInfo::addSelfMsg(ProposalMsg* m, bool directAdd, bool primaryFirstMsg) {
+  
+  primary = primaryFirstMsg? true:primary;
+//  Assert(primary == true);  // TODO(QF): in view change: could be the leader primary's first proposal before set to primary
+  Assert(proposalMsg == nullptr);
+
+  // Assert(me->id() == m->senderId()); // GG: incorrect assert - because after a view change it may has been sent by
+  // another replica
+
+  proposalMsg = m;
+  //primary = true;
+
+  // set expected
+  Digest tmpDigest;
+  Digest::calcCombination(m->digestOfRequestsSeqNum(), m->viewNumber(), m->seqNumber(), tmpDigest);
+  if (!directAdd)
+    voteSigCollector->setExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
+  else
+    voteSigCollector->initExpected(m->seqNumber(), m->viewNumber(), tmpDigest);
+
+  if (firstSeenFromPrimary == MinTime)  // TODO(GG): remove condition - TBD
+    firstSeenFromPrimary = getMonotonicTime();
+
+  return true;
+}
+
+bool SeqNumInfo::addSelfMsg(VoteMsg* m, bool directAdd) {
+  Assert(replica->getReplicasInfo().myId() == m->senderId());
+  Assert(!forcedCompleted);
+
+  bool r;
+
+  if (!directAdd)
+    r = voteSigCollector->addMsgWithVoteSignature(m, m->senderId());
+  else
+    r = voteSigCollector->initMsgWithVoteSignature(m, m->senderId());
+
+  Assert(r);
+
+  return true;
+}
+
+bool SeqNumInfo::addCombinedSig(const char* sig, uint16_t len){
+  combinedSig = sig;
+  combinedSigLen = len;
+  return true;
+}
+
+void SeqNumInfo::onCompletionOfVoteSignaturesProcessing(SeqNum seqNumber,
+                                                        ViewNum viewNumber,
+                                                        const std::set<ReplicaId>& replicasWithBadSigs) {
+  voteSigCollector->onCompletionOfSignaturesProcessing(seqNumber, viewNumber, replicasWithBadSigs);
+}
+
+void SeqNumInfo::onCompletionOfVoteSignaturesProcessing(SeqNum seqNumber,
+                                                        ViewNum viewNumber,
+                                                        const char* combinedSig,
+                                                        uint16_t combinedSigLen,
+                                                        const std::string& span_context) {
+  LOG_INFO(CNSUS,
+           "seqNum information is as follows ["
+               << seqNumber << "]");
+  voteSigCollector->onCompletionOfSignaturesProcessing(
+      seqNumber, viewNumber, combinedSig, combinedSigLen, span_context);
+}
+
+void SeqNumInfo::onCompletionOfCombinedVoteSigVerification(SeqNum seqNumber, ViewNum viewNumber, bool isValid) {
+  voteSigCollector->onCompletionOfCombinedSigVerification(seqNumber, viewNumber, isValid);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// class SeqNumInfo::ExFuncForVoteCollector
+///////////////////////////////////////////////////////////////////////////////
+
+VoteFullMsg* SeqNumInfo::ExFuncForVoteCollector::createCombinedSignatureMsg(void* context,
+                                                                            SeqNum seqNumber,
+                                                                            ViewNum viewNumber,
+                                                                            const char* const combinedSig,
+                                                                            uint16_t combinedSigLen,
+                                                                            const std::string& span_context) {
+  InternalReplicaApi* r = (InternalReplicaApi*)context;
+  return VoteFullMsg::create(
+      viewNumber, seqNumber, r->getReplicasInfo().myId(), combinedSig, combinedSigLen, span_context);
+}
+
+InternalMessage SeqNumInfo::ExFuncForVoteCollector::createInterCombinedSigFailed(
+    SeqNum seqNumber, ViewNum viewNumber, std::set<uint16_t> replicasWithBadSigs) {
+  return CombinedSigFailedInternalMsg(seqNumber, viewNumber, replicasWithBadSigs);
+}
+
+InternalMessage SeqNumInfo::ExFuncForVoteCollector::createInterCombinedSigSucceeded(
+    SeqNum seqNumber,
+    ViewNum viewNumber,
+    const char* combinedSig,
+    uint16_t combinedSigLen,
+    const std::string& span_context) {
+  return CombinedSigSucceededInternalMsg(seqNumber, viewNumber, combinedSig, combinedSigLen, span_context);
+}
+
+InternalMessage SeqNumInfo::ExFuncForVoteCollector::createInterVerifyCombinedSigResult(SeqNum seqNumber,
+                                                                                          ViewNum viewNumber,
+                                                                                          bool isValid) {
+  return VerifyCombinedSigResultInternalMsg(seqNumber, viewNumber, isValid);
+}
+
+uint16_t SeqNumInfo::ExFuncForVoteCollector::numberOfRequiredSignatures(void* context) {
+  InternalReplicaApi* r = (InternalReplicaApi*)context;
+  const ReplicasInfo& info = r->getReplicasInfo();
+  return (uint16_t)((info.fVal() * 2) + info.cVal() + 1);
+}
+
+IThresholdVerifier* SeqNumInfo::ExFuncForVoteCollector::thresholdVerifier(void* context) {
+  InternalReplicaApi* r = (InternalReplicaApi*)context;
+  return r->getThresholdVerifierForSlowPathCommit();
+}
+
+util::SimpleThreadPool& SeqNumInfo::ExFuncForVoteCollector::threadPool(void* context) {
+  InternalReplicaApi* r = (InternalReplicaApi*)context;
+  return r->getInternalThreadPool();
+}
+
+IncomingMsgsStorage& SeqNumInfo::ExFuncForVoteCollector::incomingMsgsStorage(void* context) {
+  InternalReplicaApi* r = (InternalReplicaApi*)context;
+  return r->getIncomingMsgsStorage();
+}
+
+
 
 }  // namespace impl
 }  // namespace bftEngine

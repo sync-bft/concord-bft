@@ -41,6 +41,7 @@ set(corebft_source_files
     src/bcstatetransfer/DBDataStore.cpp
     src/bcstatetransfer/SourceSelector.cpp
     src/simplestatetransfer/SimpleStateTran.cpp
+    src/bftengine/messages/ProposalMsg.cpp
     src/bftengine/messages/PrePrepareMsg.cpp
     src/bftengine/messages/CheckpointMsg.cpp
     src/bftengine/messages/FullCommitProofMsg.cpp

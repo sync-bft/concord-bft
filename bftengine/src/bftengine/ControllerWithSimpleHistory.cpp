@@ -268,5 +268,31 @@ void ControllerWithSimpleHistory::onMessage(const PreparePartialMsg* m) {
   s.replicas.insert(id);
 }
 
+//////////////////////////////////////////////////////////////////////
+// Sync-HotStuff
+//////////////////////////////////////////////////////////////////////
+
+int ControllerWithSimpleHistory::durationSinceProposal(SeqNum n) {
+  if (!isPrimary || !recentActivity.insideActiveWindow(n)) return -1;
+
+  SeqNoInfo& s = recentActivity.get(n);
+  return std::chrono::duration_cast<std::chrono::milliseconds>(getMonotonicTime() - s.proposalTime).count();
+}
+
+void ControllerWithSimpleHistory::onSendingProposal(SeqNum n) {
+  onSendingProposal(n, getMonotonicTime());
+}
+
+void ControllerWithSimpleHistory::onSendingProposal(SeqNum n, const Time& timePoint) {
+  if (!isPrimary || !recentActivity.insideActiveWindow(n)) return;
+
+  SeqNoInfo& s = recentActivity.get(n);
+
+  // if this is the time the proposal was sent
+  if (s.proposalTime == MinTime && timePoint > MinTime) {
+    s.proposalTime = timePoint;
+  }
+}
+
 }  // namespace impl
 }  // namespace bftEngine

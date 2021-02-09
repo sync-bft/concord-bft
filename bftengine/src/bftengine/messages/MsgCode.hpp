@@ -24,6 +24,7 @@ class MsgCode {
     PreparePartial,
     PrepareFull,
     CommitPartial,
+    CommitVote,
     CommitFull,
     StartSlowCommit,
     PartialCommitProof,
@@ -39,13 +40,16 @@ class MsgCode {
     ReqMissingData,
     StateTransfer,
 
+    Proposal,
+    Vote,
+    VoteFull,
+
     ClientPreProcessRequest,
     PreProcessRequest,
     PreProcessReply,
 
     ClientRequest = 700,
     ClientReply = 800,
-
   };
 };
 

@@ -1,0 +1,13 @@
+replicas_config:
+-35.208.173.108:3410
+replicas_config:
+-35.196.156.226:3420
+replicas_config:
+-34.69.5.127:3430
+
+clients_config:
+-35.208.173.108:4000
+clients_config:
+-35.196.156.226:4010
+clients_config:
+-34.69.5.127:4020

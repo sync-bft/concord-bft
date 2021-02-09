@@ -22,6 +22,7 @@
 #include "IncomingMsgsStorage.hpp"
 #include "assertUtils.hpp"
 #include "messages/SignedShareMsgs.hpp"
+#include "InternalReplicaApi.hpp"
 
 namespace bftEngine {
 namespace impl {
@@ -51,6 +52,24 @@ class CollectorOfThresholdSignatures {
     return true;
   }
 
+  bool votesCollected() const {
+    InternalReplicaApi* r = (InternalReplicaApi*)context;
+    const ReplicasInfo& info = r->getReplicasInfo();
+    return (numberOfVoteSignatures > info.fVal());
+  }
+
+  bool addMsgWithVoteSignature(PART* voteSigMsg, ReplicaId repId) {
+    Assert(voteSigMsg != nullptr);
+    if ((combinedValidSignatureMsg != nullptr) || (replicasInfo.count(repId) > 0)) return false;
+    // add voteSigMsg to replicasInfo
+    RepInfo info = {voteSigMsg, SigState::Unknown};
+    replicasInfo[repId] = info;
+    numberOfUnknownSignatures++;
+    trySendToBkThread();
+    //numberOfVoteSignatures++;
+    return true;
+  }
+  
   bool addMsgWithCombinedSignature(FULL* combinedSigMsg) {
     if (combinedValidSignatureMsg != nullptr || candidateCombinedSignatureMsg != nullptr) return false;
 
@@ -102,6 +121,15 @@ class CollectorOfThresholdSignatures {
     return r.partialSigMsg;
   }
 
+  bool hasVoteMsgFromReplica(ReplicaId repId) const { return (replicasInfo.count(repId) > 0); }
+
+  PART* getVoteMsgFromReplica(ReplicaId repId) const {
+    if (replicasInfo.count(repId) == 0) return nullptr;
+
+    const RepInfo& r = replicasInfo.at(repId);
+    return r.partialSigMsg;
+  }
+
   FULL* getMsgWithValidCombinedSignature() const { return combinedValidSignatureMsg; }
 
   bool isComplete() const { return (combinedValidSignatureMsg != nullptr); }
@@ -132,6 +160,9 @@ class CollectorOfThresholdSignatures {
                                           uint16_t combinedSigLen,
                                           const std::string& span_context)  // if we compute a valid combined signature
   {
+    LOG_INFO(GL,
+             "seqNum information is as follows ["
+                 << seqNumber << " " << expectedSeqNumber <<"]");
     Assert(expectedSeqNumber == seqNumber);
     Assert(expectedView == view);
     Assert(processingSignaturesInTheBackground);
@@ -202,6 +233,33 @@ class CollectorOfThresholdSignatures {
       numOfRequiredSigs = ExternalFunc::numberOfRequiredSignatures(context);
 
     Assert(numberOfUnknownSignatures < numOfRequiredSigs);  // because numOfRequiredSigs > 1
+
+    return true;
+  }
+
+  // init the PART message directly (without sending to a background thread)
+  bool initMsgWithVoteSignature(PART* voteSigMsg, ReplicaId repId) {
+    Assert(voteSigMsg != nullptr);
+
+    Assert(!processingSignaturesInTheBackground);
+    Assert(expectedSeqNumber != 0);
+    Assert(combinedValidSignatureMsg == nullptr);
+    Assert(candidateCombinedSignatureMsg == nullptr);
+    Assert(replicasInfo.count(repId) == 0);
+    Assert(numberOfUnknownSignatures == 0);  // we can use this method to add at most one PART message
+
+    // add voteSigMsg to replicasInfo
+    RepInfo info = {voteSigMsg, SigState::Unknown};
+    replicasInfo[repId] = info;
+
+    // TODO(GG): do we want to verify the partial signature here?
+
+    numberOfUnknownSignatures++;
+
+    if (numOfRequiredSigs == 0)  // init numOfRequiredSigs
+      numOfRequiredSigs = ExternalFunc::numberOfRequiredSignatures(context);
+
+    // Assert(numberOfUnknownSignatures < numOfRequiredSigs);  // because numOfRequiredSigs > 1
 
     return true;
   }
@@ -463,6 +521,7 @@ class CollectorOfThresholdSignatures {
     for (auto&& m : replicasInfo) {
       RepInfo& repInfo = m.second;
       delete repInfo.partialSigMsg;
+      // delete repInfo.voteSigMsg;
     }
     replicasInfo.clear();
 
@@ -484,12 +543,14 @@ class CollectorOfThresholdSignatures {
 
   struct RepInfo {
     PART* partialSigMsg;
+    // PART* voteSigMsg;
     SigState state;
   };
 
   bool processingSignaturesInTheBackground = false;
 
   uint16_t numberOfUnknownSignatures = 0;
+  uint16_t numberOfVoteSignatures = 0;
   std::unordered_map<ReplicaId, RepInfo> replicasInfo;  // map from replica Id to RepInfo
 
   FULL* combinedValidSignatureMsg = nullptr;
@@ -498,6 +559,22 @@ class CollectorOfThresholdSignatures {
   SeqNum expectedSeqNumber = 0;
   ViewNum expectedView = 0;
   Digest expectedDigest;
+
+  //struct VoteInfo {
+  //  PART* voteSigMsg;
+  //  SigState state;
+  //};
+
+  // bool processingSignaturesInTheBackground = false;
+
+  // uint16_t numberOfUnknownSignatures = 0;
+  //std::unordered_map<ReplicaId, VoteInfo> votersInfo;
+
+  FULL* combinedVoteSignatureMsg = nullptr;
+
+  // SeqNum expectedSeqNumber = 0;
+  // ViewNum expectedView = 0;
+  // Digest expectedDigest;
 };
 
 }  // namespace impl

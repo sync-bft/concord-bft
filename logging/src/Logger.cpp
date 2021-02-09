@@ -23,3 +23,4 @@ ScopedMdc::~ScopedMdc() { MDC_REMOVE(key_); }
 
 logging::Logger GL = logging::getLogger("concord");
 logging::Logger CNSUS = logging::getLogger("concord.bft.consensus");
+logging::Logger PlainUDP = logging::getLogger("plain-udp");

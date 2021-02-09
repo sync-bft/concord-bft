@@ -46,6 +46,10 @@ class ControllerBase {
 
   // TODO(GG): add more methods that may be useful  by controllers
   virtual int durationSincePrePrepare(SeqNum n) = 0;
+
+  virtual void onSendingProposal(SeqNum n) {} // Sync-HotStuff
+  virtual int durationSinceProposal(SeqNum n) = 0; // Sync-HotStuff
+
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -62,6 +66,7 @@ class SimpleController : public ControllerBase {
   virtual CommitPath getCurrentFirstPath() override;
   virtual uint32_t timeToStartSlowPathMilli() override;
   virtual uint32_t slowPathsTimerMilli() override;
+  // virtual uint32_t timeToStartCommitMilli() override;
 
   // events (used to pass information to the controller)
 

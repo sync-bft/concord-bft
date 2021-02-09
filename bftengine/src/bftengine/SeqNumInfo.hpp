@@ -16,6 +16,7 @@
 // TODO(GG): clean/move 'include' statements
 #include "PrimitiveTypes.hpp"
 #include "SysConsts.hpp"
+#include "messages/ProposalMsg.hpp"
 #include "messages/PrePrepareMsg.hpp"
 #include "messages/SignedShareMsgs.hpp"
 #include "messages/PartialProofsSet.hpp"
@@ -43,31 +44,56 @@ class SeqNumInfo {
   bool addMsg(PreparePartialMsg* m);
   bool addSelfMsg(PreparePartialMsg* m, bool directAdd = false);
 
+  bool addMsg(VoteMsg* m, bool directAdd = false);
+  bool addSelfMsg(VoteMsg* m, bool directAdd = false);
+  
   bool addMsg(PrepareFullMsg* m, bool directAdd = false);
 
   bool addMsg(CommitPartialMsg* m);
   bool addSelfCommitPartialMsgAndDigest(CommitPartialMsg* m, Digest& commitDigest, bool directAdd = false);
 
+  //bool addMsg(VoteFullMsg* m);
+  //bool addSelfVoteFullMsgAndDigest(VoteFullMsg* m, Digest& commitDigest, bool directAdd = false);
+
   bool addMsg(CommitFullMsg* m, bool directAdd = false);
+
+  bool addMsg(ProposalMsg* m);
+  bool addSelfMsg(ProposalMsg* m, bool directAdd = false, bool primaryFirstMsg=false);
+
+  bool addCombinedSig(const char* sig, uint16_t len);
 
   void forceComplete();
 
   PrePrepareMsg* getPrePrepareMsg() const;
   PrePrepareMsg* getSelfPrePrepareMsg() const;
 
+  ProposalMsg* getProposalMsg() const;
+
   PreparePartialMsg* getSelfPreparePartialMsg() const;
   PrepareFullMsg* getValidPrepareFullMsg() const;
+
+  VoteMsg* getSelfVoteMsg() const;
+  VoteFullMsg* getSelfVoteFullMsg() const;
 
   CommitPartialMsg* getSelfCommitPartialMsg() const;
   CommitFullMsg* getValidCommitFullMsg() const;
 
+  const char* getCombinedSig() const { return combinedSig;}
+
+  uint16_t getCombinedSigLen() const { return combinedSigLen;}
+
   bool hasPrePrepareMsg() const;
 
   bool isPrepared() const;
+  bool hasVoted() const;
   bool isCommitted__gg() const;  // TODO(GG): beware this name may mislead (not sure...). rename ??
+  bool hasCommitVoted() const;
+  bool canCommit() const;
 
   bool preparedOrHasPreparePartialFromReplica(ReplicaId repId) const;
+  bool votedOrHasVoteFromReplica(ReplicaId repId) const;
   bool committedOrHasCommitPartialFromReplica(ReplicaId repId) const;
+  bool commitVotedOrHasCommitVoteFromReplica(ReplicaId repId) const;
 
   Time getTimeOfFisrtRelevantInfoFromPrimary() const;
   Time getTimeOfLastInfoRequest() const;
@@ -108,6 +134,17 @@ class SeqNumInfo {
     commitMsgsCollector->onCompletionOfCombinedSigVerification(seqNumber, viewNumber, isValid);
   }
 
+  void onCompletionOfVoteSignaturesProcessing(SeqNum seqNumber,
+                                              ViewNum viewNumber,
+                                              const std::set<ReplicaId>& replicasWithBadSigs);
+  void onCompletionOfVoteSignaturesProcessing(SeqNum seqNumber,
+                                              ViewNum viewNumber,
+                                              const char* combinedSig,
+                                              uint16_t combinedSigLen,
+                                              const std::string& span_context);
+  void onCompletionOfCombinedVoteSigVerification(SeqNum seqNumber, ViewNum viewNumber, bool isValid);
+
+
  protected:
   class ExFuncForPrepareCollector {
    public:
@@ -123,6 +160,34 @@ class SeqNumInfo {
     static InternalMessage createInterCombinedSigFailed(SeqNum seqNumber,
                                                         ViewNum viewNumber,
                                                         std::set<uint16_t> replicasWithBadSigs);
+    static InternalMessage createInterCombinedSigSucceeded(SeqNum seqNumber,
+                                                           ViewNum viewNumber,
+                                                           const char* combinedSig,
+                                                           uint16_t combinedSigLen,
+                                                           const std::string& span_context);
+    static InternalMessage createInterVerifyCombinedSigResult(SeqNum seqNumber, ViewNum viewNumber, bool isValid);
+
+    // from the Replica object
+    static uint16_t numberOfRequiredSignatures(void* context);
+    static IThresholdVerifier* thresholdVerifier(void* context);
+    static util::SimpleThreadPool& threadPool(void* context);
+    static IncomingMsgsStorage& incomingMsgsStorage(void* context);
+  };
+
+  class ExFuncForVoteCollector {
+   public:
+    // external messages
+    static VoteFullMsg* createCombinedSignatureMsg(void* context,
+                                                    SeqNum seqNumber,
+                                                    ViewNum viewNumber,
+                                                    const char* const combinedSig,
+                                                    uint16_t combinedSigLen,
+                                                    const std::string& span_context);
+    // internal messages
+    static InternalMessage createInterCombinedSigFailed(SeqNum seqNumber,
+                                                        ViewNum viewNumber,
+                                                        std::set<uint16_t> replicasWithBadSigs);
+
     static InternalMessage createInterCombinedSigSucceeded(SeqNum seqNumber,
                                                            ViewNum viewNumber,
                                                            const char* combinedSig,
@@ -168,8 +233,10 @@ class SeqNumInfo {
   InternalReplicaApi* replica = nullptr;
 
   PrePrepareMsg* prePrepareMsg;
+  ProposalMsg* proposalMsg;
 
   CollectorOfThresholdSignatures<PreparePartialMsg, PrepareFullMsg, ExFuncForPrepareCollector>* prepareSigCollector;
+  CollectorOfThresholdSignatures<VoteMsg, VoteFullMsg, ExFuncForVoteCollector>* voteSigCollector; 
   CollectorOfThresholdSignatures<CommitPartialMsg, CommitFullMsg, ExFuncForCommitCollector>* commitMsgsCollector;
 
   PartialProofsSet* partialProofsSet;  // TODO(GG): replace with an instance of CollectorOfThresholdSignatures
@@ -183,6 +250,9 @@ class SeqNumInfo {
   Time firstSeenFromPrimary;
   Time timeOfLastInfoRequest;
   Time commitUpdateTime;
+
+  const char *combinedSig;
+  uint16_t combinedSigLen;
 
  public:
   // methods for SequenceWithActiveWindow

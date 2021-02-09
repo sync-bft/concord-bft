@@ -38,6 +38,7 @@
 #include "messages/FullCommitProofMsg.hpp"
 #include "messages/ReplicaStatusMsg.hpp"
 #include "messages/AskForCheckpointMsg.hpp"
+#include "messages/ProposalMsg.hpp"
 
 #include <string>
 #include <type_traits>
@@ -113,6 +114,15 @@ void ReplicaImp::registerMsgHandlers() {
                                    bind(&ReplicaImp::messageHandler<AskForCheckpointMsg>, this, _1));
 
   msgHandlers_->registerInternalMsgHandler([this](InternalMessage &&msg) { onInternalMsg(std::move(msg)); });
+
+  msgHandlers_->registerMsgHandler(MsgCode::Proposal,
+                                   bind(&ReplicaImp::messageHandler<ProposalMsg>, this, _1));
+
+  msgHandlers_->registerMsgHandler(MsgCode::Vote,
+                                   bind(&ReplicaImp::messageHandler<VoteMsg>, this, _1));
+
+  //msgHandlers_->registerMsgHandler(MsgCode::VoteFull,
+  //                                 bind(&ReplicaImp::messageHandler<VoteFullMsg>, this, _1));
 }
 
 template <typename T>
@@ -216,7 +226,8 @@ void ReplicaImp::onMessage<ClientRequestMsg>(ClientRequestMsg *m) {
                                                         << "], senderId=" << senderId);
         requestsQueueOfPrimary.push(m);
         primaryCombinedReqSize += m->size();
-        tryToSendPrePrepareMsg(true);
+        //tryToSendPrePrepareMsg(true);
+        tryToSendProposalMsg(true);
         return;
       } else {
         LOG_INFO(GL,
@@ -332,9 +343,9 @@ void ReplicaImp::tryToSendPrePrepareMsg(bool batchingLogic) {
   // because maxConcurrentAgreementsByPrimary <  MaxConcurrentFastPaths
   AssertLE((primaryLastUsedSeqNum + 1), lastExecutedSeqNum + MaxConcurrentFastPaths);
 
-  CommitPath firstPath = CommitPath::SLOW;// force slow by setting it to 2
+  CommitPath firstPath = controller->getCurrentFirstPath();
 
-  AssertOR((config_.cVal != 0), (firstPath != CommitPath::FAST_WITH_THRESHOLD));// this is true since first path is slow
+  AssertOR((config_.cVal != 0), (firstPath != CommitPath::FAST_WITH_THRESHOLD));
 
   controller->onSendingPrePrepare((primaryLastUsedSeqNum + 1), firstPath);
 
@@ -515,6 +526,7 @@ void ReplicaImp::onMessage<PrePrepareMsg>(PrePrepareMsg *msg) {
         seqNumInfo.startSlowPath();
         metric_slow_path_count_.Get().Inc();
         sendPreparePartial(seqNumInfo);
+        ;
       }
     }
   }
@@ -884,6 +896,7 @@ void ReplicaImp::onMessage<FullCommitProofMsg>(FullCommitProofMsg *msg) {
   return;
 }
 
+/*
 void ReplicaImp::onInternalMsg(InternalMessage &&msg) {
   metric_received_internal_msgs_.Get().Inc();
 
@@ -929,6 +942,7 @@ void ReplicaImp::onInternalMsg(InternalMessage &&msg) {
 
   assert(false);
 }
+*/
 
 std::string ReplicaImp::getReplicaState() const {
   auto primary = getReplicasInfo().primaryOfView(curView);
@@ -3138,7 +3152,9 @@ void ReplicaImp::addTimers() {
   metric_info_request_timer_.Get().Set(dynamicUpperLimitOfRounds->upperLimit() / 2);
   infoReqTimer_ = timers_.add(milliseconds(dynamicUpperLimitOfRounds->upperLimit() / 2),
                               Timers::Timer::RECURRING,
-                              [this](Timers::Handle h) { onInfoRequestTimer(h); });
+                              [this](Timers::Handle h) {
+      //onInfoRequestTimer(h);
+       });
 }
 
 void ReplicaImp::start() {
@@ -3446,5 +3462,544 @@ IncomingMsgsStorage &ReplicaImp::getIncomingMsgsStorage() { return *msgsCommunic
 // TODO(GG): the timer for state transfer !!!!
 
 // TODO(GG): !!!! view changes and retransmissionsLogic --- check ....
+
+//////////////////////////////////////////////////////////////////////
+// Sync-HotStuff
+//////////////////////////////////////////////////////////////////////
+
+void ReplicaImp::tryToSendProposalMsg(bool batchingLogic){
+
+  Assert(isCurrentPrimary());
+  Assert(currentViewIsActive());
+
+  LOG_INFO(CNSUS, "On tryToSendProposalMsg");
+
+  if (primaryLastUsedSeqNum + 1 > lastStableSeqNum + kWorkWindowSize) {
+    LOG_INFO(GL,
+             "Will not send Proposal since next sequence number ["
+                 << primaryLastUsedSeqNum + 1 << "] exceeds window threshold [" << lastStableSeqNum + kWorkWindowSize
+                 << "]");
+    return;
+  }
+
+  if (primaryLastUsedSeqNum > lastExecutedSeqNum + 1){//config_.concurrencyLevel) { //  config_.concurrencyLevel
+    LOG_INFO(GL,
+             "Will not send Proposal since next sequence number ["
+                 << primaryLastUsedSeqNum + 1 << "] exceeds the next executed sequence number [" << lastExecutedSeqNum << "]");
+    return;  // TODO(GG): should also be checked by the non-primary replicas
+  }
+
+   if (requestsQueueOfPrimary.empty()) return;
+
+  ClientRequestMsg *first = requestsQueueOfPrimary.front();
+  
+  // TODO(QY): change queue to iterateable structure
+  while (first != nullptr &&
+         !clientsManager->noPendingAndRequestCanBecomePending(first->clientProxyId(), first->requestSeqNum())) {
+    SCOPED_MDC_CID(first->getCid());
+    primaryCombinedReqSize -= first->size();
+    delete first;
+    requestsQueueOfPrimary.pop();
+    first = (!requestsQueueOfPrimary.empty() ? requestsQueueOfPrimary.front() : nullptr);
+  }
+
+  const size_t requestsInQueue = requestsQueueOfPrimary.size();
+
+  if (requestsInQueue == 0) return;
+  
+  //uint64_t concurrentDiff = ((primaryLastUsedSeqNum + 1) - lastExecutedSeqNum);
+  uint64_t minBatchSize = 1;
+
+  // update maxNumberOfPendingRequestsInRecentHistory (if needed)
+  if (requestsInQueue > maxNumberOfPendingRequestsInRecentHistory)
+    maxNumberOfPendingRequestsInRecentHistory = requestsInQueue;
+
+  // TODO(GG): the batching logic should be part of the configuration - TBD.
+  /*if (batchingLogic && (concurrentDiff >= 2)) {
+    minBatchSize = concurrentDiff * batchingFactor;
+
+    const size_t maxReasonableMinBatchSize = 350;  // TODO(GG): use param from configuration
+
+    if (minBatchSize > maxReasonableMinBatchSize) minBatchSize = maxReasonableMinBatchSize;
+  }*/
+
+  if (requestsInQueue < minBatchSize) {
+    LOG_INFO(GL,
+             "Not enough client requests to fill the batch threshold size. " << KVLOG(minBatchSize, requestsInQueue));
+    metric_not_enough_client_requests_event_.Get().Inc();
+    return;
+  }
+
+  // update batchingFactor
+  if (((primaryLastUsedSeqNum + 1) % kWorkWindowSize) ==
+      0)  // TODO(GG): do we want to update batchingFactor when the view is changed
+  {
+    const size_t aa = 4;  // TODO(GG): read from configuration
+    batchingFactor = (maxNumberOfPendingRequestsInRecentHistory / aa);
+    if (batchingFactor < 1) batchingFactor = 1;
+    maxNumberOfPendingRequestsInRecentHistory = 0;
+    LOG_DEBUG(GL, "Proposal batching factor updated. " << KVLOG(batchingFactor));
+  }
+
+  // because maxConcurrentAgreementsByPrimary <  MaxConcurrentFastPaths
+  AssertLE((primaryLastUsedSeqNum + 1), lastExecutedSeqNum + MaxConcurrentFastPaths);
+
+  controller->onSendingProposal((primaryLastUsedSeqNum + 1));
+
+  ClientRequestMsg *nextRequest = (!requestsQueueOfPrimary.empty() ? requestsQueueOfPrimary.front() : nullptr);
+  const auto &span_context = nextRequest ? nextRequest->spanContext<ClientRequestMsg>() : std::string{};
+  
+  ProposalMsg *proposal = nullptr;
+  if (!isPrimaryInitialized){
+    LOG_DEBUG(CNSUS, "Creating first proposal msg from primary");
+    bool isFirstMsg = true;
+    proposal = new ProposalMsg(
+      config_.replicaId, curView, (primaryLastUsedSeqNum + 1), NULL, 0, span_context, primaryCombinedReqSize, isFirstMsg);
+  }
+  else{
+    LOG_DEBUG(CNSUS, "Creating non-first proposal msg from primary");
+    bool isFirstMsg = false;
+    SeqNumInfo &lastSeqNumInfo =  mainLog->get(primaryLastUsedSeqNum);
+    proposal = new ProposalMsg(
+        config_.replicaId, curView, (primaryLastUsedSeqNum + 1), lastSeqNumInfo.getCombinedSig(), lastSeqNumInfo.getCombinedSigLen(), 
+        span_context, primaryCombinedReqSize + lastSeqNumInfo.getCombinedSigLen(), isFirstMsg);
+  }
+
+  uint16_t initialStorageForRequests = proposal->remainingSizeForRequests();
+  while (nextRequest != nullptr) {
+    if (nextRequest->size() <= proposal->remainingSizeForRequests()) {
+      SCOPED_MDC_CID(nextRequest->getCid());
+      if (clientsManager->noPendingAndRequestCanBecomePending(nextRequest->clientProxyId(),
+                                                              nextRequest->requestSeqNum())) {
+        proposal->addRequest(nextRequest->body(), nextRequest->size());
+        clientsManager->addPendingRequest(nextRequest->clientProxyId(), nextRequest->requestSeqNum());
+      }
+      primaryCombinedReqSize -= nextRequest->size();
+    } else if (nextRequest->size() > initialStorageForRequests) {
+      // The message is too big
+      LOG_ERROR(GL,
+                "Request was dropped because it exceeds maximum allowed size. "
+                    << KVLOG(nextRequest->senderId(), nextRequest->size(), initialStorageForRequests));
+    }
+    delete nextRequest;
+    requestsQueueOfPrimary.pop();
+    nextRequest = (!requestsQueueOfPrimary.empty() ? requestsQueueOfPrimary.front() : nullptr);
+  }
+
+  if (proposal->numberOfRequests() == 0) {
+    LOG_WARN(GL, "No client requests added to PrePrepare batch. Nothing to send.");
+    return;
+  }
+
+  proposal->finishAddingRequests();
+
+  primaryLastUsedSeqNum++;
+  LOG_INFO(CNSUS,
+           "Sending Proposal with the following payload of the following correlation ids ["
+            << proposal->getBatchCorrelationIdAsString() << "]");
+  
+  bool primaryFirstMsg = !isPrimaryInitialized;
+  SeqNumInfo &currSeqNumInfo =  mainLog->get(primaryLastUsedSeqNum);
+  currSeqNumInfo.addSelfMsg(proposal, false, primaryFirstMsg);
+
+  // skip ps_
+
+  for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
+    sendRetransmittableMsgToReplica(proposal, x, primaryLastUsedSeqNum);
+  }
+
+  // add self-vote:
+  const auto &vote_span_context = proposal->spanContext<std::remove_pointer<decltype(proposal)>::type>();
+  VoteMsg *v = VoteMsg::create(curView,
+                              proposal->seqNumber(),
+                              config_.replicaId,
+                              proposal->digestOfRequestsSeqNum(),
+                              config_.thresholdSignerForSlowPathCommit,
+                              vote_span_context);
+  currSeqNumInfo.addSelfMsg(v, false);
+
+  if (!isPrimaryInitialized) isPrimaryInitialized = true;
+
+  // Start commit timer for primary.
+  commitReportTimer_ = timers_.add(milliseconds(commitReportMilli),
+                                     Timers::Timer::ONESHOT,
+                                     [this, msgSeqNum=proposal->seqNumber()](Timers::Handle h) { onStartCommitTimer(h, msgSeqNum); });
+
+}
+
+void ReplicaImp::sendVote(SeqNumInfo &seqNumInfo) {
+  Assert(currentViewIsActive());
+
+  // if (seqNumInfo.getSelfVoteMsg() == nullptr && seqNumInfo.hasPrePrepareMsg() && !seqNumInfo.isPrepared()) {
+  ProposalMsg *pMsg = seqNumInfo.getProposalMsg();
+
+  AssertNE(pMsg, nullptr);
+
+  const auto &span_context = pMsg->spanContext<std::remove_pointer<decltype(pMsg)>::type>();
+  VoteMsg *v = VoteMsg::create(curView,
+                              pMsg->seqNumber(),
+                              config_.replicaId,
+                              pMsg->digestOfRequestsSeqNum(),
+                              config_.thresholdSignerForSlowPathCommit,
+                              span_context);
+   seqNumInfo.addSelfMsg(v, false);
+
+  if (!isCurrentPrimary()) {
+    for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
+      sendRetransmittableMsgToReplica(v, x, primaryLastUsedSeqNum);
+      LOG_INFO(CNSUS, "Vote sent to replica");
+    }
+  }
+
+}
+
+template<>
+void ReplicaImp::onMessage<VoteMsg>(VoteMsg *msg) {
+  LOG_INFO(CNSUS, "Received VoteMsg");
+
+  const SeqNum msgSeqNum = msg->seqNumber();
+  SeqNumInfo &seqNumInfo = mainLog->get(msgSeqNum);
+
+  seqNumInfo.addMsg(msg, false);
+  /*if (seqNumInfo.canCommit()) {
+    LOG_INFO(CNSUS, "Replica can commit");
+  }
+  else {
+    LOG_INFO(CNSUS, "Replica cannot commit");
+  }*/
+}
+
+template<>
+void ReplicaImp::onMessage<ProposalMsg>(ProposalMsg *msg) {//Receiving proposalMsg
+
+  if (msg->senderId() == currentPrimary()){
+    LOG_INFO(CNSUS, "Received a proposal message");
+  }
+ 
+  const SeqNum msgSeqNum = msg->seqNumber();
+  const ReplicaId msgSender = msg->senderId();
+  //const ViewNum msgViewNum = msg->viewNumber();
+
+  msg->validate(*repsInfo);
+  //LOG_DEBUG(CNSUS, "Message has been validated");  
+  
+  // if the msg is the first proposal msg from the primary, no need to do leader equivocation checking
+  if (msg->senderId() == currentPrimary()){
+    LOG_DEBUG(CNSUS, "Message is the first primary msg:" << msg->isFirstMsg());
+  }
+
+  if (!msg->isFirstMsg()){
+    if (msg->senderId() == currentPrimary()){
+      LOG_DEBUG(CNSUS, "On leader equivocation checking.");
+      }
+    SeqNumInfo& lastSeqNumInfo = mainLog->get(msgSeqNum-1);
+
+    //const char* msgCombinedSig = msg->combinedSigBody();
+    //const char* logCombinedSig = lastSeqNumInfo.getCombinedSig();
+
+    Digest& msgDigestOfRequestsSeqNum = msg->digestOfRequestsSeqNum();
+    ProposalMsg* logProposalMsg = lastSeqNumInfo.getProposalMsg();
+    Digest& logDigestOfRequestsSeqNum = logProposalMsg->digestOfRequestsSeqNum();
+
+  //compare digest
+    if (msgDigestOfRequestsSeqNum != logDigestOfRequestsSeqNum) { // TODO: add certificate checking
+//      LOG_INFO(CNSUS, "Leader equivocation detected");
+//      return;//blame
+    }
+  }
+
+  if (msg->isForwardedMsg() == true){return;}
+
+  //AssertEQ(msgCombinedSig, logCombinedSig);
+  AssertLE(lastStableSeqNum, msgSeqNum);
+
+  SeqNumInfo& currSeqNumInfo = mainLog->get(msgSeqNum);
+  currSeqNumInfo.addMsg(msg);
+  //currSeqNumInfo.addCombinedSig(msg->combinedSigBody(), msg->combinedSigLength());
+  //LOG_DEBUG(CNSUS, "Proposal msg added to the mainLog");
+  
+  if (msgSeqNum > lastStableSeqNum) {
+    msg->setForwardedMsg(true);
+    for (ReplicaId x : repsInfo->idsOfPeerReplicas()) {
+      sendRetransmittableMsgToReplica(msg, x, msgSeqNum);
+    }
+    if (msg->senderId() == currentPrimary()){
+    LOG_DEBUG(CNSUS, "Proposal msg broadcasted to all other replicas");}
+
+    const SeqNum minSeqNum = lastExecutedSeqNum + 1;
+    const SeqNum maxSeqNum = primaryLastUsedSeqNum;
+    AssertLE(minSeqNum, maxSeqNum + 1);
+//    if (minSeqNum > maxSeqNum) return;
+
+    if (relevantMsgForActiveView(msg)) {
+      sendAckIfNeeded(msg, msgSender, msgSeqNum);
+      if (msg->senderId() == currentPrimary()){
+      LOG_DEBUG(GL, "Received relevant VoteMsg." << KVLOG(msgSender));}
+      //controller->onMessage(msg);
+
+      VoteMsg *vote =currSeqNumInfo.getSelfVoteMsg();
+      if (vote == nullptr) { 
+        sendVote(currSeqNumInfo);
+      }
+      else {
+        LOG_DEBUG(GL,
+              "Node " << config_.replicaId << " ignored the Proposal from node " << msgSender << " (seqNumber "
+                      << msgSeqNum << ")");
+        delete msg;
+      }
+    }
+  }
+  primaryLastUsedSeqNum++;
+
+  commitReportTimer_ = timers_.add(milliseconds(commitReportMilli),
+                                   Timers::Timer::ONESHOT,
+                                   [this, msgSeqNum](Timers::Handle h) { onStartCommitTimer(h, msgSeqNum); });
+}
+
+void ReplicaImp::onStartCommitTimer(Timers::Handle timer, SeqNum msgSeqNum) {
+  LOG_INFO(CNSUS, "Start commit Timer " << msgSeqNum);
+  for (SeqNum msgIterator = lastExecutedSeqNum + 1; msgIterator <= msgSeqNum; msgIterator++){
+    SeqNumInfo &seqNumInfo = mainLog->get(msgIterator);
+    ProposalMsg *proposal = seqNumInfo.getProposalMsg();
+    auto span = concordUtils::startSpan("bft_execute_requests_in_proposal");
+    bool recoverFromErrorInRequestsExec = false;  // temp
+    executeRequestsInProposalMsg(span, proposal, recoverFromErrorInRequestsExec);
+  }
+}
+
+
+void ReplicaImp::executeRequestsInProposalMsg(concordUtils::SpanWrapper &parent_span,
+                                              ProposalMsg *pMsg,
+                                              bool recoverFromErrorInRequestsExecution) {
+  LOG_DEBUG(CNSUS, "on executeRequestInProposalMsg");
+  auto span = concordUtils::startChildSpan("bft_execute_requests_in_preprepare", parent_span);
+  AssertAND(!isCollectingState(), currentViewIsActive());
+  AssertNE(pMsg, nullptr);
+  AssertEQ(pMsg->viewNumber(), curView);
+  AssertEQ(pMsg->seqNumber(), lastExecutedSeqNum + 1);
+
+  const uint16_t numOfRequests = pMsg->numberOfRequests();
+
+  // recoverFromErrorInRequestsExecution ==> (numOfRequests > 0)
+  AssertOR(!recoverFromErrorInRequestsExecution, (numOfRequests > 0));
+
+  if (numOfRequests > 0) {
+    Bitmap requestSet(numOfRequests);
+    size_t reqIdx = 0;
+    ContentIterator reqIter(pMsg);
+    char *requestBody = nullptr;
+
+    //////////////////////////////////////////////////////////////////////
+    // Phase 1:
+    // a. Find the requests that should be executed
+    // b. Send reply for each request that has already been executed
+    //////////////////////////////////////////////////////////////////////
+    if (!recoverFromErrorInRequestsExecution) {
+      while (reqIter.getAndGoToNext(requestBody)) {
+        ClientRequestMsg req((ClientRequestMsgHeader *)requestBody);
+        SCOPED_MDC_CID(req.getCid());
+        NodeIdType clientId = req.clientProxyId();
+
+        const bool validClient = isValidClient(clientId);
+        if (!validClient) {
+          LOG_WARN(GL, "The client is not valid. " << KVLOG(clientId));
+          continue;
+        }
+
+        if (seqNumberOfLastReplyToClient(clientId) >= req.requestSeqNum()) {
+          ClientReplyMsg *replyMsg = clientsManager->allocateMsgWithLatestReply(clientId, currentPrimary());
+          send(replyMsg, clientId);
+          delete replyMsg;
+          continue;
+        }
+
+        requestSet.set(reqIdx);
+        reqIdx++;
+      }
+      reqIter.restart();
+
+    } else {
+      requestSet = mapOfRequestsThatAreBeingRecovered;
+    }
+
+    //////////////////////////////////////////////////////////////////////
+    // Phase 2: execute requests + send replies
+    // In this phase the application state may be changed. We also change data in the state transfer module.
+    // TODO(GG): Explain what happens in recovery mode (what are the requirements from  the application, and from the
+    // state transfer module.
+    //////////////////////////////////////////////////////////////////////
+
+    reqIdx = 0;
+    requestBody = nullptr;
+
+    auto dur = controller->durationSinceProposal(lastExecutedSeqNum + 1);
+    if (dur > 0) {
+      // Primary
+      LOG_DEBUG(CNSUS, "Consensus reached, duration [" << dur << "ms]");
+
+    } else {
+      LOG_DEBUG(CNSUS, "Consensus reached");
+    }
+
+    while (reqIter.getAndGoToNext(requestBody)) {
+      size_t tmp = reqIdx;
+      reqIdx++;
+      if (!requestSet.get(tmp)) {
+        continue;
+      }
+
+      ClientRequestMsg req((ClientRequestMsgHeader *)requestBody);
+      SCOPED_MDC_CID(req.getCid());
+      NodeIdType clientId = req.clientProxyId();
+
+      uint32_t actualReplyLength = 0;
+      userRequestsHandler->execute(
+          clientId,
+          lastExecutedSeqNum + 1,
+          req.flags(),
+          req.requestLength(),
+          req.requestBuf(),
+          ReplicaConfigSingleton::GetInstance().GetMaxReplyMessageSize() - sizeof(ClientReplyMsgHeader),
+          replyBuffer,
+          actualReplyLength,
+          span);
+
+      AssertGT(actualReplyLength,
+               0);  // TODO(GG): TBD - how do we want to support empty replies? (actualReplyLength==0)
+
+      ClientReplyMsg *replyMsg = clientsManager->allocateNewReplyMsgAndWriteToStorage(
+          clientId, req.requestSeqNum(), currentPrimary(), replyBuffer, actualReplyLength);
+      send(replyMsg, clientId);
+      delete replyMsg;
+      clientsManager->removePendingRequestOfClient(clientId);
+    }
+  }
+
+  if ((lastExecutedSeqNum + 1) % checkpointWindowSize == 0) {
+    const uint64_t checkpointNum = (lastExecutedSeqNum + 1) / checkpointWindowSize;
+    stateTransfer->createCheckpointOfCurrentState(checkpointNum);
+  }
+
+  //////////////////////////////////////////////////////////////////////
+  // Phase 3: finalize the execution of lastExecutedSeqNum+1
+  // TODO(GG): Explain what happens in recovery mode
+  //////////////////////////////////////////////////////////////////////
+
+  LOG_DEBUG(GL, "Finalized execution. " << KVLOG(lastExecutedSeqNum + 1, curView, lastStableSeqNum));
+
+  lastExecutedSeqNum = lastExecutedSeqNum + 1;
+
+  if (lastViewThatTransferredSeqNumbersFullyExecuted < curView &&
+      (lastExecutedSeqNum >= maxSeqNumTransferredFromPrevViews)) {
+    lastViewThatTransferredSeqNumbersFullyExecuted = curView;
+  }
+
+  // TODO(QF): removed the original checkpoint
+
+  // TODO(GG): clean the following logic
+  if (mainLog->insideActiveWindow(lastExecutedSeqNum)) {  // update dynamicUpperLimitOfRounds
+    const SeqNumInfo &seqNumInfo = mainLog->get(lastExecutedSeqNum);
+    const Time firstInfo = seqNumInfo.getTimeOfFisrtRelevantInfoFromPrimary();
+    const Time currTime = getMonotonicTime();
+    if ((firstInfo < currTime)) {
+      const int64_t durationMilli = duration_cast<milliseconds>(currTime - firstInfo).count();
+      dynamicUpperLimitOfRounds->add(durationMilli);
+    }
+  }
+}
+
+void ReplicaImp::onInternalMsg(InternalMessage &&msg) {
+  metric_received_internal_msgs_.Get().Inc();
+
+  // vote collector in Sync-HotStuff currently share the same exfunc with prepare collector
+  if (auto *csf = std::get_if<CombinedSigFailedInternalMsg>(&msg)) {
+    return onVoteCombinedSigFailed(csf->seqNumber, csf->view, csf->replicasWithBadSigs);
+  }
+  if (auto *css = std::get_if<CombinedSigSucceededInternalMsg>(&msg)) {
+    return onVoteCombinedSigSucceeded(
+        css->seqNumber, css->view, css->combinedSig.data(), css->combinedSig.size(), css->span_context_);
+  }
+  if (auto *vcs = std::get_if<VerifyCombinedSigResultInternalMsg>(&msg)) {
+    return onVoteVerifyCombinedSigResult(vcs->seqNumber, vcs->view, vcs->isValid);
+  }
+
+  // Handle a response from a RetransmissionManagerJob
+  if (auto *rpr = std::get_if<RetranProcResultInternalMsg>(&msg)) {
+    onRetransmissionsProcessingResults(rpr->lastStableSeqNum, rpr->view, rpr->suggestedRetransmissions);
+    return retransmissionsManager->OnProcessingComplete();
+  }
+
+  // Handle a status request for the diagnostics subsystem
+  if (auto *get_status = std::get_if<GetStatus>(&msg)) {
+    return onInternalMsg(*get_status);
+  }
+
+  assert(false);
+}
+
+void ReplicaImp::onVoteCombinedSigFailed(SeqNum seqNumber,
+                                            ViewNum view,
+                                            const std::set<uint16_t> &replicasWithBadSigs) {
+  LOG_DEBUG(GL, KVLOG(seqNumber, view));
+
+  if ((isCollectingState()) || (!currentViewIsActive()) || (curView != view) ||
+      (!mainLog->insideActiveWindow(seqNumber))) {
+    LOG_DEBUG(GL, "Dropping irrelevant signature." << KVLOG(seqNumber, view));
+
+    return;
+  }
+
+  SeqNumInfo &seqNumInfo = mainLog->get(seqNumber);
+
+  seqNumInfo.onCompletionOfVoteSignaturesProcessing(seqNumber, view, replicasWithBadSigs);
+
+  // TODO(GG): add logic that handles bad replicas ...
+}
+
+void ReplicaImp::onVoteCombinedSigSucceeded(
+    SeqNum seqNumber, ViewNum view, const char *combinedSig, uint16_t combinedSigLen, const std::string &span_context) {
+  //SCOPED_MDC_PRIMARY(std::to_string(currentPrimary()));
+  //SCOPED_MDC_SEQ_NUM(std::to_string(seqNumber));
+  //SCOPED_MDC_PATH(CommitPathToMDCString(CommitPath::SLOW));
+  LOG_DEBUG(GL, KVLOG(view));
+  AssertNE(combinedSig, nullptr);
+
+  if ((isCollectingState()) || (!currentViewIsActive()) || (curView != view) ||
+      (!mainLog->insideActiveWindow(seqNumber))) {
+    LOG_INFO(GL, "onVoteCombinedSigSucceeded: Invalid state, view, or sequence number." << KVLOG(view, curView));
+    return;
+  }
+      
+  LOG_INFO(CNSUS,
+              "seqNum information is as follows ["
+                  << seqNumber << " " << view <<"]");
+
+  SeqNumInfo &seqNumInfo = mainLog->get(seqNumber);
+  seqNumInfo.addCombinedSig(combinedSig, combinedSigLen);
+  seqNumInfo.onCompletionOfVoteSignaturesProcessing(seqNumber, view, combinedSig, combinedSigLen, span_context);
+
+}
+
+void ReplicaImp::onVoteVerifyCombinedSigResult(SeqNum seqNumber, ViewNum view, bool isValid) {
+  LOG_DEBUG(GL, KVLOG(view));
+
+  if ((isCollectingState()) || (!currentViewIsActive()) || (curView != view) ||
+      (!mainLog->insideActiveWindow(seqNumber))) {
+    LOG_INFO(GL,
+             "onVoteVerifyCombinedSigResult: Invalid state, view, or sequence number."
+                 << KVLOG(seqNumber, view, curView, mainLog->insideActiveWindow(seqNumber)));
+    return;
+  }
+
+  SeqNumInfo &seqNumInfo = mainLog->get(seqNumber);
+
+  seqNumInfo.onCompletionOfCombinedPrepareSigVerification(seqNumber, view, isValid);
+
+  if (!isValid) {
+    //TODO: leader equivocation?
+  }  // TODO(GG): we should do something about the replica that sent this invalid message
+
+}
+
 
 }  // namespace bftEngine::impl

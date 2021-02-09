@@ -16,9 +16,9 @@
 
 struct ClientParams {
   uint32_t numOfOperations = 4600;
-  uint16_t clientId = 4;
+  uint16_t clientId = 3;
   uint16_t numOfReplicas = 3;
-  uint16_t numOfClients = 1;
+  uint16_t numOfClients = 3;
   uint16_t numOfFaulty = 1;
   uint16_t numOfSlow = 0;
   std::string configFileName;
@@ -47,7 +47,7 @@ enum class ReplicaBehavior {
 struct ReplicaParams {
   uint16_t replicaId;
   uint16_t numOfReplicas = 3;
-  uint16_t numOfClients = 1;
+  uint16_t numOfClients = 3;
   bool debug = false;
   bool viewChangeEnabled = false;
   bool autoPrimaryRotationEnabled = false;

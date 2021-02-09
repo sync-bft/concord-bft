@@ -49,6 +49,9 @@ class ReplicaStatusMsg;
 class ReplicaImp;
 struct LoadedReplicaData;
 class PersistentStorage;
+class ProposalMsg;
+class VoteMsg;
+class VoteFullMsg;
 
 using bftEngine::ReplicaConfig;
 using std::shared_ptr;
@@ -146,6 +149,7 @@ class ReplicaImp : public InternalReplicaApi, public ReplicaForStateTransfer {
   concordUtil::Timers::Handle slowPathTimer_;
   concordUtil::Timers::Handle infoReqTimer_;
   concordUtil::Timers::Handle statusReportTimer_;
+  concordUtil::Timers::Handle commitReportTimer_;
   concordUtil::Timers::Handle viewChangeTimer_;
 
   int viewChangeTimerMilli = 0;
@@ -370,6 +374,7 @@ class ReplicaImp : public InternalReplicaApi, public ReplicaForStateTransfer {
   void onViewsChangeTimer(concordUtil::Timers::Handle);
   void onRetransmissionsTimer(concordUtil::Timers::Handle);
   void onStatusReportTimer(concordUtil::Timers::Handle);
+  void onStartCommitTimer(Timers::Handle timer, SeqNum msgSeqNum);
   void onSlowPathTimer(concordUtil::Timers::Handle);
   void onInfoRequestTimer(concordUtil::Timers::Handle);
 
@@ -394,6 +399,29 @@ class ReplicaImp : public InternalReplicaApi, public ReplicaForStateTransfer {
   void onRetransmissionsProcessingResults(SeqNum relatedLastStableSeqNum,
                                           const ViewNum relatedViewNumber,
                                           const std::forward_list<RetSuggestion>& suggestedRetransmissions);
+
+  //////////////////////////////////////////////////////////////////////
+  // Sync-HotStuff
+  //////////////////////////////////////////////////////////////////////
+  
+  void tryToSendProposalMsg(bool batchingLogic);
+
+  void sendVote(SeqNumInfo &seqNumInfo);
+
+  void executeRequestsInProposalMsg(concordUtils::SpanWrapper &parent_span,
+                                    ProposalMsg *pMsg,
+                                    bool recoverFromErrorInRequestsExecution);
+ 
+  
+  void onVoteCombinedSigFailed(SeqNum seqNumber, ViewNum view, const std::set<uint16_t>& replicasWithBadSigs);
+  void onVoteCombinedSigSucceeded(SeqNum seqNumber,
+                                  ViewNum view,
+                                  const char* combinedSig,
+                                  uint16_t combinedSigLen,
+                                  const std::string& span_context);
+  void onVoteVerifyCombinedSigResult(SeqNum seqNumber, ViewNum view, bool isValid);
+
+  bool isPrimaryInitialized = false;
 
  private:
   void addTimers();

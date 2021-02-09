@@ -55,9 +55,12 @@ class SequenceWithActiveWindow {
     return ((n >= beginningOfActiveWindow) && (n < (beginningOfActiveWindow + WindowSize)));
   }
 
-  ItemType &get(NumbersType n) {
+  //TODO: why is the first proposal msg not inside active window
+  ItemType &get(NumbersType n, bool exceptionNotInsideActiveWindow=false) {
     Assert(n % Resolution == 0);
-    Assert(insideActiveWindow(n));
+    if (!exceptionNotInsideActiveWindow){
+     Assert(insideActiveWindow(n));
+    }
 
     uint16_t i = ((n / Resolution) % numItems);
     return activeWindow[i];
