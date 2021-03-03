@@ -1,234 +1,109 @@
-<img src="logoConcord.png"/>
+# Sync HotStuff on Concord 🧱⛓️
 
+This repository contains the implementation of steady-state [Sync HotStuff](https://eprint.iacr.org/2019/270.pdf) protocol extended on the [Concord codebase](https://github.com/vmware/concord). Sync HotStuff is a simple and intuitive synchronous solutions for Byzantine Fault Tolerance that achieve consensus with a latency of 2 message delay upper bounds in the steady state. In addition to the steady-state Sync HotStuff, this repository also extends the original [Concord base](https://github.com/vmware/concord) with: 
 
-# Concord-BFT: a Distributed Trust Infrastructure
+-  [Remote testing](#run-sync-hotstuff-remotely)
+-  [Non-blocking communication](#non-blocking-communication)
+-  [Evaluation pipeline](#evaluation-pipeline)
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Build Status](https://travis-ci.com/vmware/concord-bft.svg?branch=master)](https://travis-ci.com/vmware/concord-bft)
-![Build Status](https://github.com/vmware/concord-bft/workflows/Build/badge.svg)
+## Run Sync HotStuff Remotely
+To run replicas and servers on multiple remote servers simultaneously, there are three steps you need to do:
 
+### Configure Remote SSH Keys 
+To configure remote SSH keys, first the host machine needs to go to ~/.ssh and copy the public ssh key from id_rsa.pub. Then go to the remote machine and create a file ~/.ssh/authorized_keys and paste the public ssh key from the host into that file. Remember to make sure its all one line, should follow the format ‘ssh-rsa …*key*… host@ubuntu’.
 
+### Configure Concord Config File
+To test the protocol with various configurations, we introduced the script `Config_Gen.py` to automatically generate config files. The script currently assigns all clients to one server. This can be easily changed by introducing a randomized algorithm if needed. The script takes the ip addresses of the servers and number of clients to produce the config.txt file.
 
-<!-- ![Concored-bft Logo](TBD) -->
-
-<!-- <img src="TODO.jpg" width="200" height="200" /> -->
-
-
-## Overview
-
-**Concord-bft** is a generic state machine replication library that can handle malicious (byzantine) replicas.
-
-Its implementation is based on the algorithm described in the paper [SBFT: a Scalable Decentralized Trust Infrastructure for
-Blockchains](https://arxiv.org/pdf/1804.01626.pdf).
-
-It is designed to be used as a core building block for replicated distributed data stores, and is especially suited to serve as the basis of permissioned Blockchain systems.
-
-For a real-life integration example, please take a look at [Project Concord](https://github.com/vmware/concord), a highly scalable and energy-efficient distributed trust infrastructure for consensus and smart contract execution.
-
-
-## Releases
-
-We abide by [semantic versioning](https://semver.org/). Public APIs can change
-at any time until we reach version 1.0. We will, however, bump the minor version
-when a backwards incompatible change is made.
-
- [v0.5](https://github.com/vmware/concord-bft/releases/tag/v0.5)
-
-## Install and Build (Ubuntu Linux 18.04)
-
-Concord-BFT supports two kinds of builds: native and docker.
-
-### Native
-
-```sh
-git clone https://github.com/vmware/concord-bft
-cd concord-bft
-./install.sh # Installs all dependencies and 3rd parties
-sudo ./install_deps.sh
-mkdir build
-cd build
-cmake ..
+### Run Sync HotStuff Remotely
+After having remote_config set to what you want it to be, you can now run Sync HotStuff remotely. On the host machine, make sure everything is built:
+```
+cd ~/concord-bft/build
 make
-sudo make test
+```
+Having built the code, you are now able to run the replicas and servers remotely (You may be asked to provide the passwords for remote servers):
+```
+cd tests/simpleTest 
+python3 fabfile.py -ir *remoteip* -ur *remoteusn* -r *number of replicas* -c *number of clients* -sr *startingReplicaNumber* -sc *startingClientNumber*
+```
+All the values within the asterisks(*) should be replaced with their corresponding values:  startingReplicaNumber starts at 0 and startingClientNumber starts at the number of replicas in remote_config (not the number that you wish to run).
+### Run Example
+ So if there are 3 replicas in remote_config, startingClientNumber should start at 3 (it works out this way because replicaNumber starts at 0)
+For a remote_config like this,replicas_config:  
+```
+-33.33.33.38:3410  
+replicas_config:  
+-33.33.33.39:3420  
+replicas_config:  
+-33.33.33.40:3430
+clients_config:  
+-33.33.33.38:4000  
+clients_config:  
+-33.33.33.39:4010  
+clients_config:  
+-33.33.33.40:4020
+```
+To run 1 client and 1 replica on each machine, these are the following commands:
+```
+python3 fabfile.py -ir 33.33.33.38 -ur alice -r 1 -c 1 -sr 0 -sc 3
+python3 fabfile.py -ir 33.33.33.39 -ur bob -r 1 -c 1 -sr 1 -sc 4
+python3 fabfile.py -ir 33.33.33.40 -ur chris -r 1 -c 1 -sr 2 -sc 5
 ```
 
-### Docker
+## Non-blocking Communication
+In additional to the original blocking communication, this repository also includes a non-blocking communication at both client and replica sides. The non-blocking communication was implemented in adapting to Sync HotStuff protocol's features to improve overall throughput. In the non-blocking mode, client non-waiting request sending and replica non-pending request processing are enabled.
 
-* Install the latest docker.
-* Optional: [configure docker as non-root user](https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user). 
-* Build:
-```sh
-cd concord-bft
-make run-c      # run container in background
-make build      # build sources
-make test       # run tests
+To switch to non-blocking communication, you can go to project directory and then:
 ```
-Run `make help` to see more commands.
-
-Note:
-* The output binaries are stored in the host's `concord-bft/build`.
-* `Makefile` is configurable.
-For example, if you want to use another compiler you may pass it to the `make`:
+git checkout async_clients_n_commands
+cd build
+make
 ```
-make CONCORD_BFT_CONTAINER_CXX=g++ \
-    CONCORD_BFT_CONTAINER_CC=gcc \
-    build
+If you prefer the original communication mechanism, switch it back by:
 ```
-
-### Build Options
-
-In order to turn on or off various options, you need to change your cmake configuration. This is
-done by passing arguments to cmake with a `-D` prefix: e.g. `cmake -DBUILD_TESTING=OFF`. Note that
-make must be run afterwards to build according to the configuration. The following options are
-available:
-
-| Option | Possible Values | Default |
-| - | - | - |
-| `CMAKE_BUILD_TYPE`     | Debug \| Release \| RelWithDebInfo \| MinSizeRel | Debug |
-| `BUILD_TESTING`        | OFF \| ON  | ON |
-| `BUILD_COMM_TCP_PLAIN` | TRUE \| FALSE | FALSE - UDP is used |
-| `BUILD_COMM_TCP_TLS`   | TRUE \| FALSE | FALSE - UDP is used |
-| `USE_LOG4CPP`          | TRUE \| FALSE | FALSE |
-| `CONCORD_LOGGER_NAME`  | STRING |"concord" |
-| `USE_CONAN`            | OFF\| ON | ON |
-| `USE_OPENTRACING`      | OFF\| ON | ON |
-
- Note(1): You can't set both `BUILD_COMM_TCP_PLAIN` and `BUILD_COMM_TCP_TLS` to TRUE.
- Note(2): In case of setting `USE_CONAN=OFF` cmake will search for packages in their native location.
-
-#### Select comm module
-We support both UDP and TCP communication. UDP is the default. In order to
-enable TCP communication, build with `-DBUILD_COMM_TCP_PLAIN=TRUE` in the cmake
-instructions shown above.  If set, the test client will run using TCP. If you
-wish to use TCP in your application, you need to build the TCP module as
-mentioned above and then create the communication object using CommFactory and
-passing PlainTcpConfig object to it.
-
-We also support TCP over TLS communication. To enable it, change the
-`BUILD_COMM_TCP_TLS` flag to `TRUE` in the main CMakeLists.txt file. When
-running simpleTest using the testReplicasAndClient.sh - there is no need to create TLS certificates manually. The script will use the `create_tls_certs.sh` (located under the scripts/linux folder) to create certificates. The latter can be used to create TLS files for any number of replicas, e.g. when extending existing tests.
-
-#### (Optional) Python client
-
-The python client is required for running tests. If you do not want to install
-python, you can configure the build of concord-bft by running `cmake
--DBUILD_TESTING=OFF ..` from the `build` directory.
-
-The python client requires python3(>= 3.5) and trio, which is installed via pip.
-
-    python3 -m pip install --upgrade trio
-
-### Adding a new source dependency with conan
-
-We use conan for dependencies. If a binary dependency exists on conan-center you may wish to use
-it. You can check for this with the following command:
-
+git checkout merge_master_debug1
+cd build
+make
 ```
-conan search -r conan-center <LIBRARY NAME>
-```
+### Non-waiting Client Request Sending
+To allow the non-waiting request sending from client, Concord's original threading structure in the implementation  of  client  behaviors have been modified. 
 
-If the package is present, you can add it to
-[conanfile.txt](https://github.com/vmware/concord-bft/blob/master/conanfile.txt) under the
-`[requires]` table.
+Formerly, a producer-consumer threading model was utilized, and a mutex lock was placed after a request was sent and stopped blocking after request container becomesno longer empty. Currently, to eliminate the waiting period, the lock was removed and request sending and reply processing are kept without mutual interaction. In this way, the client is able to send requests as fast and many as possible. 
 
-If the package is not present, you will need to create a package. The simplest way is to add a
-recipe for downloading from source control and building the source. This is the mechanism
-described here. More advanced conan usage is possible, but out of scope of this documentation. We
-also do not cover creating a package, just the guidelines for including a new dependency in
-concord-bft.
+Changes are in ``bftengine/src/bftengine/SimpleClientImp.cpp`` in ``async_clients_n_commands`` branch.
 
-First, create a folder for your package with the suffix `_pkg` in the [`.conan`
-directory](https://github.com/vmware/concord-bft/tree/master/.conan)
+_Note: the current version no longer supports takes away request retransmission and reply result checking, which could be restored if to implement a request container that keeps track of the status of received requests._ 
 
-```
-cd .conan
-mkdir <SOME_DEPENDENCY>_pkg
-```
+### Non-pending Replica Request Processing 
+In addition to the client non-waiting request sending, replica side has also been modified to process messages without pending. 
 
-Second, create your `conanfile.py`. The simplest way to do this is to just copy an existing one
-from another package and modify it. For specifics, please see the [conan
-documentation](https://docs.conan.io/en/latest/creating_packages.html)
+The original implementation used ``ClientsManager`` to keep track of message status from each client, dropping recently received requests if pending messages are in the manage. We simplified this pending process by using a buffer container  to keep track all messages orderly without proposing. To  ensure the block chaining correctness, a callback mechanism is utilized in combining signatures, as when the certificate  formation callback is invoked, the replica proposes a new block.  
 
-Third, Add the dependency and its version to
-[conanfile.txt](https://github.com/vmware/concord-bft/blob/master/conanfile.txt) under the
-`requires` table.
+Changes can be found at ``bftengine/src/bftengine/ReplicaImp.cpp`` in ``async_clients_n_commands`` branch.
 
-Fourth, create a corresponding cmake find file. The easiest thing is to just copy one of the
-[existing files](https://github.com/vmware/concord-bft/tree/master/.conan/cmake_helpers) and
-modify it for your new package.
+## Evaluation Pipeline
+To achieve direct performance comparison between Sync-HotStuff and SBFT protocol, this repo also includes a pipelining process of evaluation in the ``simpleTests`` mode, including:
+- [setting up remote configuration](#run-sync-hotStuff-remotely)
+- [logging additional client-side reply timestamps](#client-timestamp-logging)
+- [adding automated remote testing](#automated-remote-testing)
+- [visualizing throughput and latency](#throughput-and-latency-visualization)
 
-After this, you should be able to rerun `cmake` and `make`, and your package should get built and
-installed.
-
-## Apollo testing framework
+The below subsections are a walkthrough of the listed implementations.
 
 
-The Apollo framework provides utilities and advanced testing scenarios for validating
-Concord BFT's correctness properties, regardless of the running application/execution engine.
-For the purposes of system testing, we have implemented a "Simple Key-Value Blockchain" (SKVBC)
-test application which runs on top of the Concord BFT consensus engine.
-<br>
+### Client Timestamp Logging
+In order to collect accurate performance data in ``simpleTest`` mode, this repo has a new logging feature in client side in addition to the logging system provided by the original codebase. 
 
-Apollo enables running all test suites (without modification) against any supported BFT network
-configuration (in terms of <i>n</i>, <i>f</i>, <i>c</i> and other parameters).
-<br>
+The client is now able to record the timestamp of when it receives the `f+1` replies from `2f+1` replicas, and in order not to burden the efficiency it only writes the data stream to file when receiving keyboard signal to terminate. 
 
-Various crash or byzantine failure scenarios are also covered
-(including faulty replicas and/or network partitioning).
-<br>
+Main changes are in ``bftengine/src/bftengine/SimpleClientImp.cpp``.
 
-Apollo test suites run regularly as part of Concord BFT's continuous integration pipeline.
+### Automated Remote Testing
+After remote configuration and performance logging, the repo also includes an automated remote testing that allows us to run experiments of arbitrary numbers of replicas and clients using command line. 
 
-Please find more details about the Apollo framework [here](tests/apollo/README.md)
+The included test bash script can generate config files and encryption key pairs, and run replica or client executable on the needed servers. It also aggregates the logging file from clients to allow further analysis visualization of throughput and latency. Read [how to use it](#configure-concord-config-file).
 
-## Run examples
+### Throughput and Latency Visualization
+The last stage of evaluation pipeline is graphing the main evaluative indexes of protocol performance, throughput and latency, of the log files aggregated from all clients. This repo includes a python script that plots the throughput and latency performance as Y-axis and client numbers as X-axis to help an instinctive understanding of how protocol perform when client number increases. 
 
-
-### Simple test application (4 replicas and 1 client on a single machine)
-
-Tests are compiled into in the build directory and can be run from anywhere as
-long as they aren't moved.
-
-Run the following from the top level concord-bft directory:
-
-   ./build/tests/simpleTest/scripts/testReplicasAndClient.sh
-
-### Using simple test application via Python script
-
-You can use the simpleTest.py script to run various configurations via a simple
-command line interface.
-Please find more information [here](./tests/simpleTest/README.md)
-
-## Directory Structure
-
-
-- [bftengine](./bftengine): concord-bft codebase
-	- [include](./bftengine/include): external interfaces of concord-bft (to be used by client applications)
-	- [src](./bftengine/src): internal implementation of concord-bft
-    - [tests](./bftengine/tests): tests and usage examples
-- [threshsign](./threshsign): crypto library that supports digital threshold signatures
-	- [include](./threshsign/include): external interfaces of threshsign (to be used by client applications)
-	- [src](./threshsign/src): internal implementation of threshsign
-    - [tests](./threshsign/tests): tests and usage examples
-- [scripts](./scripts): build scripts
-- [tests](./tests): BFT engine system tests
-
-## Contributing
-
-
-The concord-bft project team welcomes contributions from the community. If you wish to contribute code and you have not
-signed our contributor license agreement (CLA), our bot will update the issue when you open a Pull Request. For any
-questions about the CLA process, please refer to our [FAQ](https://cla.vmware.com/faq). For more detailed information,
-refer to [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Community
-
-
-[Concord-BFT Slack](https://concordbft.slack.com/).
-
-Request a Slack invitation via <concordbft@gmail.com>.
-
-## License
-
-concord-bft is available under the [Apache 2 license](LICENSE).
-
+The script can be found at ``logging/src/ThroughputGraph.py``.
