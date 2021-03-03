@@ -28,7 +28,7 @@ do
     let clientCounter=clientCounter+1
 done
 
-sleep 300
+sleep 30
 
 pkill client
 pkill server
