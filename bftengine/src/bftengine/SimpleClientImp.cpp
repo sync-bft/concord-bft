@@ -247,6 +247,8 @@ SimpleClientImp::SimpleClientImp(
   communication_->setReceiver(clientId_, this);
 
   signal(SIGINT, printLog);
+  signal(SIGTERM, printLog);
+  signal(SIGKILL, printLog);
 }
 
 SimpleClientImp::~SimpleClientImp() {
