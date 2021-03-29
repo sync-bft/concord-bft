@@ -86,7 +86,7 @@ class SimpleClientImp : public SimpleClient, public IReceiver {
   void onMessageFromReplica(MessageBase* msg);
   void onRetransmission();
   void reset();
-  void logToMap(uint64_t reqSeqNum);
+  void logToMap(uint64_t reqSeqNum, bool fromSent);
 
  protected:
   static const uint32_t maxLegalMsgSize_ = 64 * 1024;  // TODO(GG): ???
@@ -155,17 +155,18 @@ void SimpleClientImp::onMessageFromReplica(MessageBase* msg) {
     return;
   }
 
-  replysCertificate_.addMsg(replyMsg, replyMsg->senderId());
-
-  if (replysCertificate_.isInconsistent()) {
-    // TODO(GG): print .....
-    replysCertificate_.resetAndFree();
-  }
-
   uint64_t reqSeqMsg = replyMsg->reqSeqNum();
 
   if (reqSeqMap.count(reqSeqMsg) == 0){
+    LOG_DEBUG(logger_, "reqSeqMap unfound " << reqSeqMsg <<  "  " << replyMsg->reqSeqNum());
     AssertEQ(logMap.find(reqSeqMsg)->second.size(), 2);
+    // LOG_DEBUG(logger_, "before replaysCertificate " <<  replyMsg->reqSeqNum());
+    replysCertificate_.addMsg(replyMsg, replyMsg->senderId());
+    // LOG_DEBUG(logger_, "after replysCerificate " <<  replyMsg->reqSeqNum());
+    if (replysCertificate_.isInconsistent()) {
+    // LOG_DEBUG(logger_, "Reply's certificate is not consistent: request seq number is " << replyMsg->reqSeqNum());
+      replysCertificate_.resetAndFree();
+    }
     return; //has been processed
   }
 
@@ -175,12 +176,20 @@ void SimpleClientImp::onMessageFromReplica(MessageBase* msg) {
            //<< "with sender ID" << replyMsg->senderId())
   uint16_t quorumSize = (numberOfReplicas_ - 1)/2;
   if (replicaSet.size() > quorumSize){ //assume 2f + 1
-    logToMap(reqSeqMsg);
+    logToMap(reqSeqMsg, false);
 
     LOG_INFO(logger_, "Client " << clientId_ << " with Req ID: " << replyMsg->reqSeqNum()
                                 << " - f + 1 Replica Replied.")
 
     reqSeqMap.erase(reqSeqMsg);
+  }
+
+  // LOG_DEBUG(logger_, "before replaysCertificate " <<  replyMsg->reqSeqNum());
+  replysCertificate_.addMsg(replyMsg, replyMsg->senderId());
+  // LOG_DEBUG(logger_, "after replysCerificate " <<  replyMsg->reqSeqNum());
+  if (replysCertificate_.isInconsistent()) {
+    // LOG_DEBUG(logger_, "Reply's certificate is not consistent: request seq number is " << replyMsg->reqSeqNum());
+    replysCertificate_.resetAndFree();
   }
 
 }
@@ -260,22 +269,25 @@ SimpleClientImp::~SimpleClientImp() {
   Assert(numberOfTransmissions_ == 0);
 }
 
-void SimpleClientImp::logToMap(uint64_t reqSeqNum){
+void SimpleClientImp::logToMap(uint64_t reqSeqNum, bool fromSent){
   high_resolution_clock::time_point receiveTime = high_resolution_clock::now();
   auto nanoReceiveTime = duration_cast<nanoseconds>(receiveTime.time_since_epoch()).count();
 
-  if (logMap.count(reqSeqNum) == 0){
+  if (fromSent && logMap.count(reqSeqNum) == 0){
+    LOG_DEBUG(logger_, "Adding the initialized in logMap" << reqSeqNum );
     logMap.insert(std::pair<uint64_t, std::vector<time_t>>
                   (reqSeqNum, std::vector<time_t>()));
     logMap.find(reqSeqNum)->second.push_back(nanoReceiveTime);
   } else{
+    if (fromSent) return;
     std::vector<long int> &mapVec = logMap.find(reqSeqNum)->second;
     AssertEQ(mapVec.size(), 1);
 
     long int sendTime = mapVec.front();
     mapVec.pop_back();
     mapVec.push_back(nanoReceiveTime);
-    mapVec.push_back(sendTime - nanoReceiveTime);
+    mapVec.push_back(nanoReceiveTime - sendTime);  // FIXME: should it be nanoReceiveTime - sendTime
+    LOG_DEBUG(logger_, "Adding the timestamp in logMap" << reqSeqNum );
   }
 
 }
@@ -335,7 +347,7 @@ OperationResult SimpleClientImp::sendRequest(uint8_t flags,
   sendPendingRequest();
 
   AssertEQ(logMap.count(reqSeqNum), 0);
-  logToMap(reqSeqNum);
+  logToMap(reqSeqNum, true);
 
   if (reqSeqMap.count(reqSeqNum) != 0){
     LOG_DEBUG(logger_, "Duplicative request sequence number :" << reqSeqNum );
@@ -528,6 +540,7 @@ void SimpleClientImp::sendPendingRequest() {
     communication_->sendAsyncMessage(knownPrimaryReplica_, pendingRequest_->body(), pendingRequest_->size());
     // TODO(GG): handle errors (print and/or ....)
   }
+  
 }
 
 // SeqNumberGeneratorForClientRequestsImp, generates unique, monotonically increasing, sequence number.
